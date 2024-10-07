@@ -12,9 +12,10 @@ endif()
 
 add_executable(FinalProject
     "src/application.cpp"
-    
-	
- "src/ray_transfer_matrices.cpp" "src/ray_transfer_matrices.h" "src/lens_system.h" "src/lens_system.cpp" "src/old_application.cpp")
+    "src/ray_transfer_matrices.cpp"
+	"src/ray_transfer_matrices.h"
+	"src/lens_system.h"
+	"src/lens_system.cpp")
 target_compile_features(FinalProject PRIVATE cxx_std_20)
 target_link_libraries(FinalProject PRIVATE CGFramework)
 enable_sanitizers(FinalProject)

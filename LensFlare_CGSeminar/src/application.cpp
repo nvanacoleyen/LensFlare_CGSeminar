@@ -78,31 +78,156 @@ void drawRayExample() {
     glFlush();
 }
 
-int main() {
-    if (!glfwInit()) {
-        return -1;
+class Application {
+public:
+    Application()
+        : m_window("Ray Transfer Matrices", glm::ivec2(1024, 1024), OpenGLVersion::GL45)
+    {
+        m_window.registerKeyCallback([this](int key, int scancode, int action, int mods) {
+            if (action == GLFW_PRESS)
+                onKeyPressed(key, mods);
+            else if (action == GLFW_RELEASE)
+                onKeyReleased(key, mods);
+            });
+        m_window.registerMouseMoveCallback(std::bind(&Application::onMouseMove, this, std::placeholders::_1));
+        m_window.registerMouseButtonCallback([this](int button, int action, int mods) {
+            if (action == GLFW_PRESS)
+                onMouseClicked(button, mods);
+            else if (action == GLFW_RELEASE)
+                onMouseReleased(button, mods);
+            });
+
+        try {
+            ShaderBuilder defaultBuilder;
+            defaultBuilder.addStage(GL_VERTEX_SHADER, "shaders/shader_vert.glsl");
+            defaultBuilder.addStage(GL_FRAGMENT_SHADER, "shaders/shader_frag.glsl");
+            m_defaultShader = defaultBuilder.build();
+
+        }
+        catch (ShaderLoadingException e) {
+            std::cerr << e.what() << std::endl;
+        }
     }
 
-    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Ray Transfer Matrix", NULL, NULL);
-    if (!window) {
-        glfwTerminate();
-        return -1;
+    void update()
+    {
+        int dummyInteger = 0; // Initialized to 0
+        while (!m_window.shouldClose()) {
+            // This is your game loop
+            // Put your real-time logic and rendering in here
+            m_window.updateInput();
+
+            // Use ImGui for easy input/output of ints, floats, strings, etc...
+            ImGui::Begin("Window");
+            ImGui::InputInt("This is an integer input", &dummyInteger); // Use ImGui::DragInt or ImGui::DragFloat for larger range of numbers.
+            ImGui::Text("Value is: %i", dummyInteger); // Use C printf formatting rules (%i is a signed integer)
+            ImGui::Checkbox("Use material if no texture", &m_useMaterial);
+            ImGui::End();
+
+            // Clear the screen
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // ...
+            glEnable(GL_DEPTH_TEST);
+
+            //const glm::mat4 mvpMatrix = m_projectionMatrix * m_viewMatrix * m_modelMatrix;
+            //// Normals should be transformed differently than positions (ignoring translations + dealing with scaling):
+            //// https://paroj.github.io/gltut/Illumination/Tut09%20Normal%20Transformation.html
+            //const glm::mat3 normalModelMatrix = glm::inverseTranspose(glm::mat3(m_modelMatrix));
+            GLfloat lineVertices[] = {
+                0.0f, 0.0f, 0.0f,  // First point (x, y, z)
+                1.0f, 1.0f, 0.0f   // Second point (x, y, z)
+            };
+            
+            GLuint m_vaoLine;
+            GLuint m_vboLine;
+
+            glGenVertexArrays(1, &m_vaoLine);
+            glGenBuffers(1, &m_vboLine);
+            glBindVertexArray(m_vaoLine);
+
+            glBindBuffer(GL_ARRAY_BUFFER, m_vboLine);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(lineVertices), lineVertices, GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            
+            m_defaultShader.bind();
+            const glm::vec2 screenPos = glm::vec2(0.5f, 0.0f);
+
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(projection));
+            glUniform2fv(1, 1, glm::value_ptr(screenPos));
+            glUniform3fv(2, 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f)));
+
+            glDrawArrays(GL_LINES, 0, 2);
+
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindVertexArray(0);
+
+            // Processes input and swaps the window buffer
+            m_window.swapBuffers();
+        }
     }
 
-    glfwMakeContextCurrent(window);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
-        return -1;
+    // In here you can handle key presses
+    // key - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__keys.html
+    // mods - Any modifier keys pressed, like shift or control
+    void onKeyPressed(int key, int mods)
+    {
+        std::cout << "Key pressed: " << key << std::endl;
     }
 
-    while (!glfwWindowShouldClose(window)) {
-        drawRayExample();
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    // In here you can handle key releases
+    // key - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__keys.html
+    // mods - Any modifier keys pressed, like shift or control
+    void onKeyReleased(int key, int mods)
+    {
+        std::cout << "Key released: " << key << std::endl;
     }
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    // If the mouse is moved this function will be called with the x, y screen-coordinates of the mouse
+    void onMouseMove(const glm::dvec2& cursorPos)
+    {
+        std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
+    }
+
+    // If one of the mouse buttons is pressed this function will be called
+    // button - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__buttons.html
+    // mods - Any modifier buttons pressed
+    void onMouseClicked(int button, int mods)
+    {
+        std::cout << "Pressed mouse button: " << button << std::endl;
+    }
+
+    // If one of the mouse buttons is released this function will be called
+    // button - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__buttons.html
+    // mods - Any modifier buttons pressed
+    void onMouseReleased(int button, int mods)
+    {
+        std::cout << "Released mouse button: " << button << std::endl;
+    }
+
+private:
+    Window m_window;
+
+    // Shader for default rendering
+    Shader m_defaultShader;
+
+    bool m_useMaterial{ false };
+
+    // Projection and view matrices for you to fill in and use
+    //glm::mat4 m_projectionMatrix = glm::perspective(glm::radians(80.0f), 1.0f, 0.1f, 30.0f);
+    glm::mat4 projection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f);
+    //glm::mat4 m_viewMatrix = glm::lookAt(glm::vec3(-1, 1, -1), glm::vec3(0), glm::vec3(0, 1, 0));
+    //glm::mat4 m_modelMatrix{ 1.0f };
+};
+
+int main()
+{
+    Application app;
+    app.update();
+
     return 0;
 }
