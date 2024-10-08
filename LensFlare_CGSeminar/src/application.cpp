@@ -9,7 +9,6 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/mat4x4.hpp>
 #include <imgui/imgui.h>
 DISABLE_WARNINGS_POP()
 #include <framework/shader.h>
@@ -19,9 +18,18 @@ DISABLE_WARNINGS_POP()
 #include <vector>
 #include <cmath>
 #include "ray_transfer_matrices.h"
+#include "line_drawer.h"
 
 float toRad(float degrees) {
     return degrees * 3.141593f / 180.0f;
+}
+
+LineDrawer raytoLine(float z, glm::vec2 ray) {
+    std::vector<glm::vec3> ray_line;
+    ray_line.push_back(glm::vec3(z, ray.x, 0.0f));
+    ray_line.push_back(glm::vec3(z + cos(ray.y), ray.x + sin(ray.y), 0.0f));
+
+    return LineDrawer(ray_line);
 }
 
 void drawRayExample() {
@@ -112,6 +120,26 @@ public:
     void update()
     {
         int dummyInteger = 0; // Initialized to 0
+
+        RayTransferMatrixBuilder rtmb = RayTransferMatrixBuilder();
+        float initialPos = 0.0f;
+        glm::vec2 initialRay = glm::vec2(0.0f, toRad(10.0f)); // First term is displacement to the optical axis, second term is the angle\
+
+        float di = 0.5f;
+        glm::mat2x2 tMat = rtmb.getTranslationMatrix(di);
+        glm::vec2 transformedRay = tMat * initialRay;
+        float transformedPos = initialPos + di;
+
+        LineDrawer initialRayLine = raytoLine(initialPos, initialRay);
+        LineDrawer transformedRayLine = raytoLine(transformedPos, transformedRay);
+
+        std::vector<glm::vec3> curve;
+        for (float y = -1.0f; y <= 1.0f; y += 0.01f) {
+            float x = 0.2f * (y * y - 1.0f); // Quadratic function to create a bowl shape
+            curve.push_back(glm::vec3(x, y, 0.f));
+        }
+        LineDrawer curvedLine(curve);
+
         while (!m_window.shouldClose()) {
             // This is your game loop
             // Put your real-time logic and rendering in here
@@ -124,6 +152,9 @@ public:
             ImGui::Checkbox("Use material if no texture", &m_useMaterial);
             ImGui::End();
 
+            // Update Projection Matrix
+            glm::mat4 projection = glm::ortho(m_left_clipping_plane, m_right_clipping_plane, m_bottom_clipping_plane, m_top_clipping_plane);
+
             // Clear the screen
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -135,33 +166,12 @@ public:
             //// Normals should be transformed differently than positions (ignoring translations + dealing with scaling):
             //// https://paroj.github.io/gltut/Illumination/Tut09%20Normal%20Transformation.html
             //const glm::mat3 normalModelMatrix = glm::inverseTranspose(glm::mat3(m_modelMatrix));
-            GLfloat lineVertices[] = {
-                0.0f, 0.0f, 0.0f,  // First point (x, y, z)
-                1.0f, 1.0f, 0.0f   // Second point (x, y, z)
-            };
-            
-            GLuint m_vaoLine;
-            GLuint m_vboLine;
-
-            glGenVertexArrays(1, &m_vaoLine);
-            glGenBuffers(1, &m_vboLine);
-            glBindVertexArray(m_vaoLine);
-
-            glBindBuffer(GL_ARRAY_BUFFER, m_vboLine);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(lineVertices), lineVertices, GL_STATIC_DRAW);
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(0);
-
             
             m_defaultShader.bind();
-            const glm::vec2 screenPos = glm::vec2(0.5f, 0.0f);
 
-            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(projection));
-            glUniform2fv(1, 1, glm::value_ptr(screenPos));
-            glUniform3fv(2, 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f)));
-
-            glDrawArrays(GL_LINES, 0, 2);
+            initialRayLine.drawLine(projection);
+            transformedRayLine.drawLine(projection);
+            curvedLine.drawLine(projection);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glBindVertexArray(0);
@@ -176,7 +186,42 @@ public:
     // mods - Any modifier keys pressed, like shift or control
     void onKeyPressed(int key, int mods)
     {
-        std::cout << "Key pressed: " << key << std::endl;
+        switch (key)
+        {
+        case GLFW_KEY_A:
+            m_left_clipping_plane -= 1.f;
+            m_right_clipping_plane -= 1.f;
+            break;
+        case GLFW_KEY_D:
+            m_left_clipping_plane += 1.f;
+            m_right_clipping_plane += 1.f;
+            break;
+        case GLFW_KEY_S:
+            m_bottom_clipping_plane -= 1.f;
+            m_top_clipping_plane -= 1.f;
+            break;
+        case GLFW_KEY_W:
+            m_bottom_clipping_plane += 1.f;
+            m_top_clipping_plane += 1.f;
+            break;
+        case GLFW_KEY_Q:
+            m_left_clipping_plane -= 1.f;
+            m_right_clipping_plane += 1.f;
+            m_bottom_clipping_plane -= 1.f;
+            m_top_clipping_plane += 1.f;
+            break;
+        case GLFW_KEY_E:
+            if (abs(m_left_clipping_plane - m_right_clipping_plane) > 2.f) {
+                m_left_clipping_plane += 1.f;
+                m_right_clipping_plane -= 1.f;
+                m_bottom_clipping_plane += 1.f;
+                m_top_clipping_plane -= 1.f;
+            }
+            break;
+        default:
+            break;
+        }
+        //std::cout << "Key pressed: " << key << std::endl;
     }
 
     // In here you can handle key releases
@@ -184,13 +229,13 @@ public:
     // mods - Any modifier keys pressed, like shift or control
     void onKeyReleased(int key, int mods)
     {
-        std::cout << "Key released: " << key << std::endl;
+        //std::cout << "Key released: " << key << std::endl;
     }
 
     // If the mouse is moved this function will be called with the x, y screen-coordinates of the mouse
     void onMouseMove(const glm::dvec2& cursorPos)
     {
-        std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
+        //std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
     }
 
     // If one of the mouse buttons is pressed this function will be called
@@ -198,7 +243,7 @@ public:
     // mods - Any modifier buttons pressed
     void onMouseClicked(int button, int mods)
     {
-        std::cout << "Pressed mouse button: " << button << std::endl;
+        //std::cout << "Pressed mouse button: " << button << std::endl;
     }
 
     // If one of the mouse buttons is released this function will be called
@@ -206,7 +251,7 @@ public:
     // mods - Any modifier buttons pressed
     void onMouseReleased(int button, int mods)
     {
-        std::cout << "Released mouse button: " << button << std::endl;
+        //std::cout << "Released mouse button: " << button << std::endl;
     }
 
 private:
@@ -217,11 +262,10 @@ private:
 
     bool m_useMaterial{ false };
 
-    // Projection and view matrices for you to fill in and use
-    //glm::mat4 m_projectionMatrix = glm::perspective(glm::radians(80.0f), 1.0f, 0.1f, 30.0f);
-    glm::mat4 projection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f);
-    //glm::mat4 m_viewMatrix = glm::lookAt(glm::vec3(-1, 1, -1), glm::vec3(0), glm::vec3(0, 1, 0));
-    //glm::mat4 m_modelMatrix{ 1.0f };
+    float m_left_clipping_plane = -1.0f;
+    float m_right_clipping_plane = 1.0f;
+    float m_bottom_clipping_plane = -1.0f;
+    float m_top_clipping_plane = 1.0f;
 };
 
 int main()
