@@ -20,70 +20,17 @@ DISABLE_WARNINGS_POP()
 #include "ray_transfer_matrices.h"
 #include "line_drawer.h"
 
+//UTIL FUNCTIONS
 float toRad(float degrees) {
     return degrees * 3.141593f / 180.0f;
 }
 
 LineDrawer raytoLine(float z, glm::vec2 ray) {
-    std::vector<glm::vec3> ray_line;
-    ray_line.push_back(glm::vec3(z, ray.x, 0.0f));
-    ray_line.push_back(glm::vec3(z + cos(ray.y), ray.x + sin(ray.y), 0.0f));
+    std::vector<glm::vec3> rayLine;
+    rayLine.push_back(glm::vec3(z, ray.x, 0.0f));
+    rayLine.push_back(glm::vec3(z + cos(ray.y), ray.x + sin(ray.y), 0.0f));
 
-    return LineDrawer(ray_line);
-}
-
-void drawRayExample() {
-    // Set the background color to white
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Set the line color to black
-    glColor3f(0.0f, 0.0f, 0.0f);
-
-    // Set the point size
-    glPointSize(5.0);
-
-    glBegin(GL_POINTS);
-    glVertex2f(0.0f, 0.0f); // Draw a point at the origin
-    glEnd();
-
-    RayTransferMatrixBuilder rtmb = RayTransferMatrixBuilder();
-    float initialPos = 0.0f;
-    glm::vec2 initialRay = glm::vec2(0.0f, toRad(10.0f)); // First term is displacement to the optical axis, second term is the angle
-
-    //DRAW RAY AT INITIAL POS
-    glBegin(GL_LINES);
-    glVertex2f(initialPos, initialRay.x);
-    glVertex2f(initialPos + cos(initialRay.y), initialRay.x + sin(initialRay.y));
-    glEnd();
-
-    // Set the line color to black
-    glColor3f(1.0f, 0.0f, 0.0f);
-
-    float di = 0.1f;
-    glm::mat2x2 tMat = rtmb.getTranslationMatrix(di);
-    glm::vec2 transformedRay = tMat * initialRay;
-    float transformedPos = initialPos + di;
-
-    glBegin(GL_POINTS);
-    glVertex2f(transformedPos, 0.0f);
-    glEnd();
-
-    //DRAW TRANSFORMED RAY
-    glBegin(GL_LINES);
-    glVertex2f(transformedPos, transformedRay.x);
-    glVertex2f(transformedPos + cos(transformedRay.y), transformedRay.x + sin(transformedRay.y));
-    glEnd();
-
-
-    //glBegin(GL_LINE_STRIP);
-    //for (float y = -1.0f; y <= 1.0f; y += 0.01f) {
-    //    float x = 0.2f * (y * y - 1.0f); // Quadratic function to create a bowl shape
-    //    glVertex2f(x, y);
-    //}
-    //glEnd();
-
-    glFlush();
+    return LineDrawer(rayLine);
 }
 
 class Application {
@@ -119,6 +66,7 @@ public:
 
     void update()
     {
+        //INITIALIZATION
         int dummyInteger = 0; // Initialized to 0
 
         RayTransferMatrixBuilder rtmb = RayTransferMatrixBuilder();
@@ -140,6 +88,7 @@ public:
         }
         LineDrawer curvedLine(curve);
 
+        //LOOP
         while (!m_window.shouldClose()) {
             // This is your game loop
             // Put your real-time logic and rendering in here
