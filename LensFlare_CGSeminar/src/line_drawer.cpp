@@ -2,6 +2,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+//https://www.khronos.org/opengl/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
 
 LineDrawer::LineDrawer() {
 	glGenVertexArrays(1, &m_vaoLine);
