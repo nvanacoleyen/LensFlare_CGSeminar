@@ -19,6 +19,8 @@ DISABLE_WARNINGS_POP()
 #include <cmath>
 #include "ray_transfer_matrices.h"
 #include "line_drawer.h"
+#include "lens_system.h"
+#include <limits>
 
 //UTIL FUNCTIONS
 float toRad(float degrees) {
@@ -31,6 +33,24 @@ LineDrawer raytoLine(float z, glm::vec2 ray) {
     rayLine.push_back(glm::vec3(z + cos(ray.y), ray.x + sin(ray.y), 0.0f));
 
     return LineDrawer(rayLine);
+}
+
+LensSystem generateExampleLens() {
+
+    std::vector<LensInterface> lensInterfaces;
+
+    lensInterfaces.push_back(LensInterface(7.7f, 1.652f, 30.81f, 0.0f)); //LAKN7
+    lensInterfaces.push_back(LensInterface(1.85f, 1.603f, -89.35f, 7.7f)); //F5
+    lensInterfaces.push_back(LensInterface(3.52f, 0.0f, 580.38f, 9.55f)); //air
+    lensInterfaces.push_back(LensInterface(1.85f, 1.643f, -80.63f, 13.07f)); //BAF9
+    lensInterfaces.push_back(LensInterface(4.18f, 0.0f, 28.34f, 14.92f)); //air
+    lensInterfaces.push_back(LensInterface(3.0f, 0.0f, std::numeric_limits<float>::infinity(), 19.1f)); //air (iris aperture)
+    lensInterfaces.push_back(LensInterface(1.85f, 1.581f, std::numeric_limits<float>::infinity(), 22.1f)); //LF5
+    lensInterfaces.push_back(LensInterface(7.27f, 1.694f, 32.19f, 23.95f)); //LAK13
+    lensInterfaces.push_back(LensInterface(81.857f, 0.0f, -52.99f, 31.22f)); //air
+
+    return LensSystem(10.f, 10.f, lensInterfaces);
+
 }
 
 class Application {
@@ -68,25 +88,26 @@ public:
     {
         //INITIALIZATION
         int dummyInteger = 0; // Initialized to 0
+        LensSystem lensSystem = generateExampleLens();
 
-        RayTransferMatrixBuilder rtmb = RayTransferMatrixBuilder();
-        float initialPos = 0.0f;
-        glm::vec2 initialRay = glm::vec2(0.0f, toRad(10.0f)); // First term is displacement to the optical axis, second term is the angle\
+        //RayTransferMatrixBuilder rtmb = RayTransferMatrixBuilder();
+        //float initialPos = 0.0f;
+        //glm::vec2 initialRay = glm::vec2(0.0f, toRad(10.0f)); // First term is displacement to the optical axis, second term is the angle\
 
-        float di = 0.5f;
-        glm::mat2x2 tMat = rtmb.getTranslationMatrix(di);
-        glm::vec2 transformedRay = tMat * initialRay;
-        float transformedPos = initialPos + di;
+        //float di = 0.5f;
+        //glm::mat2x2 tMat = rtmb.getTranslationMatrix(di);
+        //glm::vec2 transformedRay = tMat * initialRay;
+        //float transformedPos = initialPos + di;
 
-        LineDrawer initialRayLine = raytoLine(initialPos, initialRay);
-        LineDrawer transformedRayLine = raytoLine(transformedPos, transformedRay);
+        //LineDrawer initialRayLine = raytoLine(initialPos, initialRay);
+        //LineDrawer transformedRayLine = raytoLine(transformedPos, transformedRay);
 
-        std::vector<glm::vec3> curve;
-        for (float y = -1.0f; y <= 1.0f; y += 0.01f) {
-            float x = 0.2f * (y * y - 1.0f); // Quadratic function to create a bowl shape
-            curve.push_back(glm::vec3(x, y, 0.f));
-        }
-        LineDrawer curvedLine(curve);
+        //std::vector<glm::vec3> curve;
+        //for (float y = -1.0f; y <= 1.0f; y += 0.01f) {
+        //    float x = 0.2f * (y * y - 1.0f); // Quadratic function to create a bowl shape
+        //    curve.push_back(glm::vec3(x, y, 0.f));
+        //}
+        //LineDrawer curvedLine(curve);
 
         //LOOP
         while (!m_window.shouldClose()) {
@@ -118,9 +139,10 @@ public:
             
             m_defaultShader.bind();
 
-            initialRayLine.drawLine(projection);
-            transformedRayLine.drawLine(projection);
-            curvedLine.drawLine(projection);
+            //initialRayLine.drawLine(projection);
+            //transformedRayLine.drawLine(projection);
+            //curvedLine.drawLine(projection);
+            lensSystem.drawLensSystem(projection);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glBindVertexArray(0);

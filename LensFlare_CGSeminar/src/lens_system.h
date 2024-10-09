@@ -7,11 +7,13 @@ struct LensInterface {
 	float di; //positive displacement to the next interface at interface i (from thickness)
 	float ni; //the refractive indices at interface i
 	float Ri; //the lens radius (R > 0 / R = inf for convex / flat interfaces)
+	float zi; //starting z position of lens interface (sum of di of previous interfaces)
 };
 
 class LensSystem {
 public:
 	LensSystem(float entrancePupilHeight, float irisApertureHeight);
+	LensSystem(float entrancePupilHeight, float irisApertureHeight, std::vector<LensInterface> lensInterfaces);
 	std::vector<LensInterface> getLensInterfaces();
 	void setLensInterfaces(std::vector<LensInterface> newLensInterfaces);
 	void drawLensSystem(glm::mat4 projection);
@@ -19,6 +21,6 @@ public:
 private:
 	std::vector<LensInterface> m_lens_interfaces;
 	std::vector<glm::mat2x2> m_ray_transfer_matrices; //Needs to be updated if lens interfaces change
-	float m_entrance_pupil_height;
-	float m_iris_aperture_height;
+	float m_entrance_pupil_height = 0.f;
+	float m_iris_aperture_height = 0.f;
 };
