@@ -5,13 +5,13 @@
 //https://www.khronos.org/opengl/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL)
 
 LineDrawer::LineDrawer() {
-	glGenVertexArrays(1, &m_vaoLine);
-	glGenBuffers(1, &m_vboLine);
+	glGenVertexArrays(1, &m_vao_line);
+	glGenBuffers(1, &m_vbo_line);
 }
 
 LineDrawer::LineDrawer(std::vector<glm::vec3> points) {
-	glGenVertexArrays(1, &m_vaoLine);
-	glGenBuffers(1, &m_vboLine);
+	glGenVertexArrays(1, &m_vao_line);
+	glGenBuffers(1, &m_vbo_line);
 	m_points = points;
 }
 
@@ -23,11 +23,16 @@ std::vector<glm::vec3> LineDrawer::getPoints() {
 	return m_points;
 }
 
+void LineDrawer::releaseArrayAndBuffer() {
+	glDeleteVertexArrays(1, &m_vao_line);
+	glDeleteBuffers(1, &m_vbo_line);
+}
+
 void LineDrawer::drawLine(glm::mat4 projection) {
 
 	//VERTEX ARRAYS AND BUFFERS
-	glBindVertexArray(m_vaoLine);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vboLine);
+	glBindVertexArray(m_vao_line);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo_line);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * m_points.size(), m_points.data(), GL_STATIC_DRAW); 
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
