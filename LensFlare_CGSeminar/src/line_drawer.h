@@ -12,7 +12,7 @@ public:
 	void setPoints(std::vector<glm::vec3> points);
 	std::vector<glm::vec3> getPoints();
 	void releaseArrayAndBuffer();
-	void drawLine(glm::mat4 projection);
+	void drawLine(glm::mat4 projection, glm::vec3 color);
 
 private:
 	std::vector<glm::vec3> m_points;

@@ -47,6 +47,14 @@ std::vector<float> LensSystem::getInterfacePositions() {
 	return interfacePositions;
 }
 
+float LensSystem::getSensorPosition() {
+	float pos = 0.0f;
+	for (LensInterface lensInterface : m_lens_interfaces) {
+		pos += lensInterface.di;
+	}
+	return pos;
+}
+
 glm::vec2 LensSystem::getCircleCenter(float z, float h, float R) {
 	//https://www.mathsisfun.com/geometry/arc.html
 	//https://www.mathopenref.com/sagitta.html
@@ -126,6 +134,6 @@ void LensSystem::generateLineDrawers() {
 
 void LensSystem::drawLensSystem(glm::mat4 projection) {
 	for (LineDrawer lineDrawer : m_line_drawers) {
-		lineDrawer.drawLine(projection);
+		lineDrawer.drawLine(projection, glm::vec3(0.7f, 0.7f, 1.f));
 	}
 }

@@ -28,7 +28,7 @@ void LineDrawer::releaseArrayAndBuffer() {
 	glDeleteBuffers(1, &m_vbo_line);
 }
 
-void LineDrawer::drawLine(glm::mat4 projection) {
+void LineDrawer::drawLine(glm::mat4 projection, glm::vec3 color) {
 
 	//VERTEX ARRAYS AND BUFFERS
 	glBindVertexArray(m_vao_line);
@@ -40,9 +40,8 @@ void LineDrawer::drawLine(glm::mat4 projection) {
 
 	//SHADER UNIFORMS
 	glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(projection)); // Projection Matrix
-	glUniform3fv(1, 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f))); // Color
+	glUniform3fv(1, 1, glm::value_ptr(color)); // Color
 
 	//DRAW
 	glDrawArrays(GL_LINE_STRIP, 0, m_points.size());
-
 }

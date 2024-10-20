@@ -82,7 +82,7 @@ public:
         int dummyInteger = 0; // Initialized to 0
         LensSystem lensSystem = generateExampleLens();
         glm::vec2 ray = glm::vec2(3.f, toRad(-1.0f));
-        RayPropagationDrawer rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray);
+        RayPropagationDrawer rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
 
         //RayTransferMatrixBuilder rtmb = RayTransferMatrixBuilder();
         //float initialPos = 0.0f;

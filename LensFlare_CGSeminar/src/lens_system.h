@@ -19,6 +19,7 @@ public:
 	void setLensInterfaces(std::vector<LensInterface> newLensInterfaces);
 	std::vector<glm::mat2x2> getRayTransferMatrices();
 	std::vector<float> getInterfacePositions();
+	float getSensorPosition();
 	void generateLineDrawers();
 	void drawLensSystem(glm::mat4 projection);
 
