@@ -23,6 +23,7 @@ public:
 	void drawLensSystem(glm::mat4 projection);
 
 private:
+	glm::vec2 getCircleCenter(float z, float h, float R);
 	std::vector<LensInterface> m_lens_interfaces;
 	std::vector<LineDrawer> m_line_drawers;
 	std::vector<glm::mat2x2> m_ray_transfer_matrices; //Needs to be updated if lens interfaces change

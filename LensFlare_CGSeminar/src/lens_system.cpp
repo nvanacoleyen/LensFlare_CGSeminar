@@ -47,8 +47,24 @@ std::vector<float> LensSystem::getInterfacePositions() {
 	return interfacePositions;
 }
 
-//Needs to be updated to draw the spherical interfaces
-//https://www.mathsisfun.com/geometry/arc.html
+glm::vec2 LensSystem::getCircleCenter(float z, float h, float R) {
+	//https://www.mathsisfun.com/geometry/arc.html
+	//https://www.mathopenref.com/sagitta.html
+	bool isConvex = false;
+	if (R > 0.f) {
+		isConvex = true;
+	}
+	R = abs(R);
+	float arcHeigth = R - sqrt(pow(R, 2.f) - pow(h/2.f, 2.f));
+	if (isConvex) {
+		return glm::vec2(z + (R - arcHeigth), 0.0f);
+	}
+	else {
+		return glm::vec2(z - (R - arcHeigth), 0.0f);
+	}
+}
+
+
 void LensSystem::generateLineDrawers() {
 	if (m_line_drawers.size() > 0) {
 		for (LineDrawer lineDrawer : m_line_drawers) {
@@ -59,38 +75,49 @@ void LensSystem::generateLineDrawers() {
 	std::vector<float> interfacePositions = this->getInterfacePositions();
 	for (int i = 0; i < m_lens_interfaces.size(); i++) {
 		std::vector<glm::vec3> liPoints;
+		//Flat interfaces
 		if (abs(m_lens_interfaces[i].Ri) > 1000.f) {
 			liPoints.push_back(glm::vec3(interfacePositions[i], m_entrance_pupil_height / 2, 0.f));
 			liPoints.push_back(glm::vec3(interfacePositions[i], -m_entrance_pupil_height / 2, 0.f));
 		}
 		else {
-			int numPoints = 20;
-			double thetaStart, thetaEnd;
-			double centerX = interfacePositions[i];
-			double centerY = 0.0;
 			float R = m_lens_interfaces[i].Ri;
 			float height = m_lens_interfaces[i].hi;
-			// Convex or Concave interface
-			if (R > 0) {
-				thetaStart = -std::asin(height / (2 * R));
-				thetaEnd = std::asin(height / (2 * R));
+			glm::vec2 circleCenter = getCircleCenter(interfacePositions[i], height, R);
+
+			//Change angle here to change resolution of curved lens interfaces
+			double angleIncrement = 0.1 * 3.141593f / 180.0f;
+
+			glm::vec3 startPoint = glm::vec3(interfacePositions[i], height / 2, 0.f);
+			glm::vec3 endPoint = glm::vec3(interfacePositions[i], -height / 2, 0.f);
+			if (R < 0.f) {
+				startPoint = glm::vec3(interfacePositions[i], -height / 2, 0.f);
+				endPoint = glm::vec3(interfacePositions[i], height / 2, 0.f);
+			}
+			float startAngle = std::atan2(startPoint.y - circleCenter.y, startPoint.x - circleCenter.x);
+			liPoints.push_back(startPoint);
+
+			float angle = startAngle;
+			float nextX;
+			if (R > 0.f) {
+				do {
+					angle += angleIncrement;
+					float x = circleCenter.x + R * std::cos(angle);
+					float y = circleCenter.y + R * std::sin(angle);
+					liPoints.push_back(glm::vec3(x, y, 0.f));
+					nextX = circleCenter.x + R * std::cos(angle + angleIncrement);
+				} while (nextX < endPoint.x);
 			}
 			else {
-				R = -R;
-				thetaStart = std::asin(height / (2 * R));
-				thetaEnd = -std::asin(height / (2 * R));
+				do {
+					angle += angleIncrement;
+					float x = circleCenter.x - R * std::cos(angle);
+					float y = circleCenter.y - R * std::sin(angle);
+					liPoints.push_back(glm::vec3(x, y, 0.f));
+					nextX = circleCenter.x - R * std::cos(angle + angleIncrement);
+				} while (nextX > endPoint.x);
 			}
-
-			for (int j = 0; j < numPoints; ++j) {
-				double theta = thetaStart + j * (thetaEnd - thetaStart) / (numPoints - 1);
-				double x = centerX + R * (1 - std::cos(theta));
-				double y = centerY + R * std::sin(theta);
-				if (m_lens_interfaces[i].Ri < 0) {
-					x = centerX - R * (1 - std::cos(theta));
-					y = centerY - R * std::sin(theta);
-				}
-				liPoints.push_back(glm::vec3(x, y, 0.0f));
-			}
+			liPoints.push_back(endPoint);
 
 		}
 		m_line_drawers.push_back(LineDrawer(liPoints));
