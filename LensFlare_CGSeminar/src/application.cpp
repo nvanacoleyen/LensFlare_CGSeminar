@@ -97,6 +97,10 @@ public:
 
         int interfaceToRemove = 0;
 
+        int firstReflectionPos = 0;
+        int secondReflectionPos = 0;
+        bool reflectionActive = false;
+
         //LOOP
         while (!m_window.shouldClose()) {
             m_window.updateInput();
@@ -108,6 +112,10 @@ public:
             ImGui::InputFloat("Ray Origin Offset", &rayOriginOffset);
             ImGui::InputFloat("Ray Angle", &rayAngle);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
+            ImGui::InputInt("First Reflection Location", &firstReflectionPos);
+            ImGui::InputInt("Second Reflection Location", &secondReflectionPos);
+            ImGui::Checkbox("Toggle Reflection", &reflectionActive);
+
             //Button loading example lens system
             if (ImGui::Button("Load Example Lens System")) {
                 lensSystem = generateExampleLens();
@@ -193,6 +201,12 @@ public:
 
             //Update Iris Aperture Position
             lensSystem.setIrisAperturePos(irisAperturePos);
+
+            if (reflectionActive) {
+                if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
+                    rayPropagationDrawer.setRayTransferMatrices(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos));
+                }
+            }
 
             // Clear the screen
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);

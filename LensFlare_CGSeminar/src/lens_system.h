@@ -19,6 +19,7 @@ public:
 	std::vector<LensInterface> getLensInterfaces();
 	void setLensInterfaces(std::vector<LensInterface> newLensInterfaces);
 	std::vector<glm::mat2x2> getRayTransferMatrices();
+	std::vector<glm::mat2x2> getRayTransferMatricesWithReflection(int firstReflectionPos, int secondReflectionPos);
 	std::vector<float> getInterfacePositions();
 	float getEntrancePupilHeight();
 	float getIrisApertureHeight();

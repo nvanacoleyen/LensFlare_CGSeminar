@@ -10,6 +10,7 @@ public:
 	RayPropagationDrawer(std::vector<glm::mat2x2> rayTransferMatrices, std::vector<float> interfacePositions, glm::vec2 ray, float sensorPos);
 	void setRayTransferMatrices(std::vector<glm::mat2x2> rayTransferMatrices);
 	void setInterfacePositions(std::vector<float> interfacePositions);
+	void setSensorPos(float sensorPos);
 	void setRay(glm::vec2 ray);
 	void generateLineDrawers(bool full);
 	void drawRayPropagation(glm::mat4 projection);

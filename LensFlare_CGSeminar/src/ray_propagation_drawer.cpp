@@ -20,6 +20,10 @@ void RayPropagationDrawer::setInterfacePositions(std::vector<float> interfacePos
 	this->generateLineDrawers(fullRayLine);
 }
 
+void RayPropagationDrawer::setSensorPos(float sensorPos) {
+	m_sensor_pos = sensorPos;
+}
+
 void RayPropagationDrawer::setRay(glm::vec2 ray) {
 	if (ray.x != m_ray.x || ray.y != m_ray.y) {
 		m_ray = ray;
