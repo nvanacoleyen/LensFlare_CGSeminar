@@ -2,16 +2,18 @@
 
 #include "ray_transfer_matrices.h"
 
-LensSystem::LensSystem(float entrancePupilHeight, float irisApertureHeight) {
-	m_entrance_pupil_height = entrancePupilHeight;
-	m_iris_aperture_height = irisApertureHeight;
-}
-
-LensSystem::LensSystem(float entrancePupilHeight, float irisApertureHeight, std::vector<LensInterface> lensInterfaces) {
-	m_entrance_pupil_height = entrancePupilHeight;
-	m_iris_aperture_height = irisApertureHeight;
+LensSystem::LensSystem(int irisAperturePos, std::vector<LensInterface> lensInterfaces) {
+	m_iris_aperture_pos = irisAperturePos;
 	m_lens_interfaces = lensInterfaces;
 	this->generateLineDrawers();
+}
+
+void LensSystem::setIrisAperturePos(int newPos) {
+	m_iris_aperture_pos = newPos;
+}
+
+int LensSystem::getIrisAperturePos() {
+	return m_iris_aperture_pos;
 }
 
 std::vector<LensInterface> LensSystem::getLensInterfaces() {
@@ -45,6 +47,24 @@ std::vector<float> LensSystem::getInterfacePositions() {
 		pos += lensInterface.di;
 	}
 	return interfacePositions;
+}
+
+float LensSystem::getEntrancePupilHeight() {
+	if (m_lens_interfaces.size() > 0) {
+		return m_lens_interfaces[0].hi;
+	}
+	else {
+		return 0.f;
+	}
+}
+
+float LensSystem::getIrisApertureHeight() {
+	if (m_lens_interfaces.size() > m_iris_aperture_pos) {
+		return m_lens_interfaces[m_iris_aperture_pos].hi;
+	}
+	else {
+		return 0.f;
+	}
 }
 
 float LensSystem::getSensorPosition() {
@@ -85,8 +105,8 @@ void LensSystem::generateLineDrawers() {
 		std::vector<glm::vec3> liPoints;
 		//Flat interfaces
 		if (abs(m_lens_interfaces[i].Ri) > 1000.f) {
-			liPoints.push_back(glm::vec3(interfacePositions[i], m_entrance_pupil_height / 2, 0.f));
-			liPoints.push_back(glm::vec3(interfacePositions[i], -m_entrance_pupil_height / 2, 0.f));
+			liPoints.push_back(glm::vec3(interfacePositions[i], getEntrancePupilHeight() / 2, 0.f));
+			liPoints.push_back(glm::vec3(interfacePositions[i], -getEntrancePupilHeight() / 2, 0.f));
 		}
 		else {
 			float R = m_lens_interfaces[i].Ri;
@@ -126,6 +146,7 @@ void LensSystem::generateLineDrawers() {
 				} while (nextX > endPoint.x);
 			}
 			liPoints.push_back(endPoint);
+			liPoints.push_back(startPoint);
 
 		}
 		m_line_drawers.push_back(LineDrawer(liPoints));

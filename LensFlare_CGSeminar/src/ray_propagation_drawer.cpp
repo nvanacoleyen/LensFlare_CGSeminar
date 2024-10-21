@@ -21,8 +21,10 @@ void RayPropagationDrawer::setInterfacePositions(std::vector<float> interfacePos
 }
 
 void RayPropagationDrawer::setRay(glm::vec2 ray) {
-	m_ray = ray;
-	this->generateLineDrawers(fullRayLine);
+	if (ray.x != m_ray.x || ray.y != m_ray.y) {
+		m_ray = ray;
+		this->generateLineDrawers(fullRayLine);
+	}
 }
 
 void RayPropagationDrawer::generateLineDrawers(bool full) {
@@ -33,28 +35,30 @@ void RayPropagationDrawer::generateLineDrawers(bool full) {
 	}
 	m_line_drawers.clear();
 	//m_line_drawers.push_back(raytoLine(-2, m_ray));
-	if (full) {
-		std::vector<glm::vec3> rayPoints;
-		glm::vec2 transformedRay = m_ray;
-		for (int i = 0; i < m_ray_transfer_matrices.size(); i++) {
-			//for now assuming interface size is same as matrices size (so no reflection)
-			rayPoints.push_back(glm::vec3(m_interface_positions[i], transformedRay.x, 0.f));
-			transformedRay = m_ray_transfer_matrices[i] * transformedRay;
+	if (m_ray_transfer_matrices.size() > 0) {
+		if (full) {
+			std::vector<glm::vec3> rayPoints;
+			glm::vec2 transformedRay = m_ray;
+			for (int i = 0; i < m_ray_transfer_matrices.size(); i++) {
+				//for now assuming interface size is same as matrices size (so no reflection)
+				rayPoints.push_back(glm::vec3(m_interface_positions[i], transformedRay.x, 0.f));
+				transformedRay = m_ray_transfer_matrices[i] * transformedRay;
+
+			}
+			rayPoints.push_back(glm::vec3(m_interface_positions[m_ray_transfer_matrices.size() - 1] + m_sensor_pos, transformedRay.x, 0.f));
+			m_line_drawers.push_back(LineDrawer(rayPoints));
 
 		}
-		rayPoints.push_back(glm::vec3(m_interface_positions[m_ray_transfer_matrices.size() - 1] + m_sensor_pos, transformedRay.x, 0.f));
-		m_line_drawers.push_back(LineDrawer(rayPoints));
+		else {
+			glm::vec2 transformedRay = m_ray;
+			for (int i = 0; i < m_ray_transfer_matrices.size(); i++) {
+				//for now assuming interface size is same as matrices size (so no reflection)
+				m_line_drawers.push_back(raytoLine(m_interface_positions[i], transformedRay));
+				transformedRay = m_ray_transfer_matrices[i] * transformedRay;
 
-	}
-	else {
-		glm::vec2 transformedRay = m_ray;
-		for (int i = 0; i < m_ray_transfer_matrices.size(); i++) {
-			//for now assuming interface size is same as matrices size (so no reflection)
-			m_line_drawers.push_back(raytoLine(m_interface_positions[i], transformedRay));
-			transformedRay = m_ray_transfer_matrices[i] * transformedRay;
-
+			}
+			m_line_drawers.push_back(raytoLine(m_interface_positions[m_ray_transfer_matrices.size() - 1] + 2.f, transformedRay));
 		}
-		m_line_drawers.push_back(raytoLine(m_interface_positions[m_ray_transfer_matrices.size() - 1] + 2.f, transformedRay));
 	}
 
 }

@@ -41,7 +41,7 @@ LensSystem generateExampleLens() {
     lensInterfaces.push_back(LensInterface(7.27f,   1.694f,     32.19f,     12.3f)); //LAK13
     lensInterfaces.push_back(LensInterface(81.857f, 1.f,       -52.99f,     12.3f)); //air
 
-    return LensSystem(14.5f, 11.6f, lensInterfaces);
+    return LensSystem(5, lensInterfaces);
 
 }
 
@@ -79,63 +79,129 @@ public:
     void update()
     {
         //INITIALIZATION
-        int dummyInteger = 0; // Initialized to 0
-        LensSystem lensSystem = generateExampleLens();
-        glm::vec2 ray = glm::vec2(3.f, toRad(-1.0f));
+        float rayOriginOffset = 0.f;
+        float rayAngle = 0.f;
+        glm::vec2 ray = glm::vec2(rayOriginOffset, toRad(rayAngle));
+
+        std::vector<LensInterface> lensInterfaces;
+        int irisAperturePos = 0;
+        LensSystem lensSystem = LensSystem(irisAperturePos, lensInterfaces);
         RayPropagationDrawer rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
 
-        //RayTransferMatrixBuilder rtmb = RayTransferMatrixBuilder();
-        //float initialPos = 0.0f;
-        //glm::vec2 initialRay = glm::vec2(0.0f, toRad(10.0f)); // First term is displacement to the optical axis, second term is the angle\
+        int interfaceToUpdate = 0;
+        int interfaceToUpdatePreviousValue = -1;
+        float newdi = 0.f;
+        float newni = 0.f;
+        float newRi = 0.f;
+        float newhi = 0.f;
 
-        //float di = 0.5f;
-        //glm::mat2x2 tMat = rtmb.getTranslationMatrix(di);
-        //glm::vec2 transformedRay = tMat * initialRay;
-        //float transformedPos = initialPos + di;
-
-        //LineDrawer initialRayLine = raytoLine(initialPos, initialRay);
-        //LineDrawer transformedRayLine = raytoLine(transformedPos, transformedRay);
-
-        //std::vector<glm::vec3> curve;
-        //for (float y = -1.0f; y <= 1.0f; y += 0.01f) {
-        //    float x = 0.2f * (y * y - 1.0f); // Quadratic function to create a bowl shape
-        //    curve.push_back(glm::vec3(x, y, 0.f));
-        //}
-        //LineDrawer curvedLine(curve);
+        int interfaceToRemove = 0;
 
         //LOOP
         while (!m_window.shouldClose()) {
-            // This is your game loop
-            // Put your real-time logic and rendering in here
             m_window.updateInput();
 
             // Use ImGui for easy input/output of ints, floats, strings, etc...
-            ImGui::Begin("Window");
-            ImGui::InputInt("This is an integer input", &dummyInteger); // Use ImGui::DragInt or ImGui::DragFloat for larger range of numbers.
-            ImGui::Text("Value is: %i", dummyInteger); // Use C printf formatting rules (%i is a signed integer)
-            ImGui::Checkbox("Use material if no texture", &m_useMaterial);
+            // https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
+            ImGui::Begin("Settings");
+            //Input for Ray
+            ImGui::InputFloat("Ray Origin Offset", &rayOriginOffset);
+            ImGui::InputFloat("Ray Angle", &rayAngle);
+            ImGui::InputInt("Aperture Position", &irisAperturePos);
+            //Button loading example lens system
+            if (ImGui::Button("Load Example Lens System")) {
+                lensSystem = generateExampleLens();
+                irisAperturePos = lensSystem.getIrisAperturePos();
+                lensInterfaces = lensSystem.getLensInterfaces();
+                rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
+            }
+
+            if (ImGui::CollapsingHeader("Modify Interface")) {
+                if (ImGui::InputInt("Interface to Update", &interfaceToUpdate)) {
+                    if (interfaceToUpdate != interfaceToUpdatePreviousValue) {
+                        if (interfaceToUpdate < lensInterfaces.size() && interfaceToUpdate >= 0) {
+                            newdi = lensInterfaces[interfaceToUpdate].di;
+                            newni = lensInterfaces[interfaceToUpdate].ni;
+                            newRi = lensInterfaces[interfaceToUpdate].Ri;
+                            newhi = lensInterfaces[interfaceToUpdate].hi;
+                        }
+                        else {
+                            newdi = 0.f;
+                            newni = 0.f;
+                            newRi = 0.f;
+                            newhi = 0.f;
+                        }
+                        interfaceToUpdatePreviousValue = interfaceToUpdate;
+                    }
+                }
+
+                ImGui::InputFloat("Thickness", &newdi);
+                ImGui::InputFloat("Refractive Index", &newni);
+                ImGui::InputFloat("Radius", &newRi);
+                ImGui::InputFloat("Height", &newhi);
+                if (ImGui::Button("Update")) {
+                    LensInterface newLensInterface(newdi, newni, newRi, newhi);
+                    if (interfaceToUpdate < lensInterfaces.size() && interfaceToUpdate >= 0) {
+                        //update an existing interface
+                        lensInterfaces[interfaceToUpdate] = newLensInterface;
+                    }
+                    else if (interfaceToUpdate < 0) {
+                        //add at the front
+                        lensInterfaces.insert(lensInterfaces.begin(), newLensInterface);
+                    }
+                    else {
+                        //add at the back
+                        lensInterfaces.push_back(newLensInterface);
+                    }
+                    lensSystem.setLensInterfaces(lensInterfaces);
+                    rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
+                }
+            }
+
+            if (ImGui::CollapsingHeader("Remove Interface")) {
+                ImGui::InputInt("Interface to Remove", &interfaceToRemove);
+                if (ImGui::Button("Remove")) {
+                    if (interfaceToRemove >= 0 && interfaceToRemove < lensInterfaces.size()) {
+                        lensInterfaces.erase(lensInterfaces.begin() + interfaceToRemove);
+                        lensSystem.setLensInterfaces(lensInterfaces);
+                        rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
+                    }
+                }
+            }
+
+            for (int i = 0; i < lensInterfaces.size(); i++) {
+                std::string lensInterfaceDescription = "Interface " + std::to_string(i) + ", d = " + std::to_string(lensInterfaces[i].di) + ", n = " + std::to_string(lensInterfaces[i].ni) + ", R = " + std::to_string(lensInterfaces[i].Ri) + ", h = " + std::to_string(lensInterfaces[i].hi);
+                ImGui::Text(lensInterfaceDescription.c_str());
+            }
+
             ImGui::End();
+
+            if (irisAperturePos >= lensInterfaces.size()) {
+                irisAperturePos = lensInterfaces.size() - 1;
+            }
+
+            if (irisAperturePos < 0) {
+                irisAperturePos = 0;
+            }
 
             // Update Projection Matrix
             glm::mat4 projection = glm::ortho(m_left_clipping_plane, m_right_clipping_plane, m_bottom_clipping_plane, m_top_clipping_plane);
 
+            // Update ray
+            ray = glm::vec2(rayOriginOffset, toRad(rayAngle));
+            rayPropagationDrawer.setRay(ray);
+
+            //Update Iris Aperture Position
+            lensSystem.setIrisAperturePos(irisAperturePos);
+
             // Clear the screen
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // ...
             glEnable(GL_DEPTH_TEST);
-
-            //const glm::mat4 mvpMatrix = m_projectionMatrix * m_viewMatrix * m_modelMatrix;
-            //// Normals should be transformed differently than positions (ignoring translations + dealing with scaling):
-            //// https://paroj.github.io/gltut/Illumination/Tut09%20Normal%20Transformation.html
-            //const glm::mat3 normalModelMatrix = glm::inverseTranspose(glm::mat3(m_modelMatrix));
             
+            //RENDERING
             m_defaultShader.bind();
 
-            //initialRayLine.drawLine(projection);
-            //transformedRayLine.drawLine(projection);
-            //curvedLine.drawLine(projection);
             lensSystem.drawLensSystem(projection);
             rayPropagationDrawer.drawRayPropagation(projection);
 
@@ -147,6 +213,7 @@ public:
         }
     }
 
+    int panAndZoomSensitivity = 5.f;
     // In here you can handle key presses
     // key - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__keys.html
     // mods - Any modifier keys pressed, like shift or control
@@ -155,33 +222,33 @@ public:
         switch (key)
         {
         case GLFW_KEY_A:
-            m_left_clipping_plane -= 1.f;
-            m_right_clipping_plane -= 1.f;
+            m_left_clipping_plane -= panAndZoomSensitivity;
+            m_right_clipping_plane -= panAndZoomSensitivity;
             break;
         case GLFW_KEY_D:
-            m_left_clipping_plane += 1.f;
-            m_right_clipping_plane += 1.f;
+            m_left_clipping_plane += panAndZoomSensitivity;
+            m_right_clipping_plane += panAndZoomSensitivity;
             break;
         case GLFW_KEY_S:
-            m_bottom_clipping_plane -= 1.f;
-            m_top_clipping_plane -= 1.f;
+            m_bottom_clipping_plane -= panAndZoomSensitivity;
+            m_top_clipping_plane -= panAndZoomSensitivity;
             break;
         case GLFW_KEY_W:
-            m_bottom_clipping_plane += 1.f;
-            m_top_clipping_plane += 1.f;
+            m_bottom_clipping_plane += panAndZoomSensitivity;
+            m_top_clipping_plane += panAndZoomSensitivity;
             break;
         case GLFW_KEY_Q:
-            m_left_clipping_plane -= 1.f;
-            m_right_clipping_plane += 1.f;
-            m_bottom_clipping_plane -= 1.f;
-            m_top_clipping_plane += 1.f;
+            m_left_clipping_plane -= panAndZoomSensitivity;
+            m_right_clipping_plane += panAndZoomSensitivity;
+            m_bottom_clipping_plane -= panAndZoomSensitivity;
+            m_top_clipping_plane += panAndZoomSensitivity;
             break;
         case GLFW_KEY_E:
             if (abs(m_left_clipping_plane - m_right_clipping_plane) > 2.f) {
-                m_left_clipping_plane += 1.f;
-                m_right_clipping_plane -= 1.f;
-                m_bottom_clipping_plane += 1.f;
-                m_top_clipping_plane -= 1.f;
+                m_left_clipping_plane += panAndZoomSensitivity;
+                m_right_clipping_plane -= panAndZoomSensitivity;
+                m_bottom_clipping_plane += panAndZoomSensitivity;
+                m_top_clipping_plane -= panAndZoomSensitivity;
             }
             break;
         default:
