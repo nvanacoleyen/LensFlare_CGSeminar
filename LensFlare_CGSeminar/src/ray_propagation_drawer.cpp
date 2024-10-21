@@ -34,11 +34,11 @@ void RayPropagationDrawer::generateLineDrawers(bool full) {
 		}
 	}
 	m_line_drawers.clear();
-	//m_line_drawers.push_back(raytoLine(-2, m_ray));
 	if (m_ray_transfer_matrices.size() > 0) {
 		if (full) {
 			std::vector<glm::vec3> rayPoints;
 			glm::vec2 transformedRay = m_ray;
+			rayPoints.push_back(glm::vec3(-5, m_ray.x, 0.f));
 			for (int i = 0; i < m_ray_transfer_matrices.size(); i++) {
 				//for now assuming interface size is same as matrices size (so no reflection)
 				rayPoints.push_back(glm::vec3(m_interface_positions[i], transformedRay.x, 0.f));

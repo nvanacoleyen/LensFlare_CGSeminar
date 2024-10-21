@@ -105,8 +105,8 @@ void LensSystem::generateLineDrawers() {
 		std::vector<glm::vec3> liPoints;
 		//Flat interfaces
 		if (abs(m_lens_interfaces[i].Ri) > 1000.f) {
-			liPoints.push_back(glm::vec3(interfacePositions[i], getEntrancePupilHeight() / 2, 0.f));
-			liPoints.push_back(glm::vec3(interfacePositions[i], -getEntrancePupilHeight() / 2, 0.f));
+			liPoints.push_back(glm::vec3(interfacePositions[i], m_lens_interfaces[i].hi / 2, 0.f));
+			liPoints.push_back(glm::vec3(interfacePositions[i], -m_lens_interfaces[i].hi / 2, 0.f));
 		}
 		else {
 			float R = m_lens_interfaces[i].Ri;
@@ -154,7 +154,13 @@ void LensSystem::generateLineDrawers() {
 }
 
 void LensSystem::drawLensSystem(glm::mat4 projection) {
-	for (LineDrawer lineDrawer : m_line_drawers) {
-		lineDrawer.drawLine(projection, glm::vec3(0.7f, 0.7f, 1.f));
+	for (int i = 0; i < m_line_drawers.size(); i++) {
+		if (i == m_iris_aperture_pos) {
+			m_line_drawers[i].drawLine(projection, glm::vec3(0.5f, 1.f, 0.5f));
+		}
+		else {
+			m_line_drawers[i].drawLine(projection, glm::vec3(0.5f, 0.5f, 1.f));
+		}
+		
 	}
 }
