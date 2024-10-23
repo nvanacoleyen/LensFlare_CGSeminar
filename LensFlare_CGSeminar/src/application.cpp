@@ -100,6 +100,7 @@ public:
         int firstReflectionPos = 0;
         int secondReflectionPos = 0;
         bool reflectionActive = false;
+        bool reflectionActiveMemory = false;
 
         //LOOP
         while (!m_window.shouldClose()) {
@@ -204,8 +205,14 @@ public:
 
             if (reflectionActive) {
                 if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
-                    rayPropagationDrawer.setRayTransferMatrices(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos));
+                    rayPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos));
+                    reflectionActiveMemory = true;
                 }
+            }
+
+            if (reflectionActiveMemory && !reflectionActive) {
+                rayPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions());
+                reflectionActiveMemory = false;
             }
 
             // Clear the screen

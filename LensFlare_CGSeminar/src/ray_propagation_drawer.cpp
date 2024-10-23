@@ -20,6 +20,12 @@ void RayPropagationDrawer::setInterfacePositions(std::vector<float> interfacePos
 	this->generateLineDrawers(fullRayLine);
 }
 
+void RayPropagationDrawer::setRayTransferMatricesAndInterfacePositions(std::vector<glm::mat2x2> rayTransferMatrices, std::vector<float> interfacePositions) {
+	m_ray_transfer_matrices = rayTransferMatrices;
+	m_interface_positions = interfacePositions;
+	this->generateLineDrawers(fullRayLine);
+}
+
 void RayPropagationDrawer::setSensorPos(float sensorPos) {
 	m_sensor_pos = sensorPos;
 }
@@ -42,9 +48,10 @@ void RayPropagationDrawer::generateLineDrawers(bool full) {
 		if (full) {
 			std::vector<glm::vec3> rayPoints;
 			glm::vec2 transformedRay = m_ray;
-			rayPoints.push_back(glm::vec3(-5, m_ray.x, 0.f));
+			rayPoints.push_back(glm::vec3(-cos(m_ray.y), m_ray.x - sin(m_ray.y), 0.0f));
 			for (int i = 0; i < m_ray_transfer_matrices.size(); i++) {
-				//for now assuming interface size is same as matrices size (so no reflection)
+				
+				//for now assuming interface size is same as matrices size
 				rayPoints.push_back(glm::vec3(m_interface_positions[i], transformedRay.x, 0.f));
 				transformedRay = m_ray_transfer_matrices[i] * transformedRay;
 

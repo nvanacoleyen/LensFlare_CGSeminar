@@ -29,37 +29,37 @@ std::vector<glm::mat2x2> LensSystem::getRayTransferMatrices() {
 	std::vector<glm::mat2x2> rayTransferMatrices;
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
 	for (int i = 0; i < m_lens_interfaces.size(); i++) {
-		if (i == m_lens_interfaces.size() - 1) {
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[i].di));
+		if (i == 0) {
+			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 		}
 		else {
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i].ni, m_lens_interfaces[i+1].ni, m_lens_interfaces[i].Ri));
+			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i-1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 		}
 	}
 	return rayTransferMatrices;
 }
 
-//bug: Refraction should be with previous not next one
 std::vector<glm::mat2x2> LensSystem::getRayTransferMatricesWithReflection(int firstReflectionPos, int secondReflectionPos) {
 	std::vector<glm::mat2x2> rayTransferMatrices;
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+	//check if reflection makes sense
 	if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < m_lens_interfaces.size()) {
-		for (int i = 0; i < secondReflectionPos; i++) {
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i].ni, m_lens_interfaces[i + 1].ni, m_lens_interfaces[i].Ri));
-		}
-		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri)); //reflection step
-		for (int i = secondReflectionPos; i > firstReflectionPos; i--) {
-			//adapt to go backwards
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i].ni, m_lens_interfaces[i + 1].ni, m_lens_interfaces[i].Ri));
-		}
-		rayTransferMatrices.push_back(glm::inverse(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[secondReflectionPos].Ri))); //reflection step
-		for (int i = firstReflectionPos; i < m_lens_interfaces.size(); i++) {
-			if (i == m_lens_interfaces.size() - 1) {
-				rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[i].di));
+		//iterate until first reflection
+		for (int i = 0; i < firstReflectionPos; i++) {
+			if (i == 0) {
+				rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 			}
 			else {
-				rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i].ni, m_lens_interfaces[i + 1].ni, m_lens_interfaces[i].Ri));
+				rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 			}
+		}
+		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri)); //reflection step
+		for (int i = firstReflectionPos; i > secondReflectionPos; i--) {
+			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
+		}
+		rayTransferMatrices.push_back(glm::inverse(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[secondReflectionPos].Ri))); //reflection step
+		for (int i = secondReflectionPos; i < m_lens_interfaces.size(); i++) {
+			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 		}
 	}
 	return rayTransferMatrices;
@@ -71,6 +71,29 @@ std::vector<float> LensSystem::getInterfacePositions() {
 	for (LensInterface lensInterface : m_lens_interfaces) {
 		interfacePositions.push_back(pos);
 		pos += lensInterface.di;
+	}
+	return interfacePositions;
+}
+
+std::vector<float> LensSystem::getInterfacePositionsWithReflections(int firstReflectionPos, int secondReflectionPos) {
+	std::vector<float> interfacePositions;
+	float pos = 0.0f;
+	//check if reflection makes sense
+	if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < m_lens_interfaces.size()) {
+		for (int i = 0; i < firstReflectionPos; i++) {
+			interfacePositions.push_back(pos);
+			pos += m_lens_interfaces[i].di;
+		}
+		interfacePositions.push_back(pos);
+		for (int i = firstReflectionPos; i > secondReflectionPos; i--) {
+			interfacePositions.push_back(pos);
+			pos -= m_lens_interfaces[i-1].di;
+		}
+		interfacePositions.push_back(pos);
+		for (int i = secondReflectionPos; i < m_lens_interfaces.size(); i++) {
+			interfacePositions.push_back(pos);
+			pos += m_lens_interfaces[i].di;
+		}
 	}
 	return interfacePositions;
 }

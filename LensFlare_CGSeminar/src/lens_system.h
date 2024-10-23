@@ -21,6 +21,7 @@ public:
 	std::vector<glm::mat2x2> getRayTransferMatrices();
 	std::vector<glm::mat2x2> getRayTransferMatricesWithReflection(int firstReflectionPos, int secondReflectionPos);
 	std::vector<float> getInterfacePositions();
+	std::vector<float> getInterfacePositionsWithReflections(int firstReflectionPos, int secondReflectionPos);
 	float getEntrancePupilHeight();
 	float getIrisApertureHeight();
 	float getSensorPosition();
