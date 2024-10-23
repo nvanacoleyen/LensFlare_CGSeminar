@@ -20,7 +20,7 @@ glm::mat2x2 RayTransferMatrixBuilder::getTranslationRefractionMatrix(float di, f
 }
 glm::mat2x2 RayTransferMatrixBuilder::getinverseRefractionBackwardsTranslationMatrix(float di, float n1, float n2, float Ri) {
 	//return glm::inverse(getRefractionMatrix(n1, n2, Ri)) * getTranslationMatrix(-di); //think this is wrong?
-	return getRefractionMatrix(n2, n1, -Ri) * getTranslationMatrix(-di);
+	return getRefractionMatrix(n2, n1, -Ri) * getTranslationMatrix(di);
 }
 
 
