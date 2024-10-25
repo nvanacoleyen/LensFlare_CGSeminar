@@ -80,9 +80,9 @@ void RayPropagationDrawer::generateLineDrawers(bool full) {
 
 }
 
-void RayPropagationDrawer::drawRayPropagation(glm::mat4 projection) {
+void RayPropagationDrawer::drawRayPropagation(glm::mat4 projection, glm::vec3 color) {
 	for (LineDrawer lineDrawer : m_line_drawers) {
-		lineDrawer.drawLine(projection, glm::vec3(1.f, 0.f, 0.f));
+		lineDrawer.drawLine(projection, color);
 	}
 }
 

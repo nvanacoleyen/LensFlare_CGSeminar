@@ -14,7 +14,7 @@ public:
 	void setSensorPos(float sensorPos);
 	void setRay(glm::vec2 ray);
 	void generateLineDrawers(bool full);
-	void drawRayPropagation(glm::mat4 projection);
+	void drawRayPropagation(glm::mat4 projection, glm::vec3 color);
 private:
 	LineDrawer raytoLine(float z, glm::vec2 ray);
 

@@ -83,11 +83,6 @@ public:
         float rayAngle = 0.f;
         glm::vec2 ray = glm::vec2(rayOriginOffset, toRad(rayAngle));
 
-        std::vector<LensInterface> lensInterfaces;
-        int irisAperturePos = 0;
-        LensSystem lensSystem = LensSystem(irisAperturePos, lensInterfaces);
-        RayPropagationDrawer rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-
         int interfaceToUpdate = 0;
         int interfaceToUpdatePreviousValue = -1;
         float newdi = 0.f;
@@ -99,10 +94,16 @@ public:
 
         int firstReflectionPos = 0;
         int secondReflectionPos = 0;
-        int firstReflectionPosMemory = 0;
-        int secondReflectionPosMemory = 0;
+        int firstReflectionPosMemory = -1;
+        int secondReflectionPosMemory = -1;
         bool reflectionActive = false;
         bool reflectionActiveMemory = false;
+
+        std::vector<LensInterface> lensInterfaces;
+        int irisAperturePos = 0;
+        LensSystem lensSystem = LensSystem(irisAperturePos, lensInterfaces);
+        RayPropagationDrawer rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
+        RayPropagationDrawer rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
 
         //LOOP
         while (!m_window.shouldClose()) {
@@ -125,6 +126,9 @@ public:
                 irisAperturePos = lensSystem.getIrisAperturePos();
                 lensInterfaces = lensSystem.getLensInterfaces();
                 rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
+                if (reflectionActive) {
+                    rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
+                }
             }
 
             if (ImGui::CollapsingHeader("Modify Interface")) {
@@ -166,6 +170,9 @@ public:
                     }
                     lensSystem.setLensInterfaces(lensInterfaces);
                     rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
+                    if (reflectionActive) {
+                        rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
+                    }
                 }
             }
 
@@ -176,6 +183,9 @@ public:
                         lensInterfaces.erase(lensInterfaces.begin() + interfaceToRemove);
                         lensSystem.setLensInterfaces(lensInterfaces);
                         rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
+                        if (reflectionActive) {
+                            rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
+                        }
                     }
                 }
             }
@@ -201,13 +211,14 @@ public:
             // Update ray
             ray = glm::vec2(rayOriginOffset, toRad(rayAngle));
             rayPropagationDrawer.setRay(ray);
+            rayReflectionPropagationDrawer.setRay(ray);
 
             //Update Iris Aperture Position
             lensSystem.setIrisAperturePos(irisAperturePos);
 
             if ((!reflectionActiveMemory && reflectionActive) || reflectionActiveMemory && (firstReflectionPos != firstReflectionPosMemory || secondReflectionPos != secondReflectionPosMemory)) {
                 if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
-                    rayPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos));
+                    rayReflectionPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos));
                     reflectionActiveMemory = true;
                     firstReflectionPosMemory = firstReflectionPos;
                     secondReflectionPosMemory = secondReflectionPos;
@@ -215,7 +226,6 @@ public:
             }
 
             if (reflectionActiveMemory && !reflectionActive) {
-                rayPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions());
                 reflectionActiveMemory = false;
                 firstReflectionPosMemory = -1;
                 secondReflectionPosMemory = -1;
@@ -230,7 +240,10 @@ public:
             m_defaultShader.bind();
 
             lensSystem.drawLensSystem(projection);
-            rayPropagationDrawer.drawRayPropagation(projection);
+            rayPropagationDrawer.drawRayPropagation(projection, glm::vec3(0.f, 0.f, 1.f));
+            if (reflectionActive) {
+                rayReflectionPropagationDrawer.drawRayPropagation(projection, glm::vec3(1.f, 0.f, 0.f));
+            }
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glBindVertexArray(0);
