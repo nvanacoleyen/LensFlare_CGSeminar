@@ -1,6 +1,7 @@
 #include "ray_propagation_drawer.h"
 
-
+#include <iostream>
+#include <string>
 
 RayPropagationDrawer::RayPropagationDrawer(std::vector<glm::mat2x2> rayTransferMatrices, std::vector<float> interfacePositions, glm::vec2 ray, float sensorPos) {
 	m_ray_transfer_matrices = rayTransferMatrices;
@@ -48,9 +49,14 @@ void RayPropagationDrawer::generateLineDrawers(bool full) {
 		if (full) {
 			std::vector<glm::vec3> rayPoints;
 			glm::vec2 transformedRay = m_ray;
+			std::cout << "Size of matrices : " << std::to_string(m_ray_transfer_matrices.size()) << std::endl;
+			std::cout << "Size of interface positions : " << std::to_string(m_interface_positions.size()) << std::endl;
+
 			rayPoints.push_back(glm::vec3(-cos(m_ray.y), m_ray.x - sin(m_ray.y), 0.0f));
 			for (int i = 0; i < m_ray_transfer_matrices.size(); i++) {
 				
+				std::cout << "AT POSITION : " << std::to_string(m_interface_positions[i]) << std::endl;
+				std::cout << "Ray is : " << std::to_string(transformedRay.x) << ", " << std::to_string(transformedRay.y) << std::endl;
 				//for now assuming interface size is same as matrices size
 				rayPoints.push_back(glm::vec3(m_interface_positions[i], transformedRay.x, 0.f));
 				transformedRay = m_ray_transfer_matrices[i] * transformedRay;

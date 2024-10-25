@@ -99,6 +99,8 @@ public:
 
         int firstReflectionPos = 0;
         int secondReflectionPos = 0;
+        int firstReflectionPosMemory = 0;
+        int secondReflectionPosMemory = 0;
         bool reflectionActive = false;
         bool reflectionActiveMemory = false;
 
@@ -203,16 +205,20 @@ public:
             //Update Iris Aperture Position
             lensSystem.setIrisAperturePos(irisAperturePos);
 
-            if (reflectionActive) {
+            if ((!reflectionActiveMemory && reflectionActive) || reflectionActiveMemory && (firstReflectionPos != firstReflectionPosMemory || secondReflectionPos != secondReflectionPosMemory)) {
                 if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
                     rayPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos));
                     reflectionActiveMemory = true;
+                    firstReflectionPosMemory = firstReflectionPos;
+                    secondReflectionPosMemory = secondReflectionPos;
                 }
             }
 
             if (reflectionActiveMemory && !reflectionActive) {
                 rayPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions());
                 reflectionActiveMemory = false;
+                firstReflectionPosMemory = -1;
+                secondReflectionPosMemory = -1;
             }
 
             // Clear the screen

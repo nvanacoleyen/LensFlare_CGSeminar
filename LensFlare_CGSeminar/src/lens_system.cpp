@@ -1,6 +1,8 @@
 #include "lens_system.h"
 
 #include "ray_transfer_matrices.h"
+#include <iostream>
+#include <string>
 
 LensSystem::LensSystem(int irisAperturePos, std::vector<LensInterface> lensInterfaces) {
 	m_iris_aperture_pos = irisAperturePos;
@@ -57,8 +59,10 @@ std::vector<glm::mat2x2> LensSystem::getRayTransferMatricesWithReflection(int fi
 		for (int i = firstReflectionPos - 1; i > secondReflectionPos; i--) {
 			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 		}
+		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di));
 		//rayTransferMatrices.push_back(glm::inverse(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[secondReflectionPos].Ri))); //reflection step
 		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri)); //reflection step
+		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di));
 		for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); i++) {
 			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 		}
@@ -85,12 +89,12 @@ std::vector<float> LensSystem::getInterfacePositionsWithReflections(int firstRef
 			interfacePositions.push_back(pos);
 			pos += m_lens_interfaces[i].di;
 		}
-		//interfacePositions.push_back(pos);
+		interfacePositions.push_back(pos);
 		for (int i = firstReflectionPos; i > secondReflectionPos; i--) {
 			interfacePositions.push_back(pos);
 			pos -= m_lens_interfaces[i-1].di;
 		}
-		//interfacePositions.push_back(pos);
+		interfacePositions.push_back(pos);
 		for (int i = secondReflectionPos; i < m_lens_interfaces.size(); i++) {
 			interfacePositions.push_back(pos);
 			pos += m_lens_interfaces[i].di;
