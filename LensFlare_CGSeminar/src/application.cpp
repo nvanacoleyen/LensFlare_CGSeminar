@@ -126,9 +126,7 @@ public:
                 irisAperturePos = lensSystem.getIrisAperturePos();
                 lensInterfaces = lensSystem.getLensInterfaces();
                 rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-                if (reflectionActive) {
-                    rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
-                }
+                rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
             }
 
             if (ImGui::CollapsingHeader("Modify Interface")) {
@@ -170,9 +168,7 @@ public:
                     }
                     lensSystem.setLensInterfaces(lensInterfaces);
                     rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-                    if (reflectionActive) {
-                        rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
-                    }
+                    rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
                 }
             }
 
@@ -183,9 +179,7 @@ public:
                         lensInterfaces.erase(lensInterfaces.begin() + interfaceToRemove);
                         lensSystem.setLensInterfaces(lensInterfaces);
                         rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-                        if (reflectionActive) {
-                            rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
-                        }
+                        rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
                     }
                 }
             }
