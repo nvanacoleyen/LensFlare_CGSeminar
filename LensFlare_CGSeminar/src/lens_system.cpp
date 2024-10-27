@@ -4,9 +4,10 @@
 #include <iostream>
 #include <string>
 
-LensSystem::LensSystem(int irisAperturePos, std::vector<LensInterface> lensInterfaces) {
+LensSystem::LensSystem(int irisAperturePos, float sensorSize, std::vector<LensInterface> lensInterfaces) {
 	m_iris_aperture_pos = irisAperturePos;
 	m_lens_interfaces = lensInterfaces;
+	m_sensor_size = sensorSize;
 	this->generateLineDrawers();
 }
 
@@ -16,6 +17,14 @@ void LensSystem::setIrisAperturePos(int newPos) {
 
 int LensSystem::getIrisAperturePos() {
 	return m_iris_aperture_pos;
+}
+
+void LensSystem::setSensorSize(float newSize) {
+	m_sensor_size = newSize;
+}
+
+float LensSystem::getSensorSize() {
+	return m_sensor_size;
 }
 
 std::vector<LensInterface> LensSystem::getLensInterfaces() {
@@ -205,12 +214,22 @@ void LensSystem::generateLineDrawers() {
 		}
 		m_line_drawers.push_back(LineDrawer(liPoints));
 	}
+	//sensor
+	if (m_lens_interfaces.size() > 0) {
+		std::vector<glm::vec3> sPoints;
+		sPoints.push_back(glm::vec3(interfacePositions[interfacePositions.size() - 1] + m_lens_interfaces[m_lens_interfaces.size() - 1].di, m_sensor_size / 2, 0.f));
+		sPoints.push_back(glm::vec3(interfacePositions[interfacePositions.size() - 1] + m_lens_interfaces[m_lens_interfaces.size() - 1].di, -m_sensor_size / 2, 0.f));
+		m_line_drawers.push_back(LineDrawer(sPoints));
+	}
 }
 
 void LensSystem::drawLensSystem(glm::mat4 projection) {
 	for (int i = 0; i < m_line_drawers.size(); i++) {
 		if (i == m_iris_aperture_pos) {
 			m_line_drawers[i].drawLine(projection, glm::vec3(0.5f, 1.f, 0.5f));
+		}
+		else if (i == m_line_drawers.size() - 1) {
+			m_line_drawers[i].drawLine(projection, glm::vec3(1.f, 1.f, 1.0f));
 		}
 		else {
 			m_line_drawers[i].drawLine(projection, glm::vec3(0.5f, 0.5f, 1.f));

@@ -41,7 +41,7 @@ LensSystem generateExampleLens() {
     lensInterfaces.push_back(LensInterface(7.27f,   1.694f,     32.19f,     12.3f)); //LAK13
     lensInterfaces.push_back(LensInterface(81.857f, 1.f,       -52.99f,     12.3f)); //air
 
-    return LensSystem(5, lensInterfaces);
+    return LensSystem(5, 10.f, lensInterfaces);
 
 }
 
@@ -101,7 +101,8 @@ public:
 
         std::vector<LensInterface> lensInterfaces;
         int irisAperturePos = 0;
-        LensSystem lensSystem = LensSystem(irisAperturePos, lensInterfaces);
+        float sensorSize = 0.f;
+        LensSystem lensSystem = LensSystem(irisAperturePos, sensorSize, lensInterfaces);
         RayPropagationDrawer rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
         RayPropagationDrawer rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
 
@@ -116,6 +117,7 @@ public:
             ImGui::InputFloat("Ray Origin Offset", &rayOriginOffset);
             ImGui::InputFloat("Ray Angle", &rayAngle);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
+            ImGui::InputFloat("Sensor Size", &sensorSize);
             ImGui::InputInt("First Reflection Location", &firstReflectionPos);
             ImGui::InputInt("Second Reflection Location", &secondReflectionPos);
             ImGui::Checkbox("Toggle Reflection", &reflectionActive);
@@ -124,6 +126,7 @@ public:
             if (ImGui::Button("Load Example Lens System")) {
                 lensSystem = generateExampleLens();
                 irisAperturePos = lensSystem.getIrisAperturePos();
+                sensorSize = lensSystem.getSensorSize();
                 lensInterfaces = lensSystem.getLensInterfaces();
                 rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
                 rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
@@ -209,6 +212,7 @@ public:
 
             //Update Iris Aperture Position
             lensSystem.setIrisAperturePos(irisAperturePos);
+            lensSystem.setSensorSize(sensorSize);
 
             if ((!reflectionActiveMemory && reflectionActive) || reflectionActiveMemory && (firstReflectionPos != firstReflectionPosMemory || secondReflectionPos != secondReflectionPosMemory)) {
                 if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
@@ -247,7 +251,7 @@ public:
         }
     }
 
-    int panAndZoomSensitivity = 5.f;
+    int panAndZoomSensitivity = 3.f;
     // In here you can handle key presses
     // key - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__keys.html
     // mods - Any modifier keys pressed, like shift or control

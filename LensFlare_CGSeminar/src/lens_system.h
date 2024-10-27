@@ -13,9 +13,11 @@ struct LensInterface {
 
 class LensSystem {
 public:
-	LensSystem(int irisAperturePos, std::vector<LensInterface> lensInterfaces);
+	LensSystem(int irisAperturePos, float sensorSize, std::vector<LensInterface> lensInterfaces);
 	void setIrisAperturePos(int newPos);
 	int getIrisAperturePos();
+	void setSensorSize(float newSize);
+	float getSensorSize();
 	std::vector<LensInterface> getLensInterfaces();
 	void setLensInterfaces(std::vector<LensInterface> newLensInterfaces);
 	std::vector<glm::mat2x2> getRayTransferMatrices();
@@ -34,4 +36,5 @@ private:
 	std::vector<LineDrawer> m_line_drawers;
 	std::vector<glm::mat2x2> m_ray_transfer_matrices; //Needs to be updated if lens interfaces change
 	int m_iris_aperture_pos = 0;
+	float m_sensor_size = 0;
 };

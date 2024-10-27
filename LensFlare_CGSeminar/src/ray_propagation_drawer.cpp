@@ -62,7 +62,7 @@ void RayPropagationDrawer::generateLineDrawers(bool full) {
 				transformedRay = m_ray_transfer_matrices[i] * transformedRay;
 
 			}
-			rayPoints.push_back(glm::vec3(m_interface_positions[m_ray_transfer_matrices.size() - 1] + m_sensor_pos, transformedRay.x, 0.f));
+			rayPoints.push_back(glm::vec3(m_sensor_pos, transformedRay.x, 0.f));
 			m_line_drawers.push_back(LineDrawer(rayPoints));
 
 		}
