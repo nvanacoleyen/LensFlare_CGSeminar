@@ -48,7 +48,7 @@ LensSystem generateExampleLens() {
 class Application {
 public:
     Application()
-        : m_window("Ray Transfer Matrices", glm::ivec2(1024, 1024), OpenGLVersion::GL45)
+        : m_window("Ray Transfer Matrices", glm::ivec2(1920, 1080), OpenGLVersion::GL45)
     {
         m_window.registerKeyCallback([this](int key, int scancode, int action, int mods) {
             if (action == GLFW_PRESS)
@@ -251,7 +251,7 @@ public:
         }
     }
 
-    int panAndZoomSensitivity = 3.f;
+    int panAndZoomSensitivity = 4.f;
     // In here you can handle key presses
     // key - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__keys.html
     // mods - Any modifier keys pressed, like shift or control

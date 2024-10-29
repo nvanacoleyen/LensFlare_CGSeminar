@@ -21,6 +21,7 @@ int LensSystem::getIrisAperturePos() {
 
 void LensSystem::setSensorSize(float newSize) {
 	m_sensor_size = newSize;
+	this->generateLineDrawers();
 }
 
 float LensSystem::getSensorSize() {
