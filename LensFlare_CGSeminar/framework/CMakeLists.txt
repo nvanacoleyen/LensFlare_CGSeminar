@@ -31,8 +31,9 @@ else()
     PUBLIC "include/" 
     PUBLIC ${OPENGL_INCLUDE_DIRS} 
     PUBLIC "third_party/glew/glew-2.1.0/include/"
+	PUBLIC "third_party/OpenLensFlare/src/"
 	)
-	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew)
+	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew OpenLensFlare)
 	target_compile_features(CGFramework PUBLIC cxx_std_20)
 	set_property(TARGET CGFramework PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
