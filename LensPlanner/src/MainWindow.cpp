@@ -192,7 +192,7 @@ void MainWindow::createMenu()
 ////////////////////////////////////////////////////////////////////////////////
 void MainWindow::setupTestScene()
 {
-    m_browseFolder = "D:/Program/Programming/Projects/Cpp/OpenLensFlare/OpenLensFlare/examples/systems";
+    m_browseFolder = "C:/Users/neilv/Downloads/LensFlare_CGSeminar/LensPlanner/framework/OpenLensFlare/examples/systems";
     
     QString aperture = m_browseFolder + "/apertureDist.bmp";
     QString apertureFT = m_browseFolder + "/apertureFT.bmp";
@@ -296,7 +296,7 @@ void MainWindow::saveSystem()
         nullptr,
         QStringLiteral("Save Optical System"),
         //QDir::currentPath(),
-        "D:/Program/Programming/Projects/Cpp/OpenLensFlare/OpenLensFlare/examples/systems",
+        "C:/Users/neilv/Downloads/LensFlare_CGSeminar/LensPlanner/framework/OpenLensFlare/examples/systems",
         QStringLiteral("Optical System Files (*.xml)"));
 
     // Make sure the dialog wasn't cancelled.
@@ -322,7 +322,7 @@ void MainWindow::saveGhostBounds()
         nullptr,
         QStringLiteral("Save Ghost Bounds"),
         //QDir::currentPath(),
-        "D:/Program/Programming/Projects/Cpp/OpenLensFlare/OpenLensFlare/examples/systems",
+        "C:/Users/neilv/Downloads/LensFlare_CGSeminar/LensPlanner/framework/OpenLensFlare/examples/systems",
         QStringLiteral("Ghost Bounds Files (*.xml)"));
 
     // Make sure the dialog wasn't cancelled.

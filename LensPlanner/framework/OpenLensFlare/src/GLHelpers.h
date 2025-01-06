@@ -206,6 +206,8 @@ namespace GLHelpers
             src.reserve(1 + shaderSource.second.size() + source.m_defines.size() * 2);
 
             src.push_back("#version 330\n");
+            src.push_back("precision mediump float;\n");
+
             for (auto define: source.m_defines)
             {
                 src.push_back(define);

@@ -47,7 +47,14 @@ LensFlarePreviewer::~LensFlarePreviewer()
     makeCurrent();
 
     // Also call glew init
-    glewInit();
+    //glewInit();
+    auto getProcAddress = [](const char* name) -> void* { return reinterpret_cast<void*>(QOpenGLContext::currentContext()->getProcAddress(name)); };
+
+    if (!gladLoadGLLoader((GLADloadproc)getProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return;
+    }
+    
 
     // Release the starburst renderer object.
     if (m_diffractionStarburstAlgorithm)
@@ -262,7 +269,7 @@ QImage LensFlarePreviewer::loadTexture(GLuint texture)
 
 	// Extract the image
 	f->glPixelStorei(GL_PACK_ALIGNMENT, 1);
-	f->glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    //->glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);     BRING THIS BACK   
 	f->glBindTexture(GL_TEXTURE_2D, 0);
 
 	f->glBindTexture(GL_TEXTURE_2D, texture);
@@ -291,7 +298,14 @@ void LensFlarePreviewer::releaseTexture(GLuint texture)
 void LensFlarePreviewer::initializeGL()
 {
     // Init glew for OpenLensFlare to work.
-    glewInit();
+    //glewInit();
+    auto getProcAddress = [](const char* name) -> void* { return reinterpret_cast<void*>(QOpenGLContext::currentContext()->getProcAddress(name)); };
+
+    if (!gladLoadGLLoader((GLADloadproc) getProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return;
+    }
+
 
     //TODO: the objects are initialized here, to make sure the proper objects
     //      are created within the proper context. Find a way to safely extract
@@ -316,7 +330,12 @@ void LensFlarePreviewer::paintGL()
     auto f = getGLFunctions();
 
     // Also call glew init
-    glewInit();
+    //glewInit();
+    auto getProcAddress = [](const char* name) -> void* { return reinterpret_cast<void*>(QOpenGLContext::currentContext()->getProcAddress(name)); };
+
+    if (!gladLoadGLLoader((GLADloadproc)getProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+    }
 
     // Compute ghost bounds, if needed.
     if (m_precompute)

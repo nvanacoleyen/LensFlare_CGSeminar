@@ -283,7 +283,7 @@ void main()
     // Subdivision size, corner position and step size
     int SUBDIVISION = iRayCount - 1;
     vec2 CORNER = vec2(-1.0);
-    vec2 STEP = vec2(2.0) / SUBDIVISION;
+    vec2 STEP = vec2(2.0) / float(SUBDIVISION);
     
     // Quad indices
     ivec2 QUAD_IDS[6] = ivec2[6]

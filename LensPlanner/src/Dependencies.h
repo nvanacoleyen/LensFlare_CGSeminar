@@ -14,8 +14,9 @@
 #include "glm/gtc/type_ptr.hpp"
 
 // GLEW
-#define GLEW_STATIC
-#include "GL/glew.h"
+//#define GLEW_STATIC
+//#include "GL/glew.h"
+#include <glad/glad.h>
 
 // OpenLensFlare (included first, because of GLEW)
 #include "OpenLensFlare.h"

@@ -34,7 +34,6 @@ RayTraceGhostAlgorithm::RayTraceGhostAlgorithm(OpticalSystem* system):
 	m_intensityClip(1.0f),
     m_vao(0)
 {
-	glewInit();
     // Create the precomputation shader
     GLHelpers::ShaderSource precomputeSource;
 	
@@ -211,7 +210,6 @@ GhostList RayTraceGhostAlgorithm::computeGhostAttributes(
 	glGenBuffers(1, &readBackBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, readBackBuffer);
 	glBufferData(GL_ARRAY_BUFFER, bufferSize, nullptr, GL_STATIC_READ);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
 	// Bind the precomputation shader
 	glUseProgram(m_precomputeShader);
@@ -271,6 +269,11 @@ GhostList RayTraceGhostAlgorithm::computeGhostAttributes(
 		// Read back the values
 		glMemoryBarrier(GL_TRANSFORM_FEEDBACK_BARRIER_BIT);
 		glBindBuffer(GL_ARRAY_BUFFER, readBackBuffer);
+
+		if (true) {
+			std::cerr << "ff" << std::endl;
+		}
+
 		PerVertexData* vertices = 
 			(PerVertexData*) glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY);
 

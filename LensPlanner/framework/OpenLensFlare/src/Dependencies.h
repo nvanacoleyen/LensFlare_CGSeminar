@@ -12,8 +12,9 @@
 #include <algorithm> // For std algorithms.
 
 // GLEW
-#define GLEW_STATIC
-#include "GL/glew.h"
+//#define GLEW_STATIC
+//#include "GL/glew.h"
+#include <glad/glad.h>
 
 // GLM
 #include "glm/glm.hpp"

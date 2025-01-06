@@ -27,6 +27,9 @@ set(LENS_PLANNER_INSTALL_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/bin CACHE PATH "Inst
 set(LENS_PLANNER_BINARY_INSTALL_FOLDER ${LENS_PLANNER_INSTALL_FOLDER})
 
 list(APPEND CMAKE_PREFIX_PATH "C:/Qt/5.15.18/msvc2019_64/")
+list(APPEND CMAKE_PREFIX_PATH "C:/Qt/5.15.18/msvc2019_64/bin/")
+list(APPEND CMAKE_PREFIX_PATH "C:/Qt/5.15.18/msvc2019_64/plugins/")
+set(QT_PLUGIN_PATH "C:/Qt/5.15.18/msvc2019_64/plugins/")
 
 # Look for required libraries
 #find_package(GLM REQUIRED)
@@ -57,9 +60,24 @@ add_executable(${LENS_PLANNER_TARGET_NAME}
 )
 
 target_compile_features(LensPlanner PRIVATE cxx_std_20)
-target_link_libraries(LensPlanner PRIVATE Qt5::Core Qt5::Widgets CGFramework)
-enable_sanitizers(LensPlanner)
-set_project_warnings(LensPlanner)
+target_link_libraries(LensPlanner PRIVATE Qt5::Widgets CGFramework OpenLensFlare)
+#enable_sanitizers(LensPlanner)
+#set_project_warnings(LensPlanner)
+
+# Copy Qt DLLs to the build directory
+add_custom_command(TARGET ${LENS_PLANNER_TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+"C:/Qt/5.15.18/msvc2019_64/bin/Qt5Cored.dll"
+"C:/Qt/5.15.18/msvc2019_64/bin/Qt5Widgetsd.dll"
+"C:/Qt/5.15.18/msvc2019_64/bin/Qt5Guid.dll"
+$<TARGET_FILE_DIR:${LENS_PLANNER_TARGET_NAME}>)
+
+set(PLUGINS_DIR "${CMAKE_BINARY_DIR}/platforms")
+file(MAKE_DIRECTORY ${PLUGINS_DIR})
+
+add_custom_command(TARGET ${LENS_PLANNER_TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+"C:/Qt/5.15.18/msvc2019_64/plugins/platforms/qwindowsd.dll"
+"C:/Qt/5.15.18/msvc2019_64/plugins/platforms/qwindowsd.pdb"
+${PLUGINS_DIR})
 
 # Link to the required libraries
 #target_link_libraries(${LENS_PLANNER_TARGET_NAME} ${GLEW_LIBRARY})

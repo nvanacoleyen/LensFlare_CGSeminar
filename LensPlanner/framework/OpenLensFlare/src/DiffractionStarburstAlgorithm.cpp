@@ -22,7 +22,6 @@ DiffractionStarburstAlgorithm::DiffractionStarburstAlgorithm(OpticalSystem* opti
     m_renderShader(0),
     m_vao(0)
 {
-    glewInit();
     // Create the generate shader
     GLHelpers::ShaderSource generateSource;
     
@@ -164,7 +163,7 @@ bool DiffractionStarburstAlgorithm::generateTexture(TextureGenerationParameters 
 	glDeleteFramebuffers(1, &fbo);
     
 	// Make sure the texture has been updated
-	glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
+	//glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
     
 	// Allocate memory for the pixels
 	glm::vec4* floatPixels = 

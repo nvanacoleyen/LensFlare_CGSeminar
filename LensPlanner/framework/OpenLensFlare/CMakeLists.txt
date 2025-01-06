@@ -23,8 +23,9 @@ set(OLEF_BINARY_INSTALL_FOLDER ${OLEF_INSTALL_FOLDER}/lib)
 #find_package(GLEW REQUIRED)
 
 # Add GLM's include directory
-include_directories("../glm/")
-include_directories("../glew/glew-2.1.0/include/")
+#include_directories("../glm/")
+#include_directories("../glew/glew-2.1.0/include/")
+
 
 # Enumerate the various source files
 file(GLOB_RECURSE OLEF_HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
@@ -63,8 +64,10 @@ add_library(${OLEF_TARGET_NAME}
     ${OLEF_GENERATED_SHADER_FILES}
 )
 
+target_include_directories(${OLEF_TARGET_NAME} PUBLIC "src/")
+
 # Link to the required libraries
-target_link_libraries(${OLEF_TARGET_NAME} PUBLIC glew)
+target_link_libraries(${OLEF_TARGET_NAME} PUBLIC CGFramework)
 
 # Configure the installed files
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/

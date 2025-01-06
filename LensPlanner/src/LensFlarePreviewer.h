@@ -100,7 +100,7 @@ public:
     void update();
 
     /// QGLWidget callbacks.
-    void initializeGL();
+    void initializeGL() override;
     void paintGL();
     void resizeGL(int w, int h);
 
