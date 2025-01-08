@@ -8,7 +8,6 @@ LensSystem::LensSystem(int irisAperturePos, float sensorSize, std::vector<LensIn
 	m_iris_aperture_pos = irisAperturePos;
 	m_lens_interfaces = lensInterfaces;
 	m_sensor_size = sensorSize;
-	this->generateLineDrawers();
 }
 
 void LensSystem::setIrisAperturePos(int newPos) {
@@ -21,7 +20,6 @@ int LensSystem::getIrisAperturePos() {
 
 void LensSystem::setSensorSize(float newSize) {
 	m_sensor_size = newSize;
-	this->generateLineDrawers();
 }
 
 float LensSystem::getSensorSize() {
@@ -34,7 +32,6 @@ std::vector<LensInterface> LensSystem::getLensInterfaces() {
 
 void LensSystem::setLensInterfaces(std::vector<LensInterface> newLensInterfaces) {
 	m_lens_interfaces = newLensInterfaces;
-	this->generateLineDrawers();
 }
 
 std::vector<glm::mat2x2> LensSystem::getRayTransferMatrices() {
@@ -78,6 +75,151 @@ std::vector<glm::mat2x2> LensSystem::getRayTransferMatricesWithReflection(int fi
 		}
 	}
 	return rayTransferMatrices;
+}
+
+glm::mat2x2 LensSystem::getMa() {
+	glm::mat2x2 Ma = glm::mat2(1.0f);
+	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+	for (int i = 0; i < m_iris_aperture_pos; i++) {
+		if (i == 0) {
+			Ma = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+		}
+		else {
+			Ma = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+		}
+	}
+	return Ma;
+}
+
+glm::mat2x2 LensSystem::getMs() {
+	glm::mat2x2 Ms = glm::mat2(1.0f);
+	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+	for (int i = m_iris_aperture_pos; i < m_lens_interfaces.size(); i++) {
+		if (i == 0) {
+			Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+		}
+		else {
+			Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+		}
+	}
+	return Ms;
+}
+
+glm::mat2x2 LensSystem::getMa(int firstReflectionPos, int secondReflectionPos) {
+	glm::mat2x2 Ma = glm::mat2(1.0f);
+	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+	//check if reflection makes sense
+	if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < m_lens_interfaces.size()) {
+		//check if reflection happens before aperture
+		if (firstReflectionPos < m_iris_aperture_pos && secondReflectionPos < m_iris_aperture_pos) {
+			for (int i = 0; i < firstReflectionPos; i++) {
+				if (i == 0) {
+					Ma = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+				}
+				else {
+					Ma = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+				}
+			}
+			Ma = rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri) * Ma; //reflection step
+			for (int i = firstReflectionPos - 1; i > secondReflectionPos; i--) {
+				Ma = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+			}
+			Ma = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * Ma;
+			Ma = rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri) * Ma; //reflection step
+			Ma = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * Ma;
+			for (int i = secondReflectionPos + 1; i < m_iris_aperture_pos; i++) {
+				Ma = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+			}
+		}
+		else {
+			for (int i = 0; i < m_iris_aperture_pos; i++) {
+				if (i == 0) {
+					Ma = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+				}
+				else {
+					Ma = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ma;
+				}
+			}
+		}
+	}
+
+	return Ma;
+}
+
+glm::mat2x2 LensSystem::getMs(int firstReflectionPos, int secondReflectionPos) {
+	glm::mat2x2 Ms = glm::mat2(1.0f);
+	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+	//check if reflection makes sense
+	if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < m_lens_interfaces.size()) {
+		//check if reflection happens after aperture
+		if (firstReflectionPos > m_iris_aperture_pos && secondReflectionPos > m_iris_aperture_pos) {
+			for (int i = m_iris_aperture_pos; i < firstReflectionPos; i++) {
+				if (i == 0) {
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				}
+				else {
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				}
+			}
+			Ms = rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri) * Ms; //reflection step
+			for (int i = firstReflectionPos - 1; i > secondReflectionPos; i--) {
+				Ms = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+			}
+			Ms = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * Ms;
+			Ms = rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri) * Ms; //reflection step
+			Ms = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * Ms;
+			for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); i++) {
+				Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+			}
+		}
+		else {
+			for (int i = m_iris_aperture_pos; i < m_lens_interfaces.size(); i++) {
+				if (i == 0) {
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				}
+				else {
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				}
+			}
+		}
+	}
+
+	return Ms;
+}
+
+std::vector<glm::vec2> LensSystem::getPreAptReflections() {
+	std::vector<glm::vec2> reflectionPairs;
+	for (int i = 1; i < m_iris_aperture_pos; i++) {
+		for (int j = i - 1; j >= 0; j--) {
+			reflectionPairs.push_back({ i, j });
+		}
+	}
+	return reflectionPairs;
+}
+
+std::vector<glm::vec2> LensSystem::getPostAptReflections() {
+	std::vector<glm::vec2> reflectionPairs;
+	for (int i = m_iris_aperture_pos + 2; i < m_lens_interfaces.size(); i++) {
+		for (int j = i - 1; j > m_iris_aperture_pos; j--) {
+			reflectionPairs.push_back({ i, j });
+		}
+	}
+	return reflectionPairs;
+}
+
+std::vector<glm::mat2x2> LensSystem::getMa(std::vector<glm::vec2> reflectionPos) {
+	std::vector<glm::mat2x2> Mas;
+	for (glm::vec2 reflectionPair : reflectionPos) {
+		Mas.push_back(this->getMa(reflectionPair.x, reflectionPair.y));
+	}
+	return Mas;
+}
+std::vector<glm::mat2x2> LensSystem::getMs(std::vector<glm::vec2> reflectionPos) {
+	std::vector<glm::mat2x2> Mss;
+	for (glm::vec2 reflectionPair : reflectionPos) {
+		Mss.push_back(this->getMs(reflectionPair.x, reflectionPair.y));
+	}
+	return Mss;
 }
 
 std::vector<float> LensSystem::getInterfacePositions() {
@@ -139,102 +281,3 @@ float LensSystem::getSensorPosition() {
 	return pos;
 }
 
-glm::vec2 LensSystem::getCircleCenter(float z, float h, float R) {
-	//https://www.mathsisfun.com/geometry/arc.html
-	//https://www.mathopenref.com/sagitta.html
-	bool isConvex = false;
-	if (R > 0.f) {
-		isConvex = true;
-	}
-	R = abs(R);
-	float arcHeigth = R - sqrt(pow(R, 2.f) - pow(h/2.f, 2.f));
-	if (isConvex) {
-		return glm::vec2(z + (R - arcHeigth), 0.0f);
-	}
-	else {
-		return glm::vec2(z - (R - arcHeigth), 0.0f);
-	}
-}
-
-
-void LensSystem::generateLineDrawers() {
-	if (m_line_drawers.size() > 0) {
-		for (LineDrawer lineDrawer : m_line_drawers) {
-			lineDrawer.releaseArrayAndBuffer();
-		}
-	}
-	m_line_drawers.clear();
-	std::vector<float> interfacePositions = this->getInterfacePositions();
-	for (int i = 0; i < m_lens_interfaces.size(); i++) {
-		std::vector<glm::vec3> liPoints;
-		//Flat interfaces
-		if (abs(m_lens_interfaces[i].Ri) > 1000.f) {
-			liPoints.push_back(glm::vec3(interfacePositions[i], m_lens_interfaces[i].hi / 2, 0.f));
-			liPoints.push_back(glm::vec3(interfacePositions[i], -m_lens_interfaces[i].hi / 2, 0.f));
-		}
-		else {
-			float R = m_lens_interfaces[i].Ri;
-			float height = m_lens_interfaces[i].hi;
-			glm::vec2 circleCenter = getCircleCenter(interfacePositions[i], height, R);
-
-			//Change angle here to change resolution of curved lens interfaces
-			double angleIncrement = 0.1 * 3.141593f / 180.0f;
-
-			glm::vec3 startPoint = glm::vec3(interfacePositions[i], height / 2, 0.f);
-			glm::vec3 endPoint = glm::vec3(interfacePositions[i], -height / 2, 0.f);
-			if (R < 0.f) {
-				startPoint = glm::vec3(interfacePositions[i], -height / 2, 0.f);
-				endPoint = glm::vec3(interfacePositions[i], height / 2, 0.f);
-			}
-			float startAngle = std::atan2(startPoint.y - circleCenter.y, startPoint.x - circleCenter.x);
-			liPoints.push_back(startPoint);
-
-			float angle = startAngle;
-			float nextX;
-			if (R > 0.f) {
-				do {
-					angle += angleIncrement;
-					float x = circleCenter.x + R * std::cos(angle);
-					float y = circleCenter.y + R * std::sin(angle);
-					liPoints.push_back(glm::vec3(x, y, 0.f));
-					nextX = circleCenter.x + R * std::cos(angle + angleIncrement);
-				} while (nextX < endPoint.x);
-			}
-			else {
-				do {
-					angle += angleIncrement;
-					float x = circleCenter.x - R * std::cos(angle);
-					float y = circleCenter.y - R * std::sin(angle);
-					liPoints.push_back(glm::vec3(x, y, 0.f));
-					nextX = circleCenter.x - R * std::cos(angle + angleIncrement);
-				} while (nextX > endPoint.x);
-			}
-			liPoints.push_back(endPoint);
-			liPoints.push_back(startPoint);
-
-		}
-		m_line_drawers.push_back(LineDrawer(liPoints));
-	}
-	//sensor
-	if (m_lens_interfaces.size() > 0) {
-		std::vector<glm::vec3> sPoints;
-		sPoints.push_back(glm::vec3(interfacePositions[interfacePositions.size() - 1] + m_lens_interfaces[m_lens_interfaces.size() - 1].di, m_sensor_size / 2, 0.f));
-		sPoints.push_back(glm::vec3(interfacePositions[interfacePositions.size() - 1] + m_lens_interfaces[m_lens_interfaces.size() - 1].di, -m_sensor_size / 2, 0.f));
-		m_line_drawers.push_back(LineDrawer(sPoints));
-	}
-}
-
-void LensSystem::drawLensSystem(glm::mat4 projection) {
-	for (int i = 0; i < m_line_drawers.size(); i++) {
-		if (i == m_iris_aperture_pos) {
-			m_line_drawers[i].drawLine(projection, glm::vec3(0.5f, 1.f, 0.5f));
-		}
-		else if (i == m_line_drawers.size() - 1) {
-			m_line_drawers[i].drawLine(projection, glm::vec3(1.f, 1.f, 1.0f));
-		}
-		else {
-			m_line_drawers[i].drawLine(projection, glm::vec3(0.5f, 0.5f, 1.f));
-		}
-		
-	}
-}

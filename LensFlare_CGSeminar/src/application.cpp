@@ -10,6 +10,8 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui/imgui.h>
+// Library for loading an image
+#include <stb/stb_image.h>
 DISABLE_WARNINGS_POP()
 #include <framework/shader.h>
 #include <framework/window.h>
@@ -17,10 +19,11 @@ DISABLE_WARNINGS_POP()
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <limits>
 #include "line_drawer.h"
 #include "lens_system.h"
 #include "ray_propagation_drawer.h"
-#include <limits>
+#include "quad.h"
 
 //UTIL FUNCTIONS
 float toRad(float degrees) {
@@ -48,7 +51,7 @@ LensSystem generateExampleLens() {
 class Application {
 public:
     Application()
-        : m_window("Ray Transfer Matrices", glm::ivec2(1920, 1080), OpenGLVersion::GL45)
+        : m_window("Lens Flare Rendering", glm::ivec2(1080, 1080), OpenGLVersion::GL45)
     {
         m_window.registerKeyCallback([this](int key, int scancode, int action, int mods) {
             if (action == GLFW_PRESS)
@@ -79,9 +82,37 @@ public:
     void update()
     {
         //INITIALIZATION
-        float rayOriginOffset = 0.f;
-        float rayAngle = 0.f;
-        glm::vec2 ray = glm::vec2(rayOriginOffset, toRad(rayAngle));
+
+        /* Light Direction */
+        float light_angle_x = 0.f;
+        float light_angle_y = 0.f;
+
+        /* Light Pos */
+        float light_pos_x = 0.f;
+        float light_pos_y = 0.f;
+        float light_pos_z = 0.f;
+
+        /* Texture */
+        int texWidth, texHeight, texChannels;
+        stbi_uc* pixels = stbi_load("resources/aperture.png", &texWidth, &texHeight, &texChannels, STBI_grey);
+
+        if (!pixels) { std::cerr << "Failed to load texture" << std::endl; }
+
+        GLuint texApt;
+        glCreateTextures(GL_TEXTURE_2D, 1, &texApt);
+        glTextureStorage2D(texApt, 1, GL_R8, texWidth, texHeight);
+        glTextureSubImage2D(texApt, 0, 0, 0, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, pixels);
+
+        // Set behaviour for when texture coordinates are outside the [0, 1] range.
+        glTextureParameteri(texApt, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTextureParameteri(texApt, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+        // Set interpolation for texture sampling (GL_NEAREST for no interpolation).
+        glTextureParameteri(texApt, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(texApt, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(pixels);
+
 
         int interfaceToUpdate = 0;
         int interfaceToUpdatePreviousValue = -1;
@@ -99,12 +130,33 @@ public:
         bool reflectionActive = false;
         bool reflectionActiveMemory = false;
 
-        std::vector<LensInterface> lensInterfaces;
-        int irisAperturePos = 0;
-        float sensorSize = 0.f;
-        LensSystem lensSystem = LensSystem(irisAperturePos, sensorSize, lensInterfaces);
-        RayPropagationDrawer rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-        RayPropagationDrawer rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
+        LensSystem lensSystem = generateExampleLens();
+        int irisAperturePos = lensSystem.getIrisAperturePos();
+        float sensorSize = lensSystem.getSensorSize();
+        std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
+
+        /* Flare Paths and Matrices */
+        glm::mat2x2 default_Ma = lensSystem.getMa();
+        glm::mat2x2 default_Ms = lensSystem.getMs();
+        std::vector<glm::vec2> preAptReflectionPairs = lensSystem.getPreAptReflections();
+        std::vector<glm::vec2> postAptReflectionPairs = lensSystem.getPostAptReflections();
+        std::vector<glm::mat2x2> preAptMas = lensSystem.getMa(preAptReflectionPairs);
+        std::vector<glm::mat2x2> postAptMss = lensSystem.getMs(postAptReflectionPairs);
+        std::vector<FlareQuad> preAptQuads;
+        std::vector<FlareQuad> postAptQuads;
+        std::vector<glm::vec3> quad_points = {
+                {7.5f, 7.5f, 0.0f},   //top right
+                {7.5f, -7.5f, 0.0f},  //bottom right
+                {-7.5f, -7.5f, 0.0f}, //bottom left
+                {-7.5f, 7.5f, 0.0f}   //top left
+        };
+        for (int i = 0; i < preAptReflectionPairs.size(); i++) {
+            preAptQuads.push_back(FlareQuad(quad_points));
+        }
+        for (int i = 0; i < postAptReflectionPairs.size(); i++) {
+            postAptQuads.push_back(FlareQuad(quad_points));
+        }
+        /* */
 
         //LOOP
         while (!m_window.shouldClose()) {
@@ -114,8 +166,8 @@ public:
             // https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
             ImGui::Begin("Settings");
             //Input for Ray
-            ImGui::InputFloat("Ray Origin Offset", &rayOriginOffset);
-            ImGui::InputFloat("Ray Angle", &rayAngle);
+            ImGui::InputFloat("Light Angle X", &light_angle_x);
+            ImGui::InputFloat("Light Angle Y", &light_angle_y);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
             ImGui::InputFloat("Sensor Size", &sensorSize);
             ImGui::InputInt("First Reflection Location", &firstReflectionPos);
@@ -128,8 +180,6 @@ public:
                 irisAperturePos = lensSystem.getIrisAperturePos();
                 sensorSize = lensSystem.getSensorSize();
                 lensInterfaces = lensSystem.getLensInterfaces();
-                rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-                rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
             }
 
             if (ImGui::CollapsingHeader("Modify Interface")) {
@@ -170,8 +220,6 @@ public:
                         lensInterfaces.push_back(newLensInterface);
                     }
                     lensSystem.setLensInterfaces(lensInterfaces);
-                    rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-                    rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
                 }
             }
 
@@ -181,8 +229,6 @@ public:
                     if (interfaceToRemove >= 0 && interfaceToRemove < lensInterfaces.size()) {
                         lensInterfaces.erase(lensInterfaces.begin() + interfaceToRemove);
                         lensSystem.setLensInterfaces(lensInterfaces);
-                        rayPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatrices(), lensSystem.getInterfacePositions(), ray, lensSystem.getSensorPosition());
-                        rayReflectionPropagationDrawer = RayPropagationDrawer(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos), ray, lensSystem.getSensorPosition());
                     }
                 }
             }
@@ -205,18 +251,12 @@ public:
             // Update Projection Matrix
             glm::mat4 projection = glm::ortho(m_left_clipping_plane, m_right_clipping_plane, m_bottom_clipping_plane, m_top_clipping_plane);
 
-            // Update ray
-            ray = glm::vec2(rayOriginOffset, toRad(rayAngle));
-            rayPropagationDrawer.setRay(ray);
-            rayReflectionPropagationDrawer.setRay(ray);
-
             //Update Iris Aperture Position
             lensSystem.setIrisAperturePos(irisAperturePos);
             lensSystem.setSensorSize(sensorSize);
 
             if ((!reflectionActiveMemory && reflectionActive) || reflectionActiveMemory && (firstReflectionPos != firstReflectionPosMemory || secondReflectionPos != secondReflectionPosMemory)) {
                 if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
-                    rayReflectionPropagationDrawer.setRayTransferMatricesAndInterfacePositions(lensSystem.getRayTransferMatricesWithReflection(firstReflectionPos, secondReflectionPos), lensSystem.getInterfacePositionsWithReflections(firstReflectionPos, secondReflectionPos));
                     reflectionActiveMemory = true;
                     firstReflectionPosMemory = firstReflectionPos;
                     secondReflectionPosMemory = secondReflectionPos;
@@ -230,17 +270,27 @@ public:
             }
 
             // Clear the screen
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glEnable(GL_DEPTH_TEST);
+
+            // Enable blending
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_ONE, GL_ONE);
             
             //RENDERING
             m_defaultShader.bind();
-
-            lensSystem.drawLensSystem(projection);
-            rayPropagationDrawer.drawRayPropagation(projection, glm::vec3(0.f, 0.f, 1.f));
+            float entrancePupilHeight = lensInterfaces[0].hi / 2.f;
             if (reflectionActive) {
-                rayReflectionPropagationDrawer.drawRayPropagation(projection, glm::vec3(1.f, 0.f, 0.f));
+                for (int i = 0; i < preAptReflectionPairs.size(); i++) {
+                    preAptQuads[i].drawQuad(projection, preAptMas[i], default_Ms, glm::vec3(0.3f, 0.5f, 0.5f), texApt, toRad(light_angle_x), toRad(light_angle_y), entrancePupilHeight);
+                }
+                for (int i = 0; i < postAptReflectionPairs.size(); i++) {
+                    postAptQuads[i].drawQuad(projection, default_Ma, postAptMss[i], glm::vec3(0.3f, 0.5f, 0.5f), texApt, toRad(light_angle_x), toRad(light_angle_y), entrancePupilHeight);
+                }
+
+
+                //flare_quad.drawQuad(projection, Ma, Ms, glm::vec3(1.f, 1.f, 1.f), texApt, toRad(light_angle_x), toRad(light_angle_y));
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -333,8 +383,8 @@ private:
 
     bool m_useMaterial{ false };
 
-    float m_left_clipping_plane = -10.0f;
-    float m_right_clipping_plane = 50.0f;
+    float m_left_clipping_plane = -30.0f;
+    float m_right_clipping_plane = 30.0f;
     float m_bottom_clipping_plane = -30.0f;
     float m_top_clipping_plane = 30.0f;
 };

@@ -22,18 +22,22 @@ public:
 	void setLensInterfaces(std::vector<LensInterface> newLensInterfaces);
 	std::vector<glm::mat2x2> getRayTransferMatrices();
 	std::vector<glm::mat2x2> getRayTransferMatricesWithReflection(int firstReflectionPos, int secondReflectionPos);
+	glm::mat2x2 getMa();
+	glm::mat2x2 getMs();
+	glm::mat2x2 getMa(int firstReflectionPos, int secondReflectionPos);
+	glm::mat2x2 getMs(int firstReflectionPos, int secondReflectionPos);
+	std::vector<glm::vec2> getPreAptReflections();
+	std::vector<glm::vec2> getPostAptReflections();
+	std::vector<glm::mat2x2> getMa(std::vector<glm::vec2> reflectionPos);
+	std::vector<glm::mat2x2> getMs(std::vector<glm::vec2> reflectionPos);
 	std::vector<float> getInterfacePositions();
 	std::vector<float> getInterfacePositionsWithReflections(int firstReflectionPos, int secondReflectionPos);
 	float getEntrancePupilHeight();
 	float getIrisApertureHeight();
 	float getSensorPosition();
-	void generateLineDrawers();
-	void drawLensSystem(glm::mat4 projection);
 
 private:
-	glm::vec2 getCircleCenter(float z, float h, float R);
 	std::vector<LensInterface> m_lens_interfaces;
-	std::vector<LineDrawer> m_line_drawers;
 	std::vector<glm::mat2x2> m_ray_transfer_matrices; //Needs to be updated if lens interfaces change
 	int m_iris_aperture_pos = 0;
 	float m_sensor_size = 0;
