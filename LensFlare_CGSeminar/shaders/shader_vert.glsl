@@ -1,6 +1,6 @@
 #version 450 core
 
-layout(location = 0) uniform mat4 projection;
+layout(location = 0) uniform mat4 mvp;
 
 layout(location = 2) uniform mat2 Ma;
 layout(location = 3) uniform mat2 Ms;
@@ -8,6 +8,10 @@ layout(location = 4) uniform float light_angle_x;
 layout(location = 5) uniform float light_angle_y;
 layout(location = 6) uniform float entrance_pupil_height;
 layout(location = 7) uniform sampler2D texApt;
+layout(location = 8) uniform vec3 sensorTranslation;
+layout(location = 9) uniform float irisApertureHeight;
+layout(location = 10) uniform mat4 sensorRotation;
+
 
 layout(location = 0) in vec3 pos;
 
@@ -27,10 +31,10 @@ void main()
     vec2 ray_x_a = Ma * ray_x;
     vec2 ray_y_a = Ma * ray_y;
 
-    aptPos = vec2(ray_x_a.x, ray_y_a.x);
+    aptPos = (vec2(ray_x_a.x, ray_y_a.x) / irisApertureHeight) + vec2(0.5, 0.5);
 
     vec2 ray_x_s = Ms * ray_x;
     vec2 ray_y_s = Ms * ray_y;
 
-    gl_Position = projection * vec4(ray_x_s.x, ray_y_s.x, 0.0, 1.0);
+    gl_Position = mvp * sensorRotation * vec4((vec3(ray_x_s.x, ray_y_s.x, 10.0) + sensorTranslation), 1.0);
 }

@@ -13,6 +13,7 @@ DISABLE_WARNINGS_PUSH()
 // Library for loading an image
 #include <stb/stb_image.h>
 DISABLE_WARNINGS_POP()
+#include <framework/mesh.h>
 #include <framework/shader.h>
 #include <framework/window.h>
 #include <functional>
@@ -24,10 +25,51 @@ DISABLE_WARNINGS_POP()
 #include "lens_system.h"
 #include "ray_propagation_drawer.h"
 #include "quad.h"
+#include "camera.h"
 
-//UTIL FUNCTIONS
-float toRad(float degrees) {
-    return degrees * 3.141593f / 180.0f;
+constexpr int WIDTH = 1920;
+constexpr int HEIGHT = 1080;
+
+// Function to translate a point to the camera plane
+glm::vec3 translateToCameraSpace(const glm::vec3& cameraPos, const glm::vec3& cameraForward, const glm::vec3& cameraUp, const glm::vec3& point) {
+    glm::vec3 toPoint = point - cameraPos;
+    glm::vec3 right = glm::normalize(glm::cross(cameraForward, cameraUp));
+
+    glm::vec3 cameraSpacePoint(
+        glm::dot(toPoint, right),
+        glm::dot(toPoint, cameraUp),
+        glm::dot(toPoint, cameraForward)
+    );
+
+    return cameraSpacePoint;
+}
+
+// Function to get the rotation matrix from one plane to another
+glm::mat4 getRotationMatrix(const glm::vec3& forward, const glm::vec3& up) {
+    glm::vec3 forwardNorm = glm::normalize(forward);
+    glm::vec3 upNorm = glm::normalize(up);
+    glm::vec3 right = glm::normalize(glm::cross(forwardNorm, upNorm));
+    glm::vec3 recalculatedUp = glm::normalize(glm::cross(right, forwardNorm));
+
+    glm::mat4 rotationMatrix = glm::mat4(
+        glm::vec4(right, 0.0f),
+        glm::vec4(recalculatedUp, 0.0f),
+        glm::vec4(forwardNorm, 0.0f), // Negate if the orientation requires it
+        glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)
+    );
+
+    return glm::transpose(rotationMatrix); // Transpose to match OpenGL's column-major order
+}
+
+
+glm::vec2 getYawandPitch(const glm::vec3& cameraPos, const glm::vec3& cameraForward, const glm::vec3& cameraUp, const glm::vec3& lightPos) {
+
+    glm::vec3 cameraSpacePoint = translateToCameraSpace(cameraPos, cameraForward, cameraUp,lightPos);
+    // Calculate yaw (angle around the y-axis) and pitch (angle around the x-axis)
+    float yaw = atan2(cameraSpacePoint.x, cameraSpacePoint.z);
+    float pitch = atan2(cameraSpacePoint.y, cameraSpacePoint.z);
+
+    return glm::vec2(yaw, pitch);
 }
 
 LensSystem generateExampleLens() {
@@ -51,7 +93,7 @@ LensSystem generateExampleLens() {
 class Application {
 public:
     Application()
-        : m_window("Lens Flare Rendering", glm::ivec2(1080, 1080), OpenGLVersion::GL45)
+        : m_window("Lens Flare Rendering", glm::ivec2(WIDTH, HEIGHT), OpenGLVersion::GL45)
     {
         m_window.registerKeyCallback([this](int key, int scancode, int action, int mods) {
             if (action == GLFW_PRESS)
@@ -66,12 +108,14 @@ public:
             else if (action == GLFW_RELEASE)
                 onMouseReleased(button, mods);
             });
-
+        
         try {
             ShaderBuilder defaultBuilder;
             defaultBuilder.addStage(GL_VERTEX_SHADER, "shaders/shader_vert.glsl");
             defaultBuilder.addStage(GL_FRAGMENT_SHADER, "shaders/shader_frag.glsl");
             m_defaultShader = defaultBuilder.build();
+
+            m_lightShader = ShaderBuilder().addStage(GL_VERTEX_SHADER, "shaders/light_vertex.glsl").addStage(GL_FRAGMENT_SHADER, "shaders/light_frag.glsl").build();
 
         }
         catch (ShaderLoadingException e) {
@@ -82,15 +126,23 @@ public:
     void update()
     {
         //INITIALIZATION
-
-        /* Light Direction */
-        float light_angle_x = 0.f;
-        float light_angle_y = 0.f;
+        const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
+        GLuint ibo_light;
+        glCreateBuffers(1, &ibo_light);
+        glNamedBufferStorage(ibo_light, static_cast<GLsizeiptr>(lightSphere.triangles.size() * sizeof(decltype(Mesh::triangles)::value_type)), lightSphere.triangles.data(), 0);
+        GLuint vbo_light;
+        glCreateBuffers(1, &vbo_light);
+        glNamedBufferStorage(vbo_light, static_cast<GLsizeiptr>(lightSphere.vertices.size() * sizeof(Vertex)), lightSphere.vertices.data(), 0);
+        GLuint vao_light;
+        glCreateVertexArrays(1, &vao_light);
+        glVertexArrayElementBuffer(vao_light, ibo_light);
+        glVertexArrayVertexBuffer(vao_light, 0, vbo_light, offsetof(Vertex, position), sizeof(Vertex));
+        glEnableVertexArrayAttrib(vao_light, 0);
 
         /* Light Pos */
         float light_pos_x = 0.f;
         float light_pos_y = 0.f;
-        float light_pos_z = 0.f;
+        float light_pos_z = 10.f;
 
         /* Texture */
         int texWidth, texHeight, texChannels;
@@ -127,7 +179,7 @@ public:
         int secondReflectionPos = 0;
         int firstReflectionPosMemory = -1;
         int secondReflectionPosMemory = -1;
-        bool reflectionActive = false;
+        bool reflectionActive = true;
         bool reflectionActiveMemory = false;
 
         LensSystem lensSystem = generateExampleLens();
@@ -161,17 +213,17 @@ public:
         //LOOP
         while (!m_window.shouldClose()) {
             m_window.updateInput();
+            m_camera.updateInput();
 
             // Use ImGui for easy input/output of ints, floats, strings, etc...
             // https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
             ImGui::Begin("Settings");
             //Input for Ray
-            ImGui::InputFloat("Light Angle X", &light_angle_x);
-            ImGui::InputFloat("Light Angle Y", &light_angle_y);
+            ImGui::InputFloat("Light Pos X", &light_pos_x);
+            ImGui::InputFloat("Light Pos Y", &light_pos_y);
+            ImGui::InputFloat("Light Pos Z", &light_pos_z);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
             ImGui::InputFloat("Sensor Size", &sensorSize);
-            ImGui::InputInt("First Reflection Location", &firstReflectionPos);
-            ImGui::InputInt("Second Reflection Location", &secondReflectionPos);
             ImGui::Checkbox("Toggle Reflection", &reflectionActive);
 
             //Button loading example lens system
@@ -248,12 +300,21 @@ public:
                 irisAperturePos = 0;
             }
 
-            // Update Projection Matrix
-            glm::mat4 projection = glm::ortho(m_left_clipping_plane, m_right_clipping_plane, m_bottom_clipping_plane, m_top_clipping_plane);
-
             //Update Iris Aperture Position
             lensSystem.setIrisAperturePos(irisAperturePos);
             lensSystem.setSensorSize(sensorSize);
+
+            // Update Projection Matrix
+            //glm::mat4 projection = glm::ortho(m_left_clipping_plane, m_right_clipping_plane, m_bottom_clipping_plane, m_top_clipping_plane);
+            const glm::mat4 mvp = m_mainProjectionMatrix * m_camera.viewMatrix();
+            const glm::vec3 cameraPos = m_camera.cameraPos();
+            const glm::vec3 cameraForward = m_camera.m_forward;
+            const glm::vec3 cameraUp = m_camera.m_up;
+            const glm::vec3 lightPos = {light_pos_x, light_pos_y, light_pos_z};
+            glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, lightPos);
+            glm::vec3 sensorTranslation = cameraPos;
+            float irisApertureHeight = lensSystem.getIrisApertureHeight();
+            glm::mat4 sensorRotation = getRotationMatrix(cameraForward, cameraUp);
 
             if ((!reflectionActiveMemory && reflectionActive) || reflectionActiveMemory && (firstReflectionPos != firstReflectionPosMemory || secondReflectionPos != secondReflectionPosMemory)) {
                 if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
@@ -271,27 +332,35 @@ public:
 
             // Clear the screen
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glEnable(GL_DEPTH_TEST);
+            glClear(GL_COLOR_BUFFER_BIT);
+            //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            //glEnable(GL_DEPTH_TEST);
 
             // Enable blending
             glEnable(GL_BLEND);
-            glBlendFunc(GL_ONE, GL_ONE);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE);
             
             //RENDERING
             m_defaultShader.bind();
             float entrancePupilHeight = lensInterfaces[0].hi / 2.f;
             if (reflectionActive) {
                 for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                    preAptQuads[i].drawQuad(projection, preAptMas[i], default_Ms, glm::vec3(0.3f, 0.5f, 0.5f), texApt, toRad(light_angle_x), toRad(light_angle_y), entrancePupilHeight);
+                    preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorTranslation, sensorRotation, irisApertureHeight);
                 }
                 for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                    postAptQuads[i].drawQuad(projection, default_Ma, postAptMss[i], glm::vec3(0.3f, 0.5f, 0.5f), texApt, toRad(light_angle_x), toRad(light_angle_y), entrancePupilHeight);
+                    postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorTranslation, sensorRotation, irisApertureHeight);
                 }
 
-
-                //flare_quad.drawQuad(projection, Ma, Ms, glm::vec3(1.f, 1.f, 1.f), texApt, toRad(light_angle_x), toRad(light_angle_y));
             }
+
+            //RENDER LIGHT SOURCE
+            m_lightShader.bind();
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp));;
+            glUniform3fv(1, 1, glm::value_ptr(m_lcolor));
+            glUniform3fv(2, 1, glm::value_ptr(lightPos));
+            glBindVertexArray(vao_light);
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((lightSphere.triangles.size() * 3)), GL_UNSIGNED_INT, nullptr);
+
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glBindVertexArray(0);
@@ -309,36 +378,9 @@ public:
     {
         switch (key)
         {
-        case GLFW_KEY_A:
-            m_left_clipping_plane -= panAndZoomSensitivity;
-            m_right_clipping_plane -= panAndZoomSensitivity;
+        /*case GLFW_KEY_A:
             break;
-        case GLFW_KEY_D:
-            m_left_clipping_plane += panAndZoomSensitivity;
-            m_right_clipping_plane += panAndZoomSensitivity;
-            break;
-        case GLFW_KEY_S:
-            m_bottom_clipping_plane -= panAndZoomSensitivity;
-            m_top_clipping_plane -= panAndZoomSensitivity;
-            break;
-        case GLFW_KEY_W:
-            m_bottom_clipping_plane += panAndZoomSensitivity;
-            m_top_clipping_plane += panAndZoomSensitivity;
-            break;
-        case GLFW_KEY_Q:
-            m_left_clipping_plane -= panAndZoomSensitivity;
-            m_right_clipping_plane += panAndZoomSensitivity;
-            m_bottom_clipping_plane -= panAndZoomSensitivity;
-            m_top_clipping_plane += panAndZoomSensitivity;
-            break;
-        case GLFW_KEY_E:
-            if (abs(m_left_clipping_plane - m_right_clipping_plane) > 2.f) {
-                m_left_clipping_plane += panAndZoomSensitivity;
-                m_right_clipping_plane -= panAndZoomSensitivity;
-                m_bottom_clipping_plane += panAndZoomSensitivity;
-                m_top_clipping_plane -= panAndZoomSensitivity;
-            }
-            break;
+        */
         default:
             break;
         }
@@ -378,15 +420,23 @@ public:
 private:
     Window m_window;
 
+    /* Camera Stuff */
+    Camera m_camera{&m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f)};
+    const float m_fov = glm::radians(120.0f);
+    //float m_visibleWidth = 0.14f;
+    float m_distance = 0.5f;
+    //// Calculate the FOV in radians
+    //float m_fov = 2.0f * atan(m_visibleWidth / (2.0f * m_distance));
+    const float m_aspect = static_cast<float>(WIDTH) / static_cast<float>(HEIGHT);
+    const glm::mat4 m_mainProjectionMatrix = glm::perspective(m_fov, m_aspect, 0.01f, 100.0f);
+
     // Shader for default rendering
     Shader m_defaultShader;
+    Shader m_lightShader;
+    const glm::vec3 m_lcolor{ 1, 1, 0.5 };
 
     bool m_useMaterial{ false };
 
-    float m_left_clipping_plane = -30.0f;
-    float m_right_clipping_plane = 30.0f;
-    float m_bottom_clipping_plane = -30.0f;
-    float m_top_clipping_plane = 30.0f;
 };
 
 int main()
