@@ -46,7 +46,7 @@ void FlareQuad::uploadDataIfNeeded() {
     }
 }
 
-void FlareQuad::drawQuad(glm::mat4 projection, glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color, GLuint texApt, glm::vec2 yawandPitch, float entrancePupilHeight, glm::vec3 sensorTranslation, glm::mat4 sensorRotation, float irisApertureHeight) {
+void FlareQuad::drawQuad(glm::mat4 projection, glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color, GLuint texApt, glm::vec2 yawandPitch, float entrancePupilHeight, glm::mat4 sensorMatrix, float irisApertureHeight) {
     // Upload data if points have changed
     uploadDataIfNeeded();
 
@@ -61,9 +61,8 @@ void FlareQuad::drawQuad(glm::mat4 projection, glm::mat2x2 Ma, glm::mat2x2 Ms, g
     glUniform1fv(4, 1, &yawandPitch.x);
     glUniform1fv(5, 1, &yawandPitch.y);
     glUniform1fv(6, 1, &entrancePupilHeight);
-    glUniform3fv(8, 1, glm::value_ptr(sensorTranslation));
+    glUniformMatrix4fv(8, 1, GL_FALSE, glm::value_ptr(sensorMatrix));
     glUniform1fv(9, 1, &irisApertureHeight);
-    glUniformMatrix4fv(10, 1, GL_FALSE, glm::value_ptr(sensorRotation));
 
     // Bind texture
     glActiveTexture(GL_TEXTURE0);

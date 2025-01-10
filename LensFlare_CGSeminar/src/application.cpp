@@ -142,7 +142,7 @@ public:
         /* Light Pos */
         float light_pos_x = 0.f;
         float light_pos_y = 0.f;
-        float light_pos_z = 10.f;
+        float light_pos_z = 25;
 
         /* Texture */
         int texWidth, texHeight, texChannels;
@@ -175,15 +175,9 @@ public:
 
         int interfaceToRemove = 0;
 
-        int firstReflectionPos = 0;
-        int secondReflectionPos = 0;
-        int firstReflectionPosMemory = -1;
-        int secondReflectionPosMemory = -1;
-        bool reflectionActive = true;
-        bool reflectionActiveMemory = false;
-
         LensSystem lensSystem = generateExampleLens();
         int irisAperturePos = lensSystem.getIrisAperturePos();
+        int irisAperturePosMemory = irisAperturePos;
         float sensorSize = lensSystem.getSensorSize();
         std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
 
@@ -224,7 +218,6 @@ public:
             ImGui::InputFloat("Light Pos Z", &light_pos_z);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
             ImGui::InputFloat("Sensor Size", &sensorSize);
-            ImGui::Checkbox("Toggle Reflection", &reflectionActive);
 
             //Button loading example lens system
             if (ImGui::Button("Load Example Lens System")) {
@@ -232,6 +225,22 @@ public:
                 irisAperturePos = lensSystem.getIrisAperturePos();
                 sensorSize = lensSystem.getSensorSize();
                 lensInterfaces = lensSystem.getLensInterfaces();
+                /* Flare Paths and Matrices */
+                default_Ma = lensSystem.getMa();
+                default_Ms = lensSystem.getMs();
+                preAptReflectionPairs = lensSystem.getPreAptReflections();
+                postAptReflectionPairs = lensSystem.getPostAptReflections();
+                preAptMas = lensSystem.getMa(preAptReflectionPairs);
+                postAptMss = lensSystem.getMs(postAptReflectionPairs);
+                preAptQuads.clear();
+                postAptQuads.clear();
+                for (int i = 0; i < preAptReflectionPairs.size(); i++) {
+                    preAptQuads.push_back(FlareQuad(quad_points));
+                }
+                for (int i = 0; i < postAptReflectionPairs.size(); i++) {
+                    postAptQuads.push_back(FlareQuad(quad_points));
+                }
+                /* */
             }
 
             if (ImGui::CollapsingHeader("Modify Interface")) {
@@ -272,6 +281,24 @@ public:
                         lensInterfaces.push_back(newLensInterface);
                     }
                     lensSystem.setLensInterfaces(lensInterfaces);
+
+                    /* Flare Paths and Matrices */
+                    default_Ma = lensSystem.getMa();
+                    default_Ms = lensSystem.getMs();
+                    preAptReflectionPairs = lensSystem.getPreAptReflections();
+                    postAptReflectionPairs = lensSystem.getPostAptReflections();
+                    preAptMas = lensSystem.getMa(preAptReflectionPairs);
+                    postAptMss = lensSystem.getMs(postAptReflectionPairs);
+                    preAptQuads.clear();
+                    postAptQuads.clear();
+                    for (int i = 0; i < preAptReflectionPairs.size(); i++) {
+                        preAptQuads.push_back(FlareQuad(quad_points));
+                    }
+                    for (int i = 0; i < postAptReflectionPairs.size(); i++) {
+                        postAptQuads.push_back(FlareQuad(quad_points));
+                    }
+                    /* */
+
                 }
             }
 
@@ -281,6 +308,22 @@ public:
                     if (interfaceToRemove >= 0 && interfaceToRemove < lensInterfaces.size()) {
                         lensInterfaces.erase(lensInterfaces.begin() + interfaceToRemove);
                         lensSystem.setLensInterfaces(lensInterfaces);
+                        /* Flare Paths and Matrices */
+                        default_Ma = lensSystem.getMa();
+                        default_Ms = lensSystem.getMs();
+                        preAptReflectionPairs = lensSystem.getPreAptReflections();
+                        postAptReflectionPairs = lensSystem.getPostAptReflections();
+                        preAptMas = lensSystem.getMa(preAptReflectionPairs);
+                        postAptMss = lensSystem.getMs(postAptReflectionPairs);
+                        preAptQuads.clear();
+                        postAptQuads.clear();
+                        for (int i = 0; i < preAptReflectionPairs.size(); i++) {
+                            preAptQuads.push_back(FlareQuad(quad_points));
+                        }
+                        for (int i = 0; i < postAptReflectionPairs.size(); i++) {
+                            postAptQuads.push_back(FlareQuad(quad_points));
+                        }
+                        /* */
                     }
                 }
             }
@@ -301,11 +344,30 @@ public:
             }
 
             //Update Iris Aperture Position
-            lensSystem.setIrisAperturePos(irisAperturePos);
+            if (irisAperturePos != irisAperturePosMemory) {
+                lensSystem.setIrisAperturePos(irisAperturePos);
+                irisAperturePosMemory = irisAperturePos;
+                /* Flare Paths and Matrices */
+                default_Ma = lensSystem.getMa();
+                default_Ms = lensSystem.getMs();
+                preAptReflectionPairs = lensSystem.getPreAptReflections();
+                postAptReflectionPairs = lensSystem.getPostAptReflections();
+                preAptMas = lensSystem.getMa(preAptReflectionPairs);
+                postAptMss = lensSystem.getMs(postAptReflectionPairs);
+                preAptQuads.clear();
+                postAptQuads.clear();
+                for (int i = 0; i < preAptReflectionPairs.size(); i++) {
+                    preAptQuads.push_back(FlareQuad(quad_points));
+                }
+                for (int i = 0; i < postAptReflectionPairs.size(); i++) {
+                    postAptQuads.push_back(FlareQuad(quad_points));
+                }
+                /* */
+            }
+            
             lensSystem.setSensorSize(sensorSize);
 
             // Update Projection Matrix
-            //glm::mat4 projection = glm::ortho(m_left_clipping_plane, m_right_clipping_plane, m_bottom_clipping_plane, m_top_clipping_plane);
             const glm::mat4 mvp = m_mainProjectionMatrix * m_camera.viewMatrix();
             const glm::vec3 cameraPos = m_camera.cameraPos();
             const glm::vec3 cameraForward = m_camera.m_forward;
@@ -314,21 +376,8 @@ public:
             glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, lightPos);
             glm::vec3 sensorTranslation = cameraPos;
             float irisApertureHeight = lensSystem.getIrisApertureHeight();
-            glm::mat4 sensorRotation = getRotationMatrix(cameraForward, cameraUp);
-
-            if ((!reflectionActiveMemory && reflectionActive) || reflectionActiveMemory && (firstReflectionPos != firstReflectionPosMemory || secondReflectionPos != secondReflectionPosMemory)) {
-                if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < lensInterfaces.size()) {
-                    reflectionActiveMemory = true;
-                    firstReflectionPosMemory = firstReflectionPos;
-                    secondReflectionPosMemory = secondReflectionPos;
-                }
-            }
-
-            if (reflectionActiveMemory && !reflectionActive) {
-                reflectionActiveMemory = false;
-                firstReflectionPosMemory = -1;
-                secondReflectionPosMemory = -1;
-            }
+            glm::mat4 sensorMatrix = getRotationMatrix(cameraForward, cameraUp);
+            sensorMatrix = glm::translate(sensorMatrix, cameraPos);
 
             // Clear the screen
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -343,15 +392,13 @@ public:
             //RENDERING
             m_defaultShader.bind();
             float entrancePupilHeight = lensInterfaces[0].hi / 2.f;
-            if (reflectionActive) {
-                for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                    preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorTranslation, sensorRotation, irisApertureHeight);
-                }
-                for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                    postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorTranslation, sensorRotation, irisApertureHeight);
-                }
-
+            for (int i = 0; i < preAptReflectionPairs.size(); i++) {
+                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
+            for (int i = 0; i < postAptReflectionPairs.size(); i++) {
+                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+            }
+
 
             //RENDER LIGHT SOURCE
             m_lightShader.bind();
@@ -422,7 +469,7 @@ private:
 
     /* Camera Stuff */
     Camera m_camera{&m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f)};
-    const float m_fov = glm::radians(120.0f);
+    const float m_fov = glm::radians(80.0f);
     //float m_visibleWidth = 0.14f;
     float m_distance = 0.5f;
     //// Calculate the FOV in radians

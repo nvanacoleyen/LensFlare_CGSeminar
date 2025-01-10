@@ -12,7 +12,7 @@ public:
     void setPoints(std::vector<glm::vec3> points);
     std::vector<glm::vec3> getPoints();
     void releaseArrayAndBuffer();
-    void drawQuad(glm::mat4 projection, glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color, GLuint texApt, glm::vec2 yawandPitch, float entrancePupilHeight, glm::vec3 sensorTranslation, glm::mat4 sensorRotation, float irisApertureHeight);
+    void drawQuad(glm::mat4 projection, glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color, GLuint texApt, glm::vec2 yawandPitch, float entrancePupilHeight, glm::mat4 sensorMatrix, float irisApertureHeight);
 
 private:
     void uploadDataIfNeeded(); // New method for data upload optimization
