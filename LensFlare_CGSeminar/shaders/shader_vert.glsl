@@ -25,7 +25,7 @@ void main()
     entrancePos = pos.xy;
 
     vec2 ray_x = vec2(x_offset, light_angle_x);
-    vec2 ray_y = vec2(y_offset, light_angle_y);
+    vec2 ray_y = vec2(y_offset, -light_angle_y);
 
     vec2 ray_x_a = Ma * ray_x;
     vec2 ray_y_a = Ma * ray_y;
@@ -35,5 +35,5 @@ void main()
     vec2 ray_x_s = Ms * ray_x;
     vec2 ray_y_s = Ms * ray_y;
 
-    gl_Position = mvp * sensorMatrix * vec4(vec3(-ray_x_s.x, ray_y_s.x, 20.0), 1.0);
+    gl_Position = mvp * sensorMatrix * vec4(vec3(ray_x_s.x, ray_y_s.x, 20.0), 1.0);
 }

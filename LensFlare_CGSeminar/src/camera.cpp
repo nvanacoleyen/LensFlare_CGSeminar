@@ -6,6 +6,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 DISABLE_WARNINGS_POP()
+#include "iostream"
 
 Camera::Camera(Window* pWindow)
     : Camera(pWindow, glm::vec3(0), glm::vec3(0, 0, -1))
@@ -85,3 +86,11 @@ void Camera::updateInput()
         m_prevCursorPos = m_pWindow->getCursorPos();
     }
 }
+
+glm::vec2 Camera::getYawAndPitch() const {
+    float yaw = atan2(m_forward.x, m_forward.z);
+    float pitch = -asin(m_forward.y);
+    std::cout << "Camera Yaw: " << yaw << ", Camera Pitch: " << pitch << std::endl;
+    return glm::vec2(yaw, pitch);
+}
+

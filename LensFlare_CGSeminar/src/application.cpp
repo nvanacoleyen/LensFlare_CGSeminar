@@ -44,30 +44,14 @@ glm::vec3 translateToCameraSpace(const glm::vec3& cameraPos, const glm::vec3& ca
     return cameraSpacePoint;
 }
 
-// Function to get the rotation matrix from one plane to another
-glm::mat4 getRotationMatrix(const glm::vec3& forward, const glm::vec3& up) {
-    glm::vec3 forwardNorm = glm::normalize(forward);
-    glm::vec3 upNorm = glm::normalize(up);
-    glm::vec3 right = glm::normalize(glm::cross(forwardNorm, upNorm));
-    glm::vec3 recalculatedUp = glm::normalize(glm::cross(right, forwardNorm));
-
-    glm::mat4 rotationMatrix = glm::mat4(
-        glm::vec4(right, 0.0f),
-        glm::vec4(recalculatedUp, 0.0f),
-        glm::vec4(forwardNorm, 0.0f), // Negate if the orientation requires it
-        glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)
-    );
-
-    return glm::transpose(rotationMatrix); // Transpose to match OpenGL's column-major order
-}
-
-
 glm::vec2 getYawandPitch(const glm::vec3& cameraPos, const glm::vec3& cameraForward, const glm::vec3& cameraUp, const glm::vec3& lightPos) {
 
-    glm::vec3 cameraSpacePoint = translateToCameraSpace(cameraPos, cameraForward, cameraUp,lightPos);
+    glm::vec3 cameraSpacePoint = translateToCameraSpace(cameraPos, cameraForward, cameraUp, lightPos);
     // Calculate yaw (angle around the y-axis) and pitch (angle around the x-axis)
     float yaw = atan2(cameraSpacePoint.x, cameraSpacePoint.z);
     float pitch = atan2(cameraSpacePoint.y, cameraSpacePoint.z);
+
+    std::cout << "Yaw: " << yaw << ", Pitch: " << pitch << std::endl;
 
     return glm::vec2(yaw, pitch);
 }
@@ -374,10 +358,13 @@ public:
             const glm::vec3 cameraUp = m_camera.m_up;
             const glm::vec3 lightPos = {light_pos_x, light_pos_y, light_pos_z};
             glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, lightPos);
-            glm::vec3 sensorTranslation = cameraPos;
+            glm::vec2 cameraYawandPitch = m_camera.getYawAndPitch();
             float irisApertureHeight = lensSystem.getIrisApertureHeight();
-            glm::mat4 sensorMatrix = getRotationMatrix(cameraForward, cameraUp);
-            sensorMatrix = glm::translate(sensorMatrix, cameraPos);
+
+            glm::mat4 sensorMatrix = glm::translate(glm::mat4(1.0f), cameraPos);
+            sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
+            sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
+            //sensorMatrix = glm::translate(sensorMatrix, cameraPos);
 
             // Clear the screen
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -469,7 +456,7 @@ private:
 
     /* Camera Stuff */
     Camera m_camera{&m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f)};
-    const float m_fov = glm::radians(80.0f);
+    const float m_fov = glm::radians(45.0f);
     //float m_visibleWidth = 0.14f;
     float m_distance = 0.5f;
     //// Calculate the FOV in radians

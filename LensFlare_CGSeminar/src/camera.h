@@ -17,6 +17,8 @@ public:
 
     glm::vec3 cameraPos() const;
     glm::mat4 viewMatrix() const;
+    glm::vec2 getYawAndPitch() const;
+
 
     glm::vec3 m_forward{ 0, 0, -1 };
     glm::vec3 m_up{ 0, 1, 0 };
