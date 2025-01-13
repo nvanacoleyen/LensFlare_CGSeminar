@@ -17,7 +17,7 @@ in vec2 aptPos;
 void main()
 {
     float distToOpticalAxis = sqrt(pow(entrancePos.x, 2.0) + pow(entrancePos.y, 2.0));
-    if (distToOpticalAxis >= (entrance_pupil_height)) {
+    if (distToOpticalAxis >= entrance_pupil_height) {
         discard;
     }
 
