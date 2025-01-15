@@ -90,7 +90,7 @@ void Camera::updateInput()
 glm::vec2 Camera::getYawAndPitch() const {
     float yaw = atan2(m_forward.x, m_forward.z);
     float pitch = -asin(m_forward.y);
-    std::cout << "Camera Yaw: " << yaw << ", Camera Pitch: " << pitch << std::endl;
+    //std::cout << "Camera Yaw: " << yaw << ", Camera Pitch: " << pitch << std::endl;
     return glm::vec2(yaw, pitch);
 }
 

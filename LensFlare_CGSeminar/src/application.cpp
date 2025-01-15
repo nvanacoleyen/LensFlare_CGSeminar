@@ -51,7 +51,7 @@ glm::vec2 getYawandPitch(const glm::vec3& cameraPos, const glm::vec3& cameraForw
     float yaw = atan2(cameraSpacePoint.x, cameraSpacePoint.z);
     float pitch = atan2(cameraSpacePoint.y, cameraSpacePoint.z);
 
-    std::cout << "Yaw: " << yaw << ", Pitch: " << pitch << std::endl;
+    //std::cout << "Yaw: " << yaw << ", Pitch: " << pitch << std::endl;
 
     return glm::vec2(yaw, pitch);
 }
@@ -126,7 +126,7 @@ public:
         /* Light Pos */
         float light_pos_x = 0.f;
         float light_pos_y = 0.f;
-        float light_pos_z = 25;
+        float light_pos_z = 25.f;
 
         /* Texture */
         int texWidth, texHeight, texChannels;
