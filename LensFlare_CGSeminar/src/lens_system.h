@@ -38,7 +38,6 @@ public:
 
 private:
 	std::vector<LensInterface> m_lens_interfaces;
-	std::vector<glm::mat2x2> m_ray_transfer_matrices; //Needs to be updated if lens interfaces change
 	int m_iris_aperture_pos = 0;
 	float m_sensor_size = 0;
 };

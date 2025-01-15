@@ -26,53 +26,11 @@ DISABLE_WARNINGS_POP()
 #include "ray_propagation_drawer.h"
 #include "quad.h"
 #include "camera.h"
+#include "utils.h"
+#include "preset_lens_systems.h"
 
 constexpr int WIDTH = 1920;
 constexpr int HEIGHT = 1080;
-
-// Function to translate a point to the camera plane
-glm::vec3 translateToCameraSpace(const glm::vec3& cameraPos, const glm::vec3& cameraForward, const glm::vec3& cameraUp, const glm::vec3& point) {
-    glm::vec3 toPoint = point - cameraPos;
-    glm::vec3 right = glm::normalize(glm::cross(cameraForward, cameraUp));
-
-    glm::vec3 cameraSpacePoint(
-        glm::dot(toPoint, right),
-        glm::dot(toPoint, cameraUp),
-        glm::dot(toPoint, cameraForward)
-    );
-
-    return cameraSpacePoint;
-}
-
-glm::vec2 getYawandPitch(const glm::vec3& cameraPos, const glm::vec3& cameraForward, const glm::vec3& cameraUp, const glm::vec3& lightPos) {
-
-    glm::vec3 cameraSpacePoint = translateToCameraSpace(cameraPos, cameraForward, cameraUp, lightPos);
-    // Calculate yaw (angle around the y-axis) and pitch (angle around the x-axis)
-    float yaw = atan2(cameraSpacePoint.x, cameraSpacePoint.z);
-    float pitch = atan2(cameraSpacePoint.y, cameraSpacePoint.z);
-
-    //std::cout << "Yaw: " << yaw << ", Pitch: " << pitch << std::endl;
-
-    return glm::vec2(yaw, pitch);
-}
-
-LensSystem generateExampleLens() {
-
-    std::vector<LensInterface> lensInterfaces;
-    //                                     thickness, refractive index, radius, height
-    lensInterfaces.push_back(LensInterface(7.7f,    1.652f,     30.81f,     14.5f)); //LAKN7
-    lensInterfaces.push_back(LensInterface(1.85f,   1.603f,     -89.35f,    14.5f)); //F5
-    lensInterfaces.push_back(LensInterface(3.52f,   1.f,       580.38f,     14.5f)); //air
-    lensInterfaces.push_back(LensInterface(1.85f,   1.643f,     -80.63f,    12.3f)); //BAF9
-    lensInterfaces.push_back(LensInterface(4.18f,   1.f,       28.34f,      12.f)); //air
-    lensInterfaces.push_back(LensInterface(3.0f,    1.f,       std::numeric_limits<float>::infinity(), 11.6f)); //air (iris aperture)
-    lensInterfaces.push_back(LensInterface(1.85f,   1.581f,     std::numeric_limits<float>::infinity(), 12.3f)); //LF5
-    lensInterfaces.push_back(LensInterface(7.27f,   1.694f,     32.19f,     12.3f)); //LAK13
-    lensInterfaces.push_back(LensInterface(81.857f, 1.f,       -52.99f,     12.3f)); //air
-
-    return LensSystem(5, 10.f, lensInterfaces);
-
-}
 
 class Application {
 public:
@@ -128,7 +86,7 @@ public:
         float light_pos_y = 0.f;
         float light_pos_z = 25.f;
 
-        /* Texture */
+        /* Aperture Texture */
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load("resources/aperture.png", &texWidth, &texHeight, &texChannels, STBI_grey);
 
@@ -149,7 +107,6 @@ public:
 
         stbi_image_free(pixels);
 
-
         int interfaceToUpdate = 0;
         int interfaceToUpdatePreviousValue = -1;
         float newdi = 0.f;
@@ -159,7 +116,7 @@ public:
 
         int interfaceToRemove = 0;
 
-        LensSystem lensSystem = generateExampleLens();
+        LensSystem lensSystem = someCanonLens();
         int irisAperturePos = lensSystem.getIrisAperturePos();
         int irisAperturePosMemory = irisAperturePos;
         float sensorSize = lensSystem.getSensorSize();
@@ -205,7 +162,7 @@ public:
 
             //Button loading example lens system
             if (ImGui::Button("Load Example Lens System")) {
-                lensSystem = generateExampleLens();
+                lensSystem = heliarTronerLens();
                 irisAperturePos = lensSystem.getIrisAperturePos();
                 sensorSize = lensSystem.getSensorSize();
                 lensInterfaces = lensSystem.getLensInterfaces();
@@ -380,10 +337,10 @@ public:
             m_defaultShader.bind();
             float entrancePupilHeight = lensInterfaces[0].hi / 2.f;
             for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.1f, 0.1f, 0.1f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
             for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.2f, 0.2f, 0.2f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.1f, 0.1f, 0.1f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
 
 
@@ -404,7 +361,7 @@ public:
         }
     }
 
-    int panAndZoomSensitivity = 4.f;
+    int panAndZoomSensitivity = 3.f;
     // In here you can handle key presses
     // key - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__keys.html
     // mods - Any modifier keys pressed, like shift or control
@@ -456,7 +413,7 @@ private:
 
     /* Camera Stuff */
     Camera m_camera{&m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f)};
-    const float m_fov = glm::radians(45.0f);
+    const float m_fov = glm::radians(120.0f);
     //float m_visibleWidth = 0.14f;
     float m_distance = 0.5f;
     //// Calculate the FOV in radians
