@@ -181,11 +181,14 @@ public:
                 postAptMss = lensSystem.getMs(postAptReflectionPairs);
                 preAptQuads.clear();
                 postAptQuads.clear();
+                quad_id = 0;
                 for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                    preAptQuads.push_back(FlareQuad(quad_points));
+                    preAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                    quad_id++;
                 }
                 for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                    postAptQuads.push_back(FlareQuad(quad_points));
+                    postAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                    quad_id++;
                 }
                 /* */
             }
@@ -238,11 +241,14 @@ public:
                     postAptMss = lensSystem.getMs(postAptReflectionPairs);
                     preAptQuads.clear();
                     postAptQuads.clear();
+                    quad_id = 0;
                     for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                        preAptQuads.push_back(FlareQuad(quad_points));
+                        preAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                        quad_id++;
                     }
                     for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                        postAptQuads.push_back(FlareQuad(quad_points));
+                        postAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                        quad_id++;
                     }
                     /* */
 
@@ -264,11 +270,14 @@ public:
                         postAptMss = lensSystem.getMs(postAptReflectionPairs);
                         preAptQuads.clear();
                         postAptQuads.clear();
+                        quad_id = 0;
                         for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                            preAptQuads.push_back(FlareQuad(quad_points));
+                            preAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                            quad_id++;
                         }
                         for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                            postAptQuads.push_back(FlareQuad(quad_points));
+                            postAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                            quad_id++;
                         }
                         /* */
                     }
@@ -303,11 +312,14 @@ public:
                 postAptMss = lensSystem.getMs(postAptReflectionPairs);
                 preAptQuads.clear();
                 postAptQuads.clear();
+                quad_id = 0;
                 for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                    preAptQuads.push_back(FlareQuad(quad_points));
+                    preAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                    quad_id++;
                 }
                 for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                    postAptQuads.push_back(FlareQuad(quad_points));
+                    postAptQuads.push_back(FlareQuad(quad_points, quad_id));
+                    quad_id++;
                 }
                 /* */
             }
