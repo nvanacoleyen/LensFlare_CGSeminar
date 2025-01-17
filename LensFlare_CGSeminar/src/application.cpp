@@ -65,7 +65,9 @@ public:
 
     void update()
     {
-        //INITIALIZATION
+        /* INIT */
+
+        /* LIGHT SPHERE */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
         GLuint ibo_light;
         glCreateBuffers(1, &ibo_light);
@@ -79,7 +81,7 @@ public:
         glVertexArrayVertexBuffer(vao_light, 0, vbo_light, offsetof(Vertex, position), sizeof(Vertex));
         glEnableVertexArrayAttrib(vao_light, 0);
 
-        /* Light Pos */
+        /* Light POS */
         float light_pos_x = 0.f;
         float light_pos_y = 0.f;
         float light_pos_z = 25.f;
@@ -105,6 +107,7 @@ public:
 
         stbi_image_free(pixels);
 
+        /* GUI PARAMS */
         int interfaceToUpdate = 0;
         int interfaceToUpdatePreviousValue = -1;
         float newdi = 0.f;
@@ -114,7 +117,8 @@ public:
 
         int interfaceToRemove = 0;
 
-        LensSystem lensSystem = someCanonLens();
+        //LensSystem lensSystem = someCanonLens();
+        LensSystem lensSystem = heliarTronerLens();
         int irisAperturePos = lensSystem.getIrisAperturePos();
         int irisAperturePosMemory = irisAperturePos;
         float sensorSize = lensSystem.getSensorSize();
@@ -129,17 +133,21 @@ public:
         std::vector<glm::mat2x2> postAptMss = lensSystem.getMs(postAptReflectionPairs);
         std::vector<FlareQuad> preAptQuads;
         std::vector<FlareQuad> postAptQuads;
+        float ePHeight = (lensSystem.getEntrancePupilHeight() / 2);
         std::vector<glm::vec3> quad_points = {
-                {7.5f, 7.5f, 0.0f},   //top right
-                {7.5f, -7.5f, 0.0f},  //bottom right
-                {-7.5f, -7.5f, 0.0f}, //bottom left
-                {-7.5f, 7.5f, 0.0f}   //top left
+                {ePHeight, ePHeight, 0.0f},   //top right
+                {ePHeight, -ePHeight, 0.0f},  //bottom right
+                {-ePHeight, -ePHeight, 0.0f}, //bottom left
+                {-ePHeight, ePHeight, 0.0f}   //top left
         };
+        int quad_id = 0;
         for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-            preAptQuads.push_back(FlareQuad(quad_points));
+            preAptQuads.push_back(FlareQuad(quad_points, quad_id));
+            quad_id++;
         }
         for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-            postAptQuads.push_back(FlareQuad(quad_points));
+            postAptQuads.push_back(FlareQuad(quad_points, quad_id));
+            quad_id++;
         }
         /* */
 

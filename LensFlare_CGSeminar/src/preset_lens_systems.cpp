@@ -18,6 +18,7 @@ LensSystem heliarTronerLens() {
 
 }
 
+/* Canon 28-80 f/2.8 (US5576890) */
 LensSystem someCanonLens() {
 
     std::vector<LensInterface> lensInterfaces;
@@ -40,7 +41,7 @@ LensSystem someCanonLens() {
     lensInterfaces.push_back(LensInterface(3.3f, 1.65160f, 40.57f, 14.5f));
     lensInterfaces.push_back(LensInterface(6.91f, 1.f, 71.98f, 14.5f));
 
-    lensInterfaces.push_back(LensInterface(1.50f, 1.f, std::numeric_limits<float>::infinity(), 14.5f));
+    lensInterfaces.push_back(LensInterface(1.50f, 1.f, std::numeric_limits<float>::infinity(), 10.5f));
     lensInterfaces.push_back(LensInterface(3.f, 1.84666f, -145.1f, 14.5f));
     lensInterfaces.push_back(LensInterface(1.2f, 1.60311f, -34.13f, 14.5f));
     lensInterfaces.push_back(LensInterface(2.f, 1.f, 112.83f, 14.5f));
@@ -53,7 +54,7 @@ LensSystem someCanonLens() {
     lensInterfaces.push_back(LensInterface(5.f, 1.713f, 104.39f, 14.5f));
     lensInterfaces.push_back(LensInterface(5.44f, 1.f, -51.25f, 14.5f));
     lensInterfaces.push_back(LensInterface(1.35f, 1.84666f, -30.94f, 14.5f));
-    lensInterfaces.push_back(LensInterface(100.f, 1.f, -84.63f, 14.5f));
+    lensInterfaces.push_back(LensInterface(80.f, 1.f, -84.63f, 14.5f));
 
     return LensSystem(15, 10.f, lensInterfaces);
 

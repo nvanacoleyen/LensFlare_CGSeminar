@@ -10,10 +10,11 @@ FlareQuad::FlareQuad() {
     m_pointsUpdated = true; // Flag indicating points need to be uploaded
 }
 
-FlareQuad::FlareQuad(std::vector<glm::vec3> points) : m_points(points), m_pointsUpdated(true) {
+FlareQuad::FlareQuad(std::vector<glm::vec3> points, int id) : m_points(points), m_pointsUpdated(true) {
     glGenVertexArrays(1, &m_vao_quad);
     glGenBuffers(1, &m_vbo_quad);
     glGenBuffers(1, &m_ebo_quad);
+    m_id = id;
 }
 
 void FlareQuad::setPoints(std::vector<glm::vec3> points) {

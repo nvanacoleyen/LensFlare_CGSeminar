@@ -8,7 +8,7 @@
 class FlareQuad {
 public:
     FlareQuad();
-    FlareQuad(std::vector<glm::vec3> points); // Must be an array of 4 points!
+    FlareQuad(std::vector<glm::vec3> points, int id); // Must be an array of 4 points!
     void setPoints(std::vector<glm::vec3> points);
     std::vector<glm::vec3> getPoints();
     void releaseArrayAndBuffer();
@@ -18,6 +18,7 @@ private:
     void uploadDataIfNeeded(); // New method for data upload optimization
 
     std::vector<glm::vec3> m_points;
+    int m_id;
     std::vector<int> m_indices = { 0, 1, 3, 1, 2, 3 };
     GLuint m_vao_quad;
     GLuint m_vbo_quad;
