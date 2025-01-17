@@ -53,7 +53,7 @@ LensSystem someCanonLens() {
     lensInterfaces.push_back(LensInterface(5.f, 1.713f, 104.39f, 14.5f));
     lensInterfaces.push_back(LensInterface(5.44f, 1.f, -51.25f, 14.5f));
     lensInterfaces.push_back(LensInterface(1.35f, 1.84666f, -30.94f, 14.5f));
-    lensInterfaces.push_back(LensInterface(80.f, 1.f, -84.63f, 14.5f));
+    lensInterfaces.push_back(LensInterface(100.f, 1.f, -84.63f, 14.5f));
 
     return LensSystem(15, 10.f, lensInterfaces);
 

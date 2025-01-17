@@ -2,7 +2,6 @@
 
 #include <glm/glm.hpp>
 #include <vector>
-#include "line_drawer.h"
 
 struct LensInterface {
 	float di; //positive displacement to the next interface at interface i (from thickness)

@@ -21,9 +21,7 @@ DISABLE_WARNINGS_POP()
 #include <vector>
 #include <cmath>
 #include <limits>
-#include "line_drawer.h"
 #include "lens_system.h"
-#include "ray_propagation_drawer.h"
 #include "quad.h"
 #include "camera.h"
 #include "utils.h"
@@ -337,10 +335,10 @@ public:
             m_defaultShader.bind();
             float entrancePupilHeight = lensInterfaces[0].hi / 2.f;
             for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.1f, 0.1f, 0.1f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.01f, 0.0f, 0.01f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
             for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.1f, 0.1f, 0.1f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.0f, 0.01f, 0.01f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
 
 
@@ -413,7 +411,7 @@ private:
 
     /* Camera Stuff */
     Camera m_camera{&m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f)};
-    const float m_fov = glm::radians(120.0f);
+    const float m_fov = glm::radians(70.0f);
     //float m_visibleWidth = 0.14f;
     float m_distance = 0.5f;
     //// Calculate the FOV in radians
