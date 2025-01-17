@@ -82,8 +82,8 @@ public:
         glEnableVertexArrayAttrib(vao_light, 0);
 
         /* Light POS */
-        float light_pos_x = 0.f;
-        float light_pos_y = 0.f;
+        float light_pos_x = 5.f;
+        float light_pos_y = 5.f;
         float light_pos_z = 25.f;
 
         /* Aperture Texture */
@@ -339,7 +339,9 @@ public:
             glm::mat4 sensorMatrix = glm::translate(glm::mat4(1.0f), cameraPos);
             sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
             sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
-            //sensorMatrix = glm::translate(sensorMatrix, cameraPos);
+
+            std::vector<glm::vec3> preAPTtransmissions = lensSystem.getTransmission(preAptReflectionPairs, 300, glm::vec2(0.0f, yawandPitch.x));
+            std::vector<glm::vec3> postAPTtransmissions = lensSystem.getTransmission(postAptReflectionPairs, 300, glm::vec2(0.0f, yawandPitch.x));
 
             // Clear the screen
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -355,10 +357,10 @@ public:
             m_defaultShader.bind();
             float entrancePupilHeight = lensInterfaces[0].hi / 2.f;
             for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(0.01f, 0.0f, 0.01f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(100.0f, 100.0f, 100.0f) * preAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
             for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(0.0f, 0.01f, 0.01f), texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(100.0f, 100.0f, 100.0f) * postAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
 
 
