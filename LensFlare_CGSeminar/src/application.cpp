@@ -82,8 +82,8 @@ public:
         glEnableVertexArrayAttrib(vao_light, 0);
 
         /* Light POS */
-        float light_pos_x = 5.f;
-        float light_pos_y = 5.f;
+        float light_pos_x = 0.001f;
+        float light_pos_y = 0.001f;
         float light_pos_z = 25.f;
 
         /* Aperture Texture */
@@ -114,11 +114,12 @@ public:
         float newni = 0.f;
         float newRi = 0.f;
         float newhi = 0.f;
+        float newlambda0 = 0.0f;
 
         int interfaceToRemove = 0;
 
-        //LensSystem lensSystem = someCanonLens();
-        LensSystem lensSystem = heliarTronerLens();
+        LensSystem lensSystem = someCanonLens();
+        //LensSystem lensSystem = heliarTronerLens();
         int irisAperturePos = lensSystem.getIrisAperturePos();
         int irisAperturePosMemory = irisAperturePos;
         float sensorSize = lensSystem.getSensorSize();
@@ -201,12 +202,14 @@ public:
                             newni = lensInterfaces[interfaceToUpdate].ni;
                             newRi = lensInterfaces[interfaceToUpdate].Ri;
                             newhi = lensInterfaces[interfaceToUpdate].hi;
+                            newlambda0 = lensInterfaces[interfaceToUpdate].lambda0;
                         }
                         else {
                             newdi = 0.f;
                             newni = 0.f;
                             newRi = 0.f;
                             newhi = 0.f;
+                            newlambda0 = 0.f;
                         }
                         interfaceToUpdatePreviousValue = interfaceToUpdate;
                     }
@@ -216,8 +219,9 @@ public:
                 ImGui::InputFloat("Refractive Index", &newni);
                 ImGui::InputFloat("Radius", &newRi);
                 ImGui::InputFloat("Height", &newhi);
+                ImGui::InputFloat("Lambda0", &newlambda0);
                 if (ImGui::Button("Update")) {
-                    LensInterface newLensInterface(newdi, newni, newRi, newhi);
+                    LensInterface newLensInterface(newdi, newni, newRi, newhi, newlambda0);
                     if (interfaceToUpdate < lensInterfaces.size() && interfaceToUpdate >= 0) {
                         //update an existing interface
                         lensInterfaces[interfaceToUpdate] = newLensInterface;
@@ -285,7 +289,7 @@ public:
             }
 
             for (int i = 0; i < lensInterfaces.size(); i++) {
-                std::string lensInterfaceDescription = "Interface " + std::to_string(i) + ", d = " + std::to_string(lensInterfaces[i].di) + ", n = " + std::to_string(lensInterfaces[i].ni) + ", R = " + std::to_string(lensInterfaces[i].Ri) + ", h = " + std::to_string(lensInterfaces[i].hi);
+                std::string lensInterfaceDescription = "Interface " + std::to_string(i) + ", d = " + std::to_string(lensInterfaces[i].di) + ", n = " + std::to_string(lensInterfaces[i].ni) + ", R = " + std::to_string(lensInterfaces[i].Ri) + ", h = " + std::to_string(lensInterfaces[i].hi) + ", lambda0 = " + std::to_string(lensInterfaces[i].lambda0);
                 ImGui::Text(lensInterfaceDescription.c_str());
             }
 
@@ -340,8 +344,8 @@ public:
             sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
             sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
-            std::vector<glm::vec3> preAPTtransmissions = lensSystem.getTransmission(preAptReflectionPairs, 300, glm::vec2(0.0f, yawandPitch.x));
-            std::vector<glm::vec3> postAPTtransmissions = lensSystem.getTransmission(postAptReflectionPairs, 300, glm::vec2(0.0f, yawandPitch.x));
+            std::vector<glm::vec3> preAPTtransmissions = lensSystem.getTransmission(preAptReflectionPairs, glm::vec2(0.0f, yawandPitch.x));
+            std::vector<glm::vec3> postAPTtransmissions = lensSystem.getTransmission(postAptReflectionPairs, glm::vec2(0.0f, yawandPitch.x));
 
             // Clear the screen
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -360,7 +364,7 @@ public:
                 preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(100.0f, 100.0f, 100.0f) * preAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
             for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(100.0f, 100.0f, 100.0f) * postAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(100.0f, 100.0f, 100.0f)* postAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
 
 
