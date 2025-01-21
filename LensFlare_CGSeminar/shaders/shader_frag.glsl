@@ -9,10 +9,13 @@ layout(location = 1) uniform vec3 color;
 layout(location = 6) uniform float entrance_pupil_height;
 layout(location = 7) uniform sampler2D texApt;
 
+layout(location = 9) uniform float irisApertureHeight;
+
 layout(location = 0) out vec4 outColor;
 
 in vec2 entrancePos;
 in vec2 aptPos;
+in float intensityVal;
 
 void main()
 {
@@ -26,5 +29,5 @@ void main()
         discard;
     }
 
-    outColor = vec4(color, 0.3);
+    outColor = vec4(color * intensityVal, 0.5);
 }

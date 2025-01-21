@@ -339,6 +339,7 @@ public:
             glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, lightPos);
             glm::vec2 cameraYawandPitch = m_camera.getYawAndPitch();
             float irisApertureHeight = lensSystem.getIrisApertureHeight();
+            float entrancePupilHeight = lensSystem.getEntrancePupilHeight() / 2.f;
 
             glm::mat4 sensorMatrix = glm::translate(glm::mat4(1.0f), cameraPos);
             sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -359,7 +360,6 @@ public:
             
             //RENDERING
             m_defaultShader.bind();
-            float entrancePupilHeight = lensInterfaces[0].hi / 2.f;
             for (int i = 0; i < preAptReflectionPairs.size(); i++) {
                 preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(100.0f, 100.0f, 100.0f) * preAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
