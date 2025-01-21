@@ -361,10 +361,10 @@ public:
             //RENDERING
             m_defaultShader.bind();
             for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(100.0f, 100.0f, 100.0f) * preAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(200.0f, 200.0f, 200.0f) * preAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
             for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(100.0f, 100.0f, 100.0f)* postAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(200.0f, 200.0f, 200.0f)* postAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
             }
 
 
@@ -437,7 +437,7 @@ private:
 
     /* Camera Stuff */
     Camera m_camera{&m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f)};
-    const float m_fov = glm::radians(70.0f);
+    const float m_fov = glm::radians(50.0f);
     //float m_visibleWidth = 0.14f;
     float m_distance = 0.5f;
     //// Calculate the FOV in radians
