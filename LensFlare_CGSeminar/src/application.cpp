@@ -105,6 +105,21 @@ public:
         glTextureParameteri(texApt, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTextureParameteri(texApt, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+        /* SHADER BUFFERS */
+        m_defaultShader.bind();
+        const GLuint MAX_BUFFER_SIZE = 1000; // Maximum number of quad IDs to store
+        GLuint ssboQuadIDs;
+        glGenBuffers(1, &ssboQuadIDs);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboQuadIDs);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_BUFFER_SIZE * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssboQuadIDs); // Binding point 0
+
+        GLuint atomicCounterBuffer;
+        glGenBuffers(1, &atomicCounterBuffer);
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
+        glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, atomicCounterBuffer); // Binding point 1
+
         stbi_image_free(pixels);
 
         /* GUI PARAMS */
@@ -360,12 +375,67 @@ public:
             
             //RENDERING
             m_defaultShader.bind();
+
+            /* Bind General Variables */
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp)); // Projection Matrix
+            glUniform1f(4, yawandPitch.x);
+            glUniform1f(5, yawandPitch.y);
+            glUniform1f(6, entrancePupilHeight);
+            glUniformMatrix4fv(8, 1, GL_FALSE, glm::value_ptr(sensorMatrix));
+            glUniform1f(9, irisApertureHeight);
+
+            glUniform1i(10, m_cursorPosX);
+            glUniform1i(11, m_cursorPosY);
+            glUniform1i(13, m_getGhostsAtMouse ? 1 : 0);
+      
+            glActiveTexture(GL_TEXTURE0); // Bind texture
+            glBindTexture(GL_TEXTURE_2D, texApt);
+            glUniform1i(7, 0);
+
+            /* Bind Quad Specific Variables */
             for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-                preAptQuads[i].drawQuad(mvp, preAptMas[i], default_Ms, glm::vec3(200.0f, 200.0f, 200.0f) * preAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] == i) {
+                    preAptQuads[i].drawQuad(preAptMas[i], default_Ms, glm::vec3(1.0f, 0.0f, 0.0f));
+                }
+                else {
+                    preAptQuads[i].drawQuad(preAptMas[i], default_Ms, glm::vec3(200.0f, 200.0f, 200.0f) * preAPTtransmissions[i]);
+                }
             }
             for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-                postAptQuads[i].drawQuad(mvp, default_Ma, postAptMss[i], glm::vec3(200.0f, 200.0f, 200.0f)* postAPTtransmissions[i], texApt, yawandPitch, entrancePupilHeight, sensorMatrix, irisApertureHeight);
+                if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] - preAptReflectionPairs.size() == i) {
+                    postAptQuads[i].drawQuad(default_Ma, postAptMss[i], glm::vec3(1.0f, 0.0f, 0.0f));
+                }
+                else {
+                    postAptQuads[i].drawQuad(default_Ma, postAptMss[i], glm::vec3(200.0f, 200.0f, 200.0f) * postAPTtransmissions[i]);
+                }
             }
+
+            if (m_getGhostsAtMouse) {
+                GLuint numQuadsAtPixel = 0;
+                glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
+                glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &numQuadsAtPixel);
+
+                m_selectedQuadIDs.clear();
+                m_selectedQuadIDs.reserve(numQuadsAtPixel);
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboQuadIDs);
+                GLuint* ptr = (GLuint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+                std::copy(ptr, ptr + numQuadsAtPixel, std::back_inserter(m_selectedQuadIDs));
+                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+                //for (const auto& id : m_selectedQuadIDs) {
+                //    std::cout << "Quad ID " << id << " rendered at the target pixel." << std::endl;
+                //}
+                if (!m_selectedQuadIDs.empty()) {
+                    m_selectedQuadIndex = 0;
+                }
+                else {
+                    m_selectedQuadIndex = -1;
+                }
+
+                m_getGhostsAtMouse = false;
+            }
+
 
 
             //RENDER LIGHT SOURCE
@@ -376,6 +446,10 @@ public:
             glBindVertexArray(vao_light);
             glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((lightSphere.triangles.size() * 3)), GL_UNSIGNED_INT, nullptr);
 
+            //Reset atomic counter
+            GLuint zero = 0;
+            glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
+            glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glBindVertexArray(0);
@@ -393,13 +467,24 @@ public:
     {
         switch (key)
         {
-        /*case GLFW_KEY_A:
+        case GLFW_KEY_BACKSPACE:
+            m_selectedQuadIDs.clear();
+            m_selectedQuadIndex = -1;
             break;
-        */
+        case GLFW_KEY_UP:
+            if (m_selectedQuadIndex != -1 && m_selectedQuadIndex < m_selectedQuadIDs.size() - 1) {
+                m_selectedQuadIndex++;
+            }
+            break;
+        case GLFW_KEY_DOWN:
+            if (m_selectedQuadIndex != -1 && m_selectedQuadIndex > 0) {
+                m_selectedQuadIndex--;
+            }
+            break;
         default:
             break;
         }
-        //std::cout << "Key pressed: " << key << std::endl;
+        std::cout << "Key pressed: " << key << std::endl;
     }
 
     // In here you can handle key releases
@@ -413,6 +498,8 @@ public:
     // If the mouse is moved this function will be called with the x, y screen-coordinates of the mouse
     void onMouseMove(const glm::dvec2& cursorPos)
     {
+        m_cursorPosX = cursorPos.x;
+        m_cursorPosY = cursorPos.y;
         //std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
     }
 
@@ -421,6 +508,14 @@ public:
     // mods - Any modifier buttons pressed
     void onMouseClicked(int button, int mods)
     {
+        switch (button)
+        {
+        case 1:
+            m_getGhostsAtMouse = true;
+            break;
+        default:
+            break;
+        }
         //std::cout << "Pressed mouse button: " << button << std::endl;
     }
 
@@ -444,6 +539,15 @@ private:
     //float m_fov = 2.0f * atan(m_visibleWidth / (2.0f * m_distance));
     const float m_aspect = static_cast<float>(WIDTH) / static_cast<float>(HEIGHT);
     const glm::mat4 m_mainProjectionMatrix = glm::perspective(m_fov, m_aspect, 0.01f, 100.0f);
+
+    /* Cursor Pos */
+    int m_cursorPosX = 0;
+    int m_cursorPosY = 0;
+
+    /* Ghost Selection */
+    bool m_getGhostsAtMouse = false;
+    std::vector<int> m_selectedQuadIDs;
+    int m_selectedQuadIndex = -1;
 
     // Shader for default rendering
     Shader m_defaultShader;

@@ -47,7 +47,7 @@ void FlareQuad::uploadDataIfNeeded() {
     }
 }
 
-void FlareQuad::drawQuad(glm::mat4 projection, glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color, GLuint texApt, glm::vec2 yawandPitch, float entrancePupilHeight, glm::mat4 sensorMatrix, float irisApertureHeight) {
+void FlareQuad::drawQuad(glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color) {
     // Upload data if points have changed
     uploadDataIfNeeded();
 
@@ -55,20 +55,10 @@ void FlareQuad::drawQuad(glm::mat4 projection, glm::mat2x2 Ma, glm::mat2x2 Ms, g
     glBindVertexArray(m_vao_quad);
 
     // Set shader uniforms
-    glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(projection)); // Projection Matrix
     glUniform3fv(1, 1, glm::value_ptr(color)); // Color
     glUniformMatrix2fv(2, 1, GL_FALSE, glm::value_ptr(Ma)); // Projection Matrix
     glUniformMatrix2fv(3, 1, GL_FALSE, glm::value_ptr(Ms)); // Projection Matrix
-    glUniform1fv(4, 1, &yawandPitch.x);
-    glUniform1fv(5, 1, &yawandPitch.y);
-    glUniform1fv(6, 1, &entrancePupilHeight);
-    glUniformMatrix4fv(8, 1, GL_FALSE, glm::value_ptr(sensorMatrix));
-    glUniform1fv(9, 1, &irisApertureHeight);
-
-    // Bind texture
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texApt);
-    glUniform1i(7, 0);
+    glUniform1i(12, m_id); // Quad ID
 
     // Draw the quad
     glDrawArrays(GL_LINE_STRIP, 0, m_points.size());

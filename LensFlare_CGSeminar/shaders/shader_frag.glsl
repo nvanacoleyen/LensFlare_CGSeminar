@@ -10,6 +10,16 @@ layout(location = 6) uniform float entrance_pupil_height;
 layout(location = 7) uniform sampler2D texApt;
 
 layout(location = 9) uniform float irisApertureHeight;
+layout(location = 10) uniform int cursorPosX;
+layout(location = 11) uniform int cursorPosY;
+layout(location = 12) uniform int quadID;
+layout(location = 13) uniform bool getGhostsAtMouse;
+
+layout(std430, binding = 0) buffer QuadIDBuffer {
+    uint quadIDs[];
+};
+
+layout(binding = 1, offset = 0) uniform atomic_uint quadIDCounter;
 
 layout(location = 0) out vec4 outColor;
 
@@ -28,6 +38,18 @@ void main()
     if (apt_test == 0.0) {
         discard;
     }
+
+    if (getGhostsAtMouse) {
+        ivec2 fragCoord = ivec2(gl_FragCoord.xy);
+        if (fragCoord.x == cursorPosX && fragCoord.y == cursorPosY) {
+            // Atomically increment the counter and get the index
+            uint index = atomicCounterIncrement(quadIDCounter);
+            if (index < quadIDs.length()) {
+                quadIDs[index] = quadID;
+            }
+        }
+    }
+
 
     outColor = vec4(color * intensityVal, 0.5);
 }
