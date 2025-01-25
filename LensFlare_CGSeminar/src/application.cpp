@@ -310,6 +310,11 @@ public:
 
             ImGui::End();
 
+            ImGui::Begin("Color Picker");
+            static ImVec4 color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Default color (red)
+            ImGui::ColorEdit3("Choose Color", (float*)&color);    // Color wheel widget
+            ImGui::End();
+
             if (irisAperturePos >= lensInterfaces.size()) {
                 irisAperturePos = lensInterfaces.size() - 1;
             }
@@ -428,6 +433,7 @@ public:
                 //}
                 if (!m_selectedQuadIDs.empty()) {
                     m_selectedQuadIndex = 0;
+                    std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;
                 }
                 else {
                     m_selectedQuadIndex = -1;
@@ -474,17 +480,19 @@ public:
         case GLFW_KEY_UP:
             if (m_selectedQuadIndex != -1 && m_selectedQuadIndex < m_selectedQuadIDs.size() - 1) {
                 m_selectedQuadIndex++;
+                std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;
             }
             break;
         case GLFW_KEY_DOWN:
             if (m_selectedQuadIndex != -1 && m_selectedQuadIndex > 0) {
                 m_selectedQuadIndex--;
+                std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;
             }
             break;
         default:
             break;
         }
-        std::cout << "Key pressed: " << key << std::endl;
+        //std::cout << "Key pressed: " << key << std::endl;
     }
 
     // In here you can handle key releases
