@@ -10,7 +10,7 @@ DISABLE_WARNINGS_POP()
 class Camera {
 public:
     Camera(Window* pWindow);
-    Camera(Window* pWindow, const glm::vec3& position, const glm::vec3& forward);
+    Camera(Window* pWindow, const glm::vec3& position, const glm::vec3& forward, int leftSideIgnore);
 
     void updateInput();
     void setUserInteraction(bool enabled);
@@ -34,4 +34,5 @@ private:
     const Window* m_pWindow;
     bool m_userInteraction { true };
     glm::dvec2 m_prevCursorPos { 0 };
+    int leftSideIgnore;
 };

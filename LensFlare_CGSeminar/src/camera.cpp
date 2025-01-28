@@ -9,14 +9,15 @@ DISABLE_WARNINGS_POP()
 #include "iostream"
 
 Camera::Camera(Window* pWindow)
-    : Camera(pWindow, glm::vec3(0), glm::vec3(0, 0, -1))
+    : Camera(pWindow, glm::vec3(0), glm::vec3(0, 0, -1), 0)
 {
 }
 
-Camera::Camera(Window* pWindow, const glm::vec3& pos, const glm::vec3& forward)
+Camera::Camera(Window* pWindow, const glm::vec3& pos, const glm::vec3& forward, int leftSideIgnore)
     : m_position(pos)
     , m_forward(glm::normalize(forward))
     , m_pWindow(pWindow)
+    , leftSideIgnore(leftSideIgnore)
 {
 }
 
@@ -67,7 +68,7 @@ void Camera::updateInput()
             m_position += moveSpeed * m_forward;
         if (m_pWindow->isKeyPressed(GLFW_KEY_S))
             m_position -= moveSpeed * m_forward;
-        if (m_pWindow->isKeyPressed(GLFW_KEY_E))
+        if (m_pWindow->isKeyPressed(GLFW_KEY_R))
             m_position += moveSpeed * m_up;
         if (m_pWindow->isKeyPressed(GLFW_KEY_F))
             m_position -= moveSpeed * m_up;
@@ -76,7 +77,7 @@ void Camera::updateInput()
         const glm::vec2 delta = lookSpeed * glm::vec2(cursorPos - m_prevCursorPos);
         m_prevCursorPos = cursorPos;
 
-        if (m_pWindow->isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+        if (m_pWindow->isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) && cursorPos.x > leftSideIgnore) {
             if (delta.x != 0.0f)
                 rotateY(delta.x);
             if (delta.y != 0.0f)
