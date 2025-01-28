@@ -32,6 +32,11 @@ constexpr int HEIGHT = 1080;
 constexpr int MENU_WIDTH = FULL_WIDTH / 5;
 constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
 
+struct QuadData {
+    GLuint quadID;
+    float intensityVal;
+};
+
 //constexpr int WIDTH = 1280;
 //constexpr int HEIGHT = 720;
 
@@ -145,12 +150,12 @@ public:
 
         /* SHADER BUFFERS */
         m_defaultShader.bind();
-        const GLuint MAX_BUFFER_SIZE = 1000; // Maximum number of quad IDs to store
-        GLuint ssboQuadIDs;
-        glGenBuffers(1, &ssboQuadIDs);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboQuadIDs);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_BUFFER_SIZE * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssboQuadIDs);
+        const GLuint MAX_BUFFER_SIZE = 1000; // Maximum number of quad data entries to store
+        GLuint ssboQuadData;
+        glGenBuffers(1, &ssboQuadData);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboQuadData);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_BUFFER_SIZE * sizeof(QuadData), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssboQuadData);
 
         GLuint atomicCounterBuffer;
         glGenBuffers(1, &atomicCounterBuffer);
@@ -359,14 +364,26 @@ public:
                 m_selectedQuadIDs.clear();
                 m_selectedQuadIDs.reserve(numQuadsAtPixel);
 
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboQuadIDs);
-                GLuint* ptr = (GLuint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-                std::copy(ptr, ptr + numQuadsAtPixel, std::back_inserter(m_selectedQuadIDs));
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboQuadData);
+                QuadData* ptr = (QuadData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+
+                // Create a vector to hold the QuadData entries
+                std::vector<QuadData> quadDataEntries(ptr, ptr + numQuadsAtPixel);
                 glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+                std::sort(quadDataEntries.begin(), quadDataEntries.end(), [](const QuadData& a, const QuadData& b) {
+                    return a.intensityVal > b.intensityVal;
+                    });
+
+                // Extract the quadIDs from the sorted QuadData entries
+                for (const auto& data : quadDataEntries) {
+                    m_selectedQuadIDs.push_back(data.quadID);
+                }
 
                 //for (const auto& id : m_selectedQuadIDs) {
                 //    std::cout << "Quad ID " << id << " rendered at the target pixel." << std::endl;
                 //}
+
                 if (!m_selectedQuadIDs.empty()) {
                     m_selectedQuadIndex = 0;
                     std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;

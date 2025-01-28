@@ -1,10 +1,6 @@
 #version 450 core
 
-
 layout(location = 1) uniform vec3 color;
-
-
-
 
 layout(location = 6) uniform float entrance_pupil_height;
 layout(location = 7) uniform sampler2D texApt;
@@ -15,8 +11,13 @@ layout(location = 11) uniform int cursorPosY;
 layout(location = 12) uniform int quadID;
 layout(location = 13) uniform bool getGhostsAtMouse;
 
+struct QuadData {
+    uint quadID;
+    float intensityVal;
+};
+
 layout(std430, binding = 0) buffer QuadIDBuffer {
-    uint quadIDs[];
+    QuadData quadData[];
 };
 
 layout(binding = 1, offset = 0) uniform atomic_uint quadIDCounter;
@@ -44,12 +45,12 @@ void main()
         if (fragCoord.x == cursorPosX && fragCoord.y == cursorPosY) {
             // Atomically increment the counter and get the index
             uint index = atomicCounterIncrement(quadIDCounter);
-            if (index < quadIDs.length()) {
-                quadIDs[index] = quadID;
+            if (index < quadData.length()) {
+                quadData[index].quadID = quadID;
+                quadData[index].intensityVal = intensityVal;
             }
         }
     }
-
 
     outColor = vec4(color * intensityVal, 0.5);
 }
