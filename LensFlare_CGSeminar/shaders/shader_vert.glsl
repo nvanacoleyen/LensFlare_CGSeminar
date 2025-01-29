@@ -44,7 +44,8 @@ void main()
     vec2 quad_center_y_s = Ms * Ma * quad_center_y;
 
     float quad_heigth = sqrt(pow((ray_x_s.x - quad_center_x_s.x), 2.0) + pow((ray_y_s.x - quad_center_y_s.x), 2.0));
-    intensityVal = (irisApertureHeight / 2.0) / quad_heigth;
+    float initial_quad_heigth = sqrt(pow(x_offset, 2.0) + pow(y_offset, 2.0));
+    intensityVal = initial_quad_heigth / quad_heigth;
 
     gl_Position = mvp * sensorMatrix * vec4(vec3(ray_x_s.x, ray_y_s.x, 30.0), 1.0);
 }

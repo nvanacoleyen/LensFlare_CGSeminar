@@ -31,6 +31,7 @@ constexpr int FULL_WIDTH = 1920;
 constexpr int HEIGHT = 1080;
 constexpr int MENU_WIDTH = FULL_WIDTH / 4;
 constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
+constexpr float DISPLAY_SCALING_FACTOR = 1.5;
 
 //constexpr int WIDTH = 1280;
 //constexpr int HEIGHT = 720;
@@ -44,7 +45,7 @@ struct QuadData {
 class Application {
 public:
     Application()
-        : m_window("Lens Flare Rendering", glm::ivec2(FULL_WIDTH, HEIGHT), OpenGLVersion::GL45)
+        : m_window("Lens Flare Rendering", glm::ivec2(FULL_WIDTH / DISPLAY_SCALING_FACTOR, HEIGHT / DISPLAY_SCALING_FACTOR), OpenGLVersion::GL45)
     {
         m_window.registerKeyCallback([this](int key, int scancode, int action, int mods) {
             if (action == GLFW_PRESS)
@@ -393,7 +394,7 @@ public:
                     m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, ghost_color);
                 }
                 else {
-                    m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, glm::vec3(200.0f, 200.0f, 200.0f) * preAPTtransmissions[i]);
+                    m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, glm::vec3(100.0f, 100.0f, 100.0f) * preAPTtransmissions[i]);
                 }
             }
             for (int i = 0; i < m_postAptReflectionPairs.size(); i++) {
@@ -401,7 +402,7 @@ public:
                     m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], ghost_color);
                 }
                 else {
-                    m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], glm::vec3(200.0f, 200.0f, 200.0f) * postAPTtransmissions[i]);
+                    m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], glm::vec3(100.0f, 100.0f, 100.0f) * postAPTtransmissions[i]);
                 }
             }
 
