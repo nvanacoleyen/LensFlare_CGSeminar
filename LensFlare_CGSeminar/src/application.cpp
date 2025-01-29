@@ -29,16 +29,17 @@ DISABLE_WARNINGS_POP()
 
 constexpr int FULL_WIDTH = 1920;
 constexpr int HEIGHT = 1080;
-constexpr int MENU_WIDTH = FULL_WIDTH / 5;
+constexpr int MENU_WIDTH = FULL_WIDTH / 4;
 constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
+
+//constexpr int WIDTH = 1280;
+//constexpr int HEIGHT = 720;
 
 struct QuadData {
     GLuint quadID;
     float intensityVal;
 };
 
-//constexpr int WIDTH = 1280;
-//constexpr int HEIGHT = 720;
 
 class Application {
 public:
@@ -179,6 +180,14 @@ public:
 
         glm::vec3 ghost_color = glm::vec3(1.0f, 0.0f, 0.0f);
 
+        int selectedQuadId = -1;
+        int selectedQuadIdMemory = -1;
+        glm::vec2 selectedQuadReflectionInterfaces;
+        int firstQuadReflectionInterface = -1;
+        int secondQuadReflectionInterface = -1;
+        float firstQuadReflectionInterfaceLambda0 = 0.0;
+        float secondQuadReflectionInterfaceLambda0 = 0.0;
+
         /* Flare Paths and Matrices */
         std::vector<LensInterface> lensInterfaces = m_lensSystem.getLensInterfaces();
         refreshMatricesAndQuads();
@@ -211,7 +220,7 @@ public:
             }
 
             if (ImGui::CollapsingHeader("Modify Interface")) {
-                if (ImGui::InputInt("Interface to Update", &interfaceToUpdate)) {
+                ImGui::InputInt("Interface to Update", &interfaceToUpdate);
                     if (interfaceToUpdate != interfaceToUpdatePreviousValue) {
                         if (interfaceToUpdate < lensInterfaces.size() && interfaceToUpdate >= 0) {
                             newdi = lensInterfaces[interfaceToUpdate].di;
@@ -221,15 +230,14 @@ public:
                             newlambda0 = lensInterfaces[interfaceToUpdate].lambda0;
                         }
                         else {
-                            newdi = 0.f;
-                            newni = 0.f;
-                            newRi = 0.f;
-                            newhi = 0.f;
-                            newlambda0 = 0.f;
+                                newdi = 0.f;
+                                newni = 0.f;
+                                newRi = 0.f;
+                                newhi = 0.f;
+                                newlambda0 = 0.f;
                         }
-                        interfaceToUpdatePreviousValue = interfaceToUpdate;
+                    interfaceToUpdatePreviousValue = interfaceToUpdate;
                     }
-                }
 
                 ImGui::InputFloat("Thickness", &newdi);
                 ImGui::InputFloat("Refractive Index", &newni);
@@ -273,6 +281,43 @@ public:
             //    std::string lensInterfaceDescription = "Interface " + std::to_string(i) + ", d = " + std::to_string(lensInterfaces[i].di) + ", n = " + std::to_string(lensInterfaces[i].ni) + ", R = " + std::to_string(lensInterfaces[i].Ri) + ", h = " + std::to_string(lensInterfaces[i].hi) + ", lambda0 = " + std::to_string(lensInterfaces[i].lambda0);
             //    ImGui::Text(lensInterfaceDescription.c_str());
             //}
+
+            if (m_selectedQuadIndex != -1) {
+                //get pairs of the id reflection
+                selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
+                if (selectedQuadId != selectedQuadIdMemory) {
+                    //update vals
+                    if (selectedQuadId < m_preAptReflectionPairs.size()) {
+                        selectedQuadReflectionInterfaces = m_preAptReflectionPairs[selectedQuadId];
+                    }
+                    else {
+                        selectedQuadReflectionInterfaces = m_postAptReflectionPairs[selectedQuadId - m_preAptReflectionPairs.size()];
+                    }
+                    firstQuadReflectionInterface = selectedQuadReflectionInterfaces[0];
+                    secondQuadReflectionInterface = selectedQuadReflectionInterfaces[1];
+                    firstQuadReflectionInterfaceLambda0 = lensInterfaces[firstQuadReflectionInterface].lambda0;
+                    secondQuadReflectionInterfaceLambda0 = lensInterfaces[secondQuadReflectionInterface].lambda0;
+                    selectedQuadIdMemory = selectedQuadId;
+                }
+             
+                std::string label_lambda = "Lambda0 of Interface ";
+                ImGui::Text((label_lambda + std::to_string(firstQuadReflectionInterface)).c_str());
+                ImGui::InputFloat("(1)", &firstQuadReflectionInterfaceLambda0);
+                ImGui::Text((label_lambda + std::to_string(secondQuadReflectionInterface)).c_str());
+                ImGui::InputFloat("(2)", &secondQuadReflectionInterfaceLambda0);
+                if (ImGui::Button("Apply Changes")) {
+                    lensInterfaces[firstQuadReflectionInterface].lambda0 = firstQuadReflectionInterfaceLambda0;
+                    lensInterfaces[secondQuadReflectionInterface].lambda0 = secondQuadReflectionInterfaceLambda0;
+                    m_lensSystem.setLensInterfaces(lensInterfaces);
+                }
+            } else {
+                selectedQuadId = -1;
+                selectedQuadIdMemory = -1;
+                firstQuadReflectionInterface = -1;
+                secondQuadReflectionInterface = -1;
+                firstQuadReflectionInterfaceLambda0 = 0.0;
+                secondQuadReflectionInterfaceLambda0 = 0.0;
+            }
 
             ImGui::End();
 
