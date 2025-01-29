@@ -321,7 +321,7 @@ glm::vec3 LensSystem::computeFresnelAR(
 		2 * rs01 * ris * cos(r_relPhase);
 	float r_out_p2 = rp01 * rp01 + rip * rip + -
 		2 * rp01 * rip * cos(r_relPhase);
-	float r_res = (r_out_s2 + r_out_p2) / 2; // reflectivity
+	float r_res = std::min((r_out_s2 + r_out_p2) / 2, 1.0f); // reflectivity
 	/* GREEN */
 	float g_relPhase = 4 * std::numbers::pi / GREEN_WAVELENGTH * (delay - dx * sin(theta0));
 	// Add up sines of different phase and amplitude
@@ -329,7 +329,7 @@ glm::vec3 LensSystem::computeFresnelAR(
 		2 * rs01 * ris * cos(g_relPhase);
 	float g_out_p2 = rp01 * rp01 + rip * rip + -
 		2 * rp01 * rip * cos(g_relPhase);
-	float g_res = (g_out_s2 + g_out_p2) / 2; // reflectivity
+	float g_res = std::min((g_out_s2 + g_out_p2) / 2, 1.0f); // reflectivity
 	/* BLUE */
 	float b_relPhase = 4 * std::numbers::pi / BLUE_WAVELENGTH * (delay - dx * sin(theta0));
 	// Add up sines of different phase and amplitude
@@ -337,7 +337,7 @@ glm::vec3 LensSystem::computeFresnelAR(
 		2 * rs01 * ris * cos(b_relPhase);
 	float b_out_p2 = rp01 * rp01 + rip * rip + -
 		2 * rp01 * rip * cos(b_relPhase);
-	float b_res = (b_out_s2 + b_out_p2) / 2; // reflectivity
+	float b_res = std::min((b_out_s2 + b_out_p2) / 2, 1.0f); // reflectivity
 
 	return  glm::vec3(r_res, g_res, b_res);
 }

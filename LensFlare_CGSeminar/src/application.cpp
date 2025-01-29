@@ -180,6 +180,7 @@ public:
 
         glm::vec3 ghost_color = glm::vec3(1.0f, 0.0f, 0.0f);
 
+        bool highlightSelectedQuad = false;
         int selectedQuadId = -1;
         int selectedQuadIdMemory = -1;
         glm::vec2 selectedQuadReflectionInterfaces;
@@ -287,6 +288,7 @@ public:
                 selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
                 if (selectedQuadId != selectedQuadIdMemory) {
                     //update vals
+                    highlightSelectedQuad = true;
                     if (selectedQuadId < m_preAptReflectionPairs.size()) {
                         selectedQuadReflectionInterfaces = m_preAptReflectionPairs[selectedQuadId];
                     }
@@ -300,6 +302,7 @@ public:
                     selectedQuadIdMemory = selectedQuadId;
                 }
              
+                ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
                 std::string label_lambda = "Lambda0 of Interface ";
                 ImGui::Text((label_lambda + std::to_string(firstQuadReflectionInterface)).c_str());
                 ImGui::InputFloat("(1)", &firstQuadReflectionInterfaceLambda0);
@@ -311,6 +314,7 @@ public:
                     m_lensSystem.setLensInterfaces(lensInterfaces);
                 }
             } else {
+                highlightSelectedQuad = false;
                 selectedQuadId = -1;
                 selectedQuadIdMemory = -1;
                 firstQuadReflectionInterface = -1;
@@ -385,7 +389,7 @@ public:
 
             /* Bind Quad Specific Variables */
             for (int i = 0; i < m_preAptReflectionPairs.size(); i++) {
-                if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] == i) {
+                if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] == i && highlightSelectedQuad) {
                     m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, ghost_color);
                 }
                 else {
@@ -393,7 +397,7 @@ public:
                 }
             }
             for (int i = 0; i < m_postAptReflectionPairs.size(); i++) {
-                if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size() == i) {
+                if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size() == i && highlightSelectedQuad) {
                     m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], ghost_color);
                 }
                 else {
