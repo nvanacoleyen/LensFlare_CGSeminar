@@ -49,12 +49,12 @@ LensSystem someCanonLens() {
     lensInterfaces.push_back(LensInterface(13.17f, 1.f, 66.44f, 14.5f, 530));
 
     lensInterfaces.push_back(LensInterface(5.f, 1.55963f, 347.07f, 14.5f, 390));
-    lensInterfaces.push_back(LensInterface(1.5f, 1.80518f, -26.27f, 14.5f));
-    lensInterfaces.push_back(LensInterface(0.15f, 1.f, -35.22f, 14.5f));
-    lensInterfaces.push_back(LensInterface(5.f, 1.713f, 104.39f, 14.5f));
-    lensInterfaces.push_back(LensInterface(5.44f, 1.f, -51.25f, 14.5f));
-    lensInterfaces.push_back(LensInterface(1.35f, 1.84666f, -30.94f, 14.5f));
-    lensInterfaces.push_back(LensInterface(80.f, 1.f, -84.63f, 14.5f));
+    lensInterfaces.push_back(LensInterface(1.5f, 1.80518f, -26.27f, 14.5f, 420));
+    lensInterfaces.push_back(LensInterface(0.15f, 1.f, -35.22f, 14.5f, 220));
+    lensInterfaces.push_back(LensInterface(5.f, 1.713f, 104.39f, 14.5f, 680));
+    lensInterfaces.push_back(LensInterface(5.44f, 1.f, -51.25f, 14.5f, 700));
+    lensInterfaces.push_back(LensInterface(1.35f, 1.84666f, -30.94f, 14.5f, 560));
+    lensInterfaces.push_back(LensInterface(80.f, 1.f, -84.63f, 14.5f, 430));
 
     return LensSystem(15, 10.f, lensInterfaces);
 
