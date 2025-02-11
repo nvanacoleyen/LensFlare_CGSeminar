@@ -31,10 +31,17 @@ else()
     PUBLIC "include/" 
     PUBLIC ${OPENGL_INCLUDE_DIRS} 
     PUBLIC "third_party/glew/glew-2.1.0/include/"
+	# PUBLIC "third_party/opencv/build/include/"
 	)
-	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew)
+
+	set(OpenCV_DIR "third_party/opencv/build")
+	find_package(OpenCV REQUIRED)
+	# C:\Users\neilv\Downloads\LensFlare_CGSeminar\LensFlare_CGSeminar\framework\third_party\opencv\build\x64\vc16\bin
+
+	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS})
 	target_compile_features(CGFramework PUBLIC cxx_std_20)
 	set_property(TARGET CGFramework PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 endif()
 
 # Prevent accidentaly picking up a system-wide install of another loader (e.g. GLEW).

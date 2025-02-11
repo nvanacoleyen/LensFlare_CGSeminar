@@ -15,7 +15,7 @@ add_executable(FinalProject
     "src/ray_transfer_matrices.cpp"
 	"src/ray_transfer_matrices.h"
 	"src/lens_system.h"
-	"src/lens_system.cpp" "src/quad.cpp" "src/quad.h" "src/camera.cpp" "src/camera.h" "src/utils.h" "src/utils.cpp" "src/preset_lens_systems.cpp" "src/preset_lens_systems.h")
+	"src/lens_system.cpp" "src/quad.cpp" "src/quad.h" "src/camera.cpp" "src/camera.h" "src/utils.h" "src/utils.cpp" "src/preset_lens_systems.cpp" "src/preset_lens_systems.h" )
 target_compile_features(FinalProject PRIVATE cxx_std_20)
 target_link_libraries(FinalProject PRIVATE CGFramework)
 enable_sanitizers(FinalProject)
@@ -50,4 +50,16 @@ foreach (shader_file IN LISTS shader_sources)
 endforeach()
 add_custom_target(copy_shaders DEPENDS ${shader_copies})
 add_dependencies(FinalProject copy_shaders)
+
+add_custom_command(TARGET FinalProject POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_LIST_DIR}/framework/third_party/opencv/build/x64/vc16/bin/opencv_world4100d.dll"
+    $<TARGET_FILE_DIR:FinalProject>
+)
+
+add_custom_command(TARGET FinalProject POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_LIST_DIR}/framework/third_party/opencv/build/x64/vc16/bin/opencv_world4100.dll"
+    $<TARGET_FILE_DIR:FinalProject>
+)
 
