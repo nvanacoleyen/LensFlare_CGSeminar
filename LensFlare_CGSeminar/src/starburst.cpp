@@ -50,7 +50,7 @@ int createStarburst(const char* apertureLocation) {
     cv::Mat starburstTexture = cv::Mat::zeros(magnitudeImage.size(), CV_32FC3);
 
     // Wavelengths from 380 nm to 750 nm (visible spectrum)
-    for (double lambda = 380.0; lambda <= 750.0; lambda += 5.0) {
+    for (double lambda = 380; lambda <= 750.0; lambda += 5.0) {
         double scale = 10 /* Define your scaling based on wavelength */;
         cv::Mat scaledMagnitude;
         cv::multiply(magnitudeImage, scale, scaledMagnitude);
@@ -71,7 +71,12 @@ int createStarburst(const char* apertureLocation) {
     //cv::normalize(starburstTexture, starburstTexture, 0, 1, cv::NORM_MINMAX);
 
     // Save the starburst texture
-    cv::imwrite("resources/starburst_texture.png", starburstTexture);
+    // Convert the image from BGR to RGB
+    cv::Mat starburstTextureRGB;
+    cv::cvtColor(starburstTexture, starburstTextureRGB, cv::COLOR_BGR2RGB);
+
+    // Save the image in RGB format
+    cv::imwrite("resources/starburst_texture.png", starburstTextureRGB);
 
     return 0;
 }

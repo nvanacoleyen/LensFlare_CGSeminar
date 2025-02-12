@@ -113,7 +113,7 @@ public:
         /* INIT */
 
         /* Create starburst texture */
-        //createStarburst(APERTURE_TEXTURE);
+        createStarburst(APERTURE_TEXTURE);
 
         /* LIGHT SPHERE */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -155,15 +155,17 @@ public:
 
         stbi_image_free(pixels);
 
-        /* Starburst */;
-        pixels = stbi_load("resources/starburst_texture.png", &texWidth, &texHeight, &texChannels, STBI_grey);
+        /* Starburst */
+        pixels = stbi_load("resources/starburst_texture.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
-        if (!pixels) { std::cerr << "Failed to load starburst texture" << std::endl; }
+        if (!pixels) {
+            std::cerr << "Failed to load starburst texture" << std::endl;
+        }
 
         GLuint texStarburst;
         glCreateTextures(GL_TEXTURE_2D, 1, &texStarburst);
-        glTextureStorage2D(texStarburst, 1, GL_R8, texWidth, texHeight);
-        glTextureSubImage2D(texStarburst, 0, 0, 0, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, pixels);
+        glTextureStorage2D(texStarburst, 1, GL_RGBA8, texWidth, texHeight);
+        glTextureSubImage2D(texStarburst, 0, 0, 0, texWidth, texHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
         // Set behaviour for when texture coordinates are outside the [0, 1] range.
         glTextureParameteri(texStarburst, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -512,10 +514,14 @@ public:
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
+            glm::vec3 starburstColor = glm::vec3({ 50.f, 50.f, 50.f });
+            float starburstScale = 25;
+
             m_starburstShader.bind();
             glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp));
-            glUniform3fv(1, 1, glm::value_ptr(glm::vec3(10.0)));
+            glUniform3fv(1, 1, glm::value_ptr(starburstColor));
             glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(starburstMatrix));
+            glUniform1f(3, starburstScale);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, texStarburst);
             glUniform1i(4, 0);

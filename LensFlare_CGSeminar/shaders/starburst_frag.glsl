@@ -10,5 +10,5 @@ out vec4 outColor;
 
 void main()
 {
-    outColor = vec4(color * texture(texStarburst, TexCoord).x, 0.5);
+    outColor = vec4(color * texture(texStarburst, TexCoord).rgb, 0.5);
 }
