@@ -36,7 +36,6 @@ else()
 
 	set(OpenCV_DIR "third_party/opencv/build")
 	find_package(OpenCV REQUIRED)
-	# C:\Users\neilv\Downloads\LensFlare_CGSeminar\LensFlare_CGSeminar\framework\third_party\opencv\build\x64\vc16\bin
 
 	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS})
 	target_compile_features(CGFramework PUBLIC cxx_std_20)

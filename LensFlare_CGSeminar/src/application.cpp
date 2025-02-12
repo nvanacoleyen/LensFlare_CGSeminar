@@ -26,13 +26,14 @@ DISABLE_WARNINGS_POP()
 #include "camera.h"
 #include "utils.h"
 #include "preset_lens_systems.h"
-#include <opencv2/opencv.hpp>
+#include "starburst.h"
 
 constexpr int FULL_WIDTH = 1920;
 constexpr int HEIGHT = 1080;
 constexpr int MENU_WIDTH = FULL_WIDTH / 4;
 constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
-constexpr float DISPLAY_SCALING_FACTOR = 1.5;
+constexpr float DISPLAY_SCALING_FACTOR = 2.5;
+const char* APERTURE_TEXTURE = "resources/aperture.png";
 
 //constexpr int WIDTH = 1280;
 //constexpr int HEIGHT = 720;
@@ -41,136 +42,6 @@ struct QuadData {
     GLuint quadID;
     float intensityVal;
 };
-
-
-cv::Vec3f wavelengthToRGB(double wavelength) {
-    double R = 0.0, G = 0.0, B = 0.0;
-
-    if (wavelength >= 380.0 && wavelength <= 440.0) {
-        R = -1.0 * (wavelength - 440.0) / (440.0 - 380.0);
-        G = 0.0;
-        B = 1.0;
-    }
-    else if (wavelength > 440.0 && wavelength <= 490.0) {
-        R = 0.0;
-        G = (wavelength - 440.0) / (490.0 - 440.0);
-        B = 1.0;
-    }
-    else if (wavelength > 490.0 && wavelength <= 510.0) {
-        R = 0.0;
-        G = 1.0;
-        B = -1.0 * (wavelength - 510.0) / (510.0 - 490.0);
-    }
-    else if (wavelength > 510.0 && wavelength <= 580.0) {
-        R = (wavelength - 510.0) / (580.0 - 510.0);
-        G = 1.0;
-        B = 0.0;
-    }
-    else if (wavelength > 580.0 && wavelength <= 645.0) {
-        R = 1.0;
-        G = -1.0 * (wavelength - 645.0) / (645.0 - 580.0);
-        B = 0.0;
-    }
-    else if (wavelength > 645.0 && wavelength <= 750.0) {
-        R = 1.0;
-        G = 0.0;
-        B = 0.0;
-    }
-
-    // Let the intensity fall off near the vision limits
-    double factor = 0.0;
-    if (wavelength >= 380.0 && wavelength <= 420.0) {
-        factor = 0.3 + 0.7 * (wavelength - 380.0) / (420.0 - 380.0);
-    }
-    else if (wavelength > 420.0 && wavelength <= 700.0) {
-        factor = 1.0;
-    }
-    else if (wavelength > 700.0 && wavelength <= 750.0) {
-        factor = 0.3 + 0.7 * (750.0 - wavelength) / (750.0 - 700.0);
-    }
-
-    R *= factor;
-    G *= factor;
-    B *= factor;
-
-    return cv::Vec3f(R, G, B);
-}
-
-
-int createStarburst() {
-    // Load the aperture texture
-    cv::Mat aperture = cv::imread("resources/star_shaped_aperture.png", cv::IMREAD_GRAYSCALE);
-    if (aperture.empty()) {
-        std::cerr << "Failed to load aperture texture." << std::endl;
-        return -1;
-    }
-
-    // Expand to optimal size for DFT
-    int m = cv::getOptimalDFTSize(aperture.rows);
-    int n = cv::getOptimalDFTSize(aperture.cols);
-    cv::copyMakeBorder(aperture, aperture, 0, m - aperture.rows, 0, n - aperture.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-
-    // Perform DFT
-    cv::Mat planes[] = { cv::Mat_<float>(aperture), cv::Mat::zeros(aperture.size(), CV_32F) };
-    cv::Mat complexI;
-    cv::merge(planes, 2, complexI);
-    cv::dft(complexI, complexI);
-
-    // Compute the magnitude (power spectrum)
-    cv::split(complexI, planes);
-    cv::magnitude(planes[0], planes[1], planes[0]);
-    cv::Mat magnitudeImage = planes[0];
-
-    // Rearrange the quadrants of Fourier image
-    int cx = magnitudeImage.cols / 2;
-    int cy = magnitudeImage.rows / 2;
-
-    cv::Mat q0(magnitudeImage, cv::Rect(0, 0, cx, cy));
-    cv::Mat q1(magnitudeImage, cv::Rect(cx, 0, cx, cy));
-    cv::Mat q2(magnitudeImage, cv::Rect(0, cy, cx, cy));
-    cv::Mat q3(magnitudeImage, cv::Rect(cx, cy, cx, cy));
-
-    cv::Mat tmp;
-    q0.copyTo(tmp);
-    q3.copyTo(q0);
-    tmp.copyTo(q3);
-
-    q1.copyTo(tmp);
-    q2.copyTo(q1);
-    tmp.copyTo(q2);
-
-    cv::normalize(magnitudeImage, magnitudeImage, 0, 1, cv::NORM_MINMAX);
-
-    // Prepare an RGB texture by superimposing scaled spectra for different wavelengths
-    cv::Mat starburstTexture = cv::Mat::zeros(magnitudeImage.size(), CV_32FC3);
-
-    // Wavelengths from 380 nm to 750 nm (visible spectrum)
-    for (double lambda = 380.0; lambda <= 750.0; lambda += 5.0) {
-        double scale = 1/* Define your scaling based on wavelength */;
-        cv::Mat scaledMagnitude;
-        cv::multiply(magnitudeImage, scale, scaledMagnitude);
-
-        // Convert wavelength to RGB
-        cv::Vec3f color = wavelengthToRGB(lambda);
-
-        // Accumulate into the starburst texture
-        for (int y = 0; y < starburstTexture.rows; ++y) {
-            for (int x = 0; x < starburstTexture.cols; ++x) {
-                float intensity = scaledMagnitude.at<float>(y, x);
-                starburstTexture.at<cv::Vec3f>(y, x) += intensity * color;
-            }
-        }
-    }
-
-    // Normalize the final texture
-    cv::normalize(starburstTexture, starburstTexture, 0, 1, cv::NORM_MINMAX);
-
-
-    // Save the starburst texture
-    cv::imshow("starburst_texture.png", starburstTexture);
-
-    return 0;
-}
 
 
 class Application {
@@ -197,7 +68,7 @@ public:
             defaultBuilder.addStage(GL_VERTEX_SHADER, "shaders/shader_vert.glsl");
             defaultBuilder.addStage(GL_FRAGMENT_SHADER, "shaders/shader_frag.glsl");
             m_defaultShader = defaultBuilder.build();
-
+            m_starburstShader = ShaderBuilder().addStage(GL_VERTEX_SHADER, "shaders/starburst_vertex.glsl").addStage(GL_FRAGMENT_SHADER, "shaders/starburst_frag.glsl").build();
             m_lightShader = ShaderBuilder().addStage(GL_VERTEX_SHADER, "shaders/light_vertex.glsl").addStage(GL_FRAGMENT_SHADER, "shaders/light_frag.glsl").build();
 
         }
@@ -240,7 +111,9 @@ public:
     void update()
     {
         /* INIT */
-        createStarburst();
+
+        /* Create starburst texture */
+        //createStarburst(APERTURE_TEXTURE);
 
         /* LIGHT SPHERE */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -263,9 +136,9 @@ public:
 
         /* Aperture Texture */
         int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load("resources/aperture.png", &texWidth, &texHeight, &texChannels, STBI_grey);
+        stbi_uc* pixels = stbi_load(APERTURE_TEXTURE, &texWidth, &texHeight, &texChannels, STBI_grey);
 
-        if (!pixels) { std::cerr << "Failed to load texture" << std::endl; }
+        if (!pixels) { std::cerr << "Failed to load aperture texture" << std::endl; }
 
         GLuint texApt;
         glCreateTextures(GL_TEXTURE_2D, 1, &texApt);
@@ -281,6 +154,54 @@ public:
         glTextureParameteri(texApt, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         stbi_image_free(pixels);
+
+        /* Starburst */;
+        pixels = stbi_load("resources/starburst_texture.png", &texWidth, &texHeight, &texChannels, STBI_grey);
+
+        if (!pixels) { std::cerr << "Failed to load starburst texture" << std::endl; }
+
+        GLuint texStarburst;
+        glCreateTextures(GL_TEXTURE_2D, 1, &texStarburst);
+        glTextureStorage2D(texStarburst, 1, GL_R8, texWidth, texHeight);
+        glTextureSubImage2D(texStarburst, 0, 0, 0, texWidth, texHeight, GL_RED, GL_UNSIGNED_BYTE, pixels);
+
+        // Set behaviour for when texture coordinates are outside the [0, 1] range.
+        glTextureParameteri(texStarburst, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTextureParameteri(texStarburst, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+        // Set interpolation for texture sampling (GL_NEAREST for no interpolation).
+        glTextureParameteri(texStarburst, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(texStarburst, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(pixels);
+
+        float starburstData[] = {
+            // positions        // texture coords
+            -0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
+            -0.5f, -0.5f, 0.0f,  0.0f, 0.0f,
+             0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
+
+            -0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
+             0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
+             0.5f,  0.5f, 0.0f,  1.0f, 1.0f
+        };
+
+        GLuint vao_starburst;
+        glGenVertexArrays(1, &vao_starburst);
+        glBindVertexArray(vao_starburst);
+
+        GLuint vbo_starburst;
+        glGenBuffers(1, &vbo_starburst);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_starburst);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(starburstData), starburstData, GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind the VBO
+        glBindVertexArray(0); // Unbind the VAO
 
         /* SHADER BUFFERS */
         m_defaultShader.bind();
@@ -581,11 +502,26 @@ public:
 
             //RENDER LIGHT SOURCE
             m_lightShader.bind();
-            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp));;
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp));
             glUniform3fv(1, 1, glm::value_ptr(m_lcolor));
             glUniform3fv(2, 1, glm::value_ptr(lightPos));
             glBindVertexArray(vao_light);
             glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((lightSphere.triangles.size() * 3)), GL_UNSIGNED_INT, nullptr);
+
+            glm::mat4 starburstMatrix = glm::translate(glm::mat4(1.0f), lightPos);
+            starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
+            starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
+
+            m_starburstShader.bind();
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp));
+            glUniform3fv(1, 1, glm::value_ptr(glm::vec3(10.0)));
+            glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(starburstMatrix));
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texStarburst);
+            glUniform1i(4, 0);
+            glBindVertexArray(vao_starburst);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
 
             //Reset atomic counter
             GLuint zero = 0;
@@ -707,6 +643,7 @@ private:
     /* Shaders */
     Shader m_defaultShader;
     Shader m_lightShader;
+    Shader m_starburstShader;
 
     /* Light Source */
     const glm::vec3 m_lcolor{ 1, 1, 0.5 };

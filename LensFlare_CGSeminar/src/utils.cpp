@@ -25,3 +25,57 @@ glm::vec2 getYawandPitch(const glm::vec3& cameraPos, const glm::vec3& cameraForw
 
     return glm::vec2(yaw, pitch);
 }
+
+//CHECK ACCURACY
+glm::vec3 wavelengthToRGB(float wavelength) {
+    float R = 0.0, G = 0.0, B = 0.0;
+
+    if (wavelength >= 380.0 && wavelength <= 440.0) {
+        R = -1.0 * (wavelength - 440.0) / (440.0 - 380.0);
+        G = 0.0;
+        B = 1.0;
+    }
+    else if (wavelength > 440.0 && wavelength <= 490.0) {
+        R = 0.0;
+        G = (wavelength - 440.0) / (490.0 - 440.0);
+        B = 1.0;
+    }
+    else if (wavelength > 490.0 && wavelength <= 510.0) {
+        R = 0.0;
+        G = 1.0;
+        B = -1.0 * (wavelength - 510.0) / (510.0 - 490.0);
+    }
+    else if (wavelength > 510.0 && wavelength <= 580.0) {
+        R = (wavelength - 510.0) / (580.0 - 510.0);
+        G = 1.0;
+        B = 0.0;
+    }
+    else if (wavelength > 580.0 && wavelength <= 645.0) {
+        R = 1.0;
+        G = -1.0 * (wavelength - 645.0) / (645.0 - 580.0);
+        B = 0.0;
+    }
+    else if (wavelength > 645.0 && wavelength <= 750.0) {
+        R = 1.0;
+        G = 0.0;
+        B = 0.0;
+    }
+
+    // Let the intensity fall off near the vision limits
+    float factor = 0.0;
+    if (wavelength >= 380.0 && wavelength <= 420.0) {
+        factor = 0.3 + 0.7 * (wavelength - 380.0) / (420.0 - 380.0);
+    }
+    else if (wavelength > 420.0 && wavelength <= 700.0) {
+        factor = 1.0;
+    }
+    else if (wavelength > 700.0 && wavelength <= 750.0) {
+        factor = 0.3 + 0.7 * (750.0 - wavelength) / (750.0 - 700.0);
+    }
+
+    R *= factor;
+    G *= factor;
+    B *= factor;
+
+    return glm::vec3(R, G, B);
+}
