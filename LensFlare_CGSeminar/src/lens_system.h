@@ -37,7 +37,7 @@ public:
 	float getSensorPosition();
 	glm::vec3 computeFresnelAR(float theta0, float d1, float n0, float n1, float n2);
 	glm::vec3 propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray);
-	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 ray);
+	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 yawAndPitch);
 
 private:
 	std::vector<LensInterface> m_lens_interfaces;

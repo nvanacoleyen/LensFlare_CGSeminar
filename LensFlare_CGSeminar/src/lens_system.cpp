@@ -6,7 +6,7 @@
 #include <numbers>
 
 float RED_WAVELENGTH = 650;
-float GREEN_WAVELENGTH = 510;
+float GREEN_WAVELENGTH = 550;
 float BLUE_WAVELENGTH = 475;
 
 LensSystem::LensSystem(int irisAperturePos, float sensorSize, std::vector<LensInterface> lensInterfaces) {
@@ -230,7 +230,7 @@ std::vector<glm::mat2x2> LensSystem::getMs(std::vector<glm::vec2> reflectionPos)
 std::vector<float> LensSystem::getInterfacePositions() {
 	std::vector<float> interfacePositions;
 	float pos = 0.0f;
-	for (LensInterface lensInterface : m_lens_interfaces) {
+	for (LensInterface &lensInterface : m_lens_interfaces) {
 		interfacePositions.push_back(pos);
 		pos += lensInterface.di;
 	}
@@ -280,7 +280,7 @@ float LensSystem::getIrisApertureHeight() {
 
 float LensSystem::getSensorPosition() {
 	float pos = 0.0f;
-	for (const LensInterface lensInterface : m_lens_interfaces) {
+	for (const LensInterface &lensInterface : m_lens_interfaces) {
 		pos += lensInterface.di;
 	}
 	return pos;
@@ -399,10 +399,10 @@ glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondRe
 }
 
 //Per ghost trace ray through system to get reflectance/transmission of color
-std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 ray) {
+std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 yawAndPitch) {
 	std::vector<glm::vec3> results;
 	for (glm::vec2 reflectionPair : reflectionPos) {
-		results.push_back(propagateTransmission(reflectionPair.x, reflectionPair.y, ray));
+		results.push_back(propagateTransmission(reflectionPair.x, reflectionPair.y, glm::vec2(0.0f, yawAndPitch.x)) + propagateTransmission(reflectionPair.x, reflectionPair.y, glm::vec2(0.0f, yawAndPitch.y)));
 	}
 	return results;
 }

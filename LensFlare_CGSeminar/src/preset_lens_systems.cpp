@@ -59,3 +59,21 @@ LensSystem someCanonLens() {
     return LensSystem(15, 10.f, lensInterfaces);
 
 }
+
+LensSystem testLens() {
+    float coatingwavelength = 440;
+    std::vector<LensInterface> lensInterfaces;
+    //                                     thickness, refractive index, radius, height, coating
+    lensInterfaces.push_back(LensInterface(7.7f, 1.652f, 30.81f, 14.5f, coatingwavelength)); //LAKN7
+    lensInterfaces.push_back(LensInterface(1.85f, 1.603f, -89.35f, 14.5f, coatingwavelength)); //F5
+    lensInterfaces.push_back(LensInterface(3.52f, 1.f, 580.38f, 14.5f, coatingwavelength)); //air
+    lensInterfaces.push_back(LensInterface(1.85f, 1.643f, -80.63f, 12.3f, coatingwavelength)); //BAF9
+    lensInterfaces.push_back(LensInterface(4.18f, 1.f, 28.34f, 12.f, coatingwavelength)); //air
+    lensInterfaces.push_back(LensInterface(3.0f, 1.f, std::numeric_limits<float>::infinity(), 11.6f, coatingwavelength)); //air (iris aperture)
+    lensInterfaces.push_back(LensInterface(1.85f, 1.581f, std::numeric_limits<float>::infinity(), 12.3f, coatingwavelength)); //LF5
+    lensInterfaces.push_back(LensInterface(7.27f, 1.694f, 32.19f, 12.3f, coatingwavelength)); //LAK13
+    lensInterfaces.push_back(LensInterface(81.857f, 1.f, -52.99f, 12.3f, coatingwavelength)); //air
+
+    return LensSystem(5, 10.f, lensInterfaces);
+
+}

@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <algorithm>
+
 // Function to translate a point to the camera plane
 glm::vec3 translateToCameraSpace(const glm::vec3& cameraPos, const glm::vec3& cameraForward, const glm::vec3& cameraUp, const glm::vec3& point) {
     glm::vec3 toPoint = point - cameraPos;
@@ -78,4 +80,24 @@ glm::vec3 wavelengthToRGB(float wavelength) {
     B *= factor;
 
     return glm::vec3(R, G, B);
+}
+
+float rgbToWavelength(float r, float g, float b) {
+    float wavelength = 0.0;
+    float maxComponent = std::max({ r, g, b });
+
+    if (r >= g && r >= b) {
+        // Red dominant
+        wavelength = 620 + (750 - 620) * (r / maxComponent);
+    }
+    else if (g >= r && g >= b) {
+        // Green dominant
+        wavelength = 495 + (570 - 495) * (g / maxComponent);
+    }
+    else if (b >= r && b >= g) {
+        // Blue dominant
+        wavelength = 450 + (495 - 450) * (b / maxComponent);
+    }
+
+    return wavelength;
 }

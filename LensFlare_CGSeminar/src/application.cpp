@@ -27,12 +27,13 @@ DISABLE_WARNINGS_POP()
 #include "utils.h"
 #include "preset_lens_systems.h"
 #include "starburst.h"
+#include "reverse_coating.h"
 
 constexpr int FULL_WIDTH = 1920;
 constexpr int HEIGHT = 1080;
 constexpr int MENU_WIDTH = FULL_WIDTH / 4;
 constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
-constexpr float DISPLAY_SCALING_FACTOR = 2.5;
+constexpr float DISPLAY_SCALING_FACTOR = 1.5;
 const char* APERTURE_TEXTURE = "resources/aperture.png";
 
 //constexpr int WIDTH = 1280;
@@ -113,7 +114,7 @@ public:
         /* INIT */
 
         /* Create starburst texture */
-        createStarburst(APERTURE_TEXTURE);
+        //createStarburst(APERTURE_TEXTURE);
 
         /* LIGHT SPHERE */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -236,7 +237,7 @@ public:
 
         glm::vec3 ghost_color = glm::vec3(1.0f, 0.0f, 0.0f);
 
-        bool highlightSelectedQuad = false;
+        bool highlightSelectedQuad = true;
         int selectedQuadId = -1;
         int selectedQuadIdMemory = -1;
         glm::vec2 selectedQuadReflectionInterfaces;
@@ -244,6 +245,9 @@ public:
         int secondQuadReflectionInterface = -1;
         float firstQuadReflectionInterfaceLambda0 = 0.0;
         float secondQuadReflectionInterfaceLambda0 = 0.0;
+
+        bool optimizeCoatings = false;
+        bool lensInterfaceRefresh = false;
 
         /* Flare Paths and Matrices */
         std::vector<LensInterface> lensInterfaces = m_lensSystem.getLensInterfaces();
@@ -334,6 +338,10 @@ public:
 
             ImGui::ColorEdit3("Ghost Selection Color", (float*)&ghost_color);
 
+            if (ImGui::Button("Optimize Coatings")) {
+                optimizeCoatings = true;
+            }
+
             //for (int i = 0; i < lensInterfaces.size(); i++) {
             //    std::string lensInterfaceDescription = "Interface " + std::to_string(i) + ", d = " + std::to_string(lensInterfaces[i].di) + ", n = " + std::to_string(lensInterfaces[i].ni) + ", R = " + std::to_string(lensInterfaces[i].Ri) + ", h = " + std::to_string(lensInterfaces[i].hi) + ", lambda0 = " + std::to_string(lensInterfaces[i].lambda0);
             //    ImGui::Text(lensInterfaceDescription.c_str());
@@ -342,9 +350,8 @@ public:
             if (m_selectedQuadIndex != -1) {
                 //get pairs of the id reflection
                 selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
-                if (selectedQuadId != selectedQuadIdMemory) {
+                if (selectedQuadId != selectedQuadIdMemory || lensInterfaceRefresh == true) {
                     //update vals
-                    highlightSelectedQuad = true;
                     if (selectedQuadId < m_preAptReflectionPairs.size()) {
                         selectedQuadReflectionInterfaces = m_preAptReflectionPairs[selectedQuadId];
                     }
@@ -356,6 +363,7 @@ public:
                     firstQuadReflectionInterfaceLambda0 = lensInterfaces[firstQuadReflectionInterface].lambda0;
                     secondQuadReflectionInterfaceLambda0 = lensInterfaces[secondQuadReflectionInterface].lambda0;
                     selectedQuadIdMemory = selectedQuadId;
+                    lensInterfaceRefresh = false;
                 }
              
                 ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
@@ -370,7 +378,6 @@ public:
                     m_lensSystem.setLensInterfaces(lensInterfaces);
                 }
             } else {
-                highlightSelectedQuad = false;
                 selectedQuadId = -1;
                 selectedQuadIdMemory = -1;
                 firstQuadReflectionInterface = -1;
@@ -411,8 +418,22 @@ public:
             sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
             sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
-            std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, glm::vec2(0.0f, yawandPitch.x));
-            std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, glm::vec2(0.0f, yawandPitch.x));
+            if (optimizeCoatings && m_selectedQuadIndex != -1) {
+                if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
+                    optimizeLensCoatingsBruteForce2(m_lensSystem, ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], yawandPitch);
+                    //optimizeLensCoatingsSimple(m_lensSystem, ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]]);
+                }
+                else {
+                    optimizeLensCoatingsBruteForce2(m_lensSystem, ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], yawandPitch);
+                    //optimizeLensCoatingsSimple(m_lensSystem, ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()]);
+                }
+                lensInterfaces = m_lensSystem.getLensInterfaces();
+                lensInterfaceRefresh = true;
+                optimizeCoatings = false;
+            }
+
+            std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, yawandPitch);
+            std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, yawandPitch);
 
             // Clear the screen
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -449,7 +470,7 @@ public:
                     m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, ghost_color);
                 }
                 else {
-                    m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, glm::vec3(100.0f, 100.0f, 100.0f) * preAPTtransmissions[i]);
+                    m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, glm::vec3(50.0f, 50.0f, 50.0f) * preAPTtransmissions[i]);
                 }
             }
             for (int i = 0; i < m_postAptReflectionPairs.size(); i++) {
@@ -457,7 +478,7 @@ public:
                     m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], ghost_color);
                 }
                 else {
-                    m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], glm::vec3(100.0f, 100.0f, 100.0f) * postAPTtransmissions[i]);
+                    m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], glm::vec3(50.0f, 50.0f, 50.0f) * postAPTtransmissions[i]);
                 }
             }
 
@@ -492,6 +513,13 @@ public:
                 if (!m_selectedQuadIDs.empty()) {
                     m_selectedQuadIndex = 0;
                     std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;
+                    if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
+                        std::cout << "Reflections at: " << m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]].x << ", " << m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]].y << std::endl;
+                    }
+                    else {
+                        
+                        std::cout << "Reflections at: " << m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].x << ", " << m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].y << std::endl;
+                    }
                 }
                 else {
                     m_selectedQuadIndex = -1;
@@ -630,6 +658,7 @@ private:
     int m_cursorPosY = 0;
 
     /* Lens System */
+    //LensSystem m_lensSystem = testLens();
     LensSystem m_lensSystem = someCanonLens();
     //LensSystem m_lensSystem = heliarTronerLens();
     glm::mat2x2 m_default_Ma = m_lensSystem.getMa();

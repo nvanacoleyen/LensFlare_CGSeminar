@@ -15,7 +15,7 @@ add_executable(FinalProject
     "src/ray_transfer_matrices.cpp"
 	"src/ray_transfer_matrices.h"
 	"src/lens_system.h"
-	"src/lens_system.cpp" "src/quad.cpp" "src/quad.h" "src/camera.cpp" "src/camera.h" "src/utils.h" "src/utils.cpp" "src/preset_lens_systems.cpp" "src/preset_lens_systems.h"  "src/starburst.cpp" "src/starburst.h")
+	"src/lens_system.cpp" "src/quad.cpp" "src/quad.h" "src/camera.cpp" "src/camera.h" "src/utils.h" "src/utils.cpp" "src/preset_lens_systems.cpp" "src/preset_lens_systems.h"  "src/starburst.cpp" "src/starburst.h" "src/reverse_coating.cpp" "src/reverse_coating.h")
 target_compile_features(FinalProject PRIVATE cxx_std_20)
 target_link_libraries(FinalProject PRIVATE CGFramework)
 enable_sanitizers(FinalProject)

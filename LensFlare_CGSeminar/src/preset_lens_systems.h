@@ -4,3 +4,4 @@
 
 LensSystem heliarTronerLens();
 LensSystem someCanonLens();
+LensSystem testLens();
