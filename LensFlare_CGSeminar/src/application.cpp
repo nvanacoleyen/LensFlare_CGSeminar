@@ -34,7 +34,7 @@ constexpr int HEIGHT = 1080;
 constexpr int MENU_WIDTH = FULL_WIDTH / 4;
 constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
 constexpr float DISPLAY_SCALING_FACTOR = 1.5;
-const char* APERTURE_TEXTURE = "resources/aperture.png";
+const char* APERTURE_TEXTURE = "resources/small_round_aperture.png";
 
 //constexpr int WIDTH = 1280;
 //constexpr int HEIGHT = 720;
@@ -274,7 +274,8 @@ public:
 
             //Button loading example lens system
             if (ImGui::Button("Load Example Lens System")) {
-                m_lensSystem = heliarTronerLens();
+                //m_lensSystem = heliarTronerLens();
+                m_lensSystem = someCanonLens();
                 irisAperturePos = m_lensSystem.getIrisAperturePos();
                 lensInterfaces = m_lensSystem.getLensInterfaces();
                 refreshMatricesAndQuads();
