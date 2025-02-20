@@ -407,5 +407,48 @@ std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflec
 	return results;
 }
 
+std::vector<glm::vec2> LensSystem::getPathIncidentAngleAtReflectionPos(glm::vec2 reflectionPair, glm::vec2 yawAndPitch) {
+
+	glm::mat2x2 propagationMatrix = glm::mat2(1.0f);
+	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+	glm::vec2 propagated_ray_x = glm::vec2(0, yawAndPitch.x);
+	glm::vec2 propagated_ray_y = glm::vec2(0, yawAndPitch.y);
+
+	glm::vec2 angles_first_interface(0);
+	glm::vec2 angles_second_interface(0);
+	std::vector<glm::vec2> res;
+
+	//check if reflection makes sense
+	if (reflectionPair.x > reflectionPair.y && reflectionPair.y >= 0 && reflectionPair.x < m_lens_interfaces.size()) {
+
+		for (int i = 0; i < reflectionPair.x; i++) {
+			if (i == 0) {
+				propagationMatrix = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagationMatrix;
+			}
+			else {
+				propagationMatrix = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagationMatrix;
+			}
+		}
+		///get first incident angle here
+		angles_first_interface.x = (propagationMatrix * propagated_ray_x).y;
+		angles_first_interface.y = (propagationMatrix * propagated_ray_y).y;
+
+		propagationMatrix = rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[reflectionPair.x].Ri) * propagationMatrix; //reflection step
+		for (int i = reflectionPair.x - 1; i > reflectionPair.y; i--) {
+			propagationMatrix = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagationMatrix;
+		}
+		propagationMatrix = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[reflectionPair.x].di) * propagationMatrix;
+		///get second incident angle
+		angles_second_interface.x = (propagationMatrix * propagated_ray_x).y;
+		angles_second_interface.y = (propagationMatrix * propagated_ray_y).y;
+
+	}
+
+	res.push_back(angles_first_interface);
+	res.push_back(angles_second_interface);
+	return res;
+
+}
+
 
 

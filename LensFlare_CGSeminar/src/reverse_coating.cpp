@@ -258,15 +258,28 @@ void optimizeLensCoatingsGradientDescent2(LensSystem& lensSystem, glm::vec3 desi
 void optimizeLensCoatingsBruteForce2(LensSystem& lensSystem, glm::vec3 desiredColor, glm::vec2 reflectionPair, glm::vec2 yawAndPitch) {
 
     std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
-    glm::vec3 lightIntensity(50.f);
+    std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, yawAndPitch);
 
     float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.38f);
-    float second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.38f);
     float first_d1 = lensInterfaces[reflectionPair.x].lambda0 / 4 / first_n1;
+    float second_n1;
+    if (reflectionPair.y == 0) {
+        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.38f);
+    }
+    else {
+        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.38f);
+    }
     float second_d1 = lensInterfaces[reflectionPair.y].lambda0 / 4 / second_n1;
 
-    float minError1 = glm::length(desiredColor - lensSystem.computeFresnelAR(0.03, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni));
-    float minError2 = glm::length(desiredColor - lensSystem.computeFresnelAR(0.03, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni));
+    glm::vec3 interfaceReflectivity = lensSystem.computeFresnelAR(incident_angles[0].x, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) + lensSystem.computeFresnelAR(incident_angles[0].y, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
+    float minError1 = glm::length(desiredColor - interfaceReflectivity);
+    float minError2;
+    if (reflectionPair.y == 0) {
+        minError2 = glm::length(desiredColor - (lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f)));
+    }
+    else {
+        minError2 = glm::length(desiredColor - (lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni)));
+    }
     float minFirstLambda0 = lensInterfaces[reflectionPair.x].lambda0;
     float minSecondLambda0 = lensInterfaces[reflectionPair.y].lambda0;
 
@@ -287,8 +300,14 @@ void optimizeLensCoatingsBruteForce2(LensSystem& lensSystem, glm::vec3 desiredCo
         first_d1 = i_lambda / 4 / first_n1;
         second_d1 = i_lambda / 4 / second_n1;
 
-        glm::vec3 first_newReflectivity = lensSystem.computeFresnelAR(0.03, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
-        glm::vec3 second_newReflectivity = lensSystem.computeFresnelAR(0.03, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni);
+        glm::vec3 first_newReflectivity = lensSystem.computeFresnelAR(incident_angles[0].x, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) + lensSystem.computeFresnelAR(incident_angles[0].y, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
+        glm::vec3 second_newReflectivity;
+        if (reflectionPair.y == 0) {
+            second_newReflectivity = lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f);
+        }
+        else {
+            second_newReflectivity = lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni);
+        }
 
         // Compute error
         float newError1 = glm::length(desiredColor - first_newReflectivity);
