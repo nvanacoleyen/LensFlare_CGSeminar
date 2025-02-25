@@ -77,7 +77,7 @@ void Camera::updateInput()
         const glm::vec2 delta = lookSpeed * glm::vec2(cursorPos - m_prevCursorPos);
         m_prevCursorPos = cursorPos;
 
-        if (m_pWindow->isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) && cursorPos.x > leftSideIgnore) {
+        if (m_pWindow->isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && cursorPos.x > leftSideIgnore) {
             if (delta.x != 0.0f)
                 rotateY(delta.x);
             if (delta.y != 0.0f)

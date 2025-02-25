@@ -624,7 +624,7 @@ public:
     {
         switch (button)
         {
-        case 1:
+        case GLFW_MOUSE_BUTTON_LEFT:
             m_getGhostsAtMouse = true;
             break;
         default:
