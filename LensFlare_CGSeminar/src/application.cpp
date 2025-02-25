@@ -1,5 +1,3 @@
-// Always include window first (because it includes glfw, which includes GL which needs to be included AFTER glew).
-// Can't wait for modules to fix this stuff...
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
 #include <glad/glad.h>
@@ -10,7 +8,6 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui/imgui.h>
-// Library for loading an image
 #include <stb/stb_image.h>
 DISABLE_WARNINGS_POP()
 #include <framework/mesh.h>
@@ -29,20 +26,13 @@ DISABLE_WARNINGS_POP()
 #include "starburst.h"
 #include "reverse_coating.h"
 
+/* GLOBAL PARAMS */
 constexpr int FULL_WIDTH = 1920;
 constexpr int HEIGHT = 1080;
 constexpr int MENU_WIDTH = FULL_WIDTH / 4;
 constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
-constexpr float DISPLAY_SCALING_FACTOR = 1.5;
-const char* APERTURE_TEXTURE = "resources/small_round_aperture.png";
-
-//constexpr int WIDTH = 1280;
-//constexpr int HEIGHT = 720;
-
-struct QuadData {
-    GLuint quadID;
-    float intensityVal;
-};
+constexpr float DISPLAY_SCALING_FACTOR = 1.5; //TODO: automatize size and scale params
+const char* APERTURE_TEXTURE = "resources/aperture.png";
 
 
 class Application {
@@ -64,6 +54,7 @@ public:
                 onMouseReleased(button, mods);
             });
         glViewport(MENU_WIDTH, 0, WIDTH, HEIGHT);
+        /* Build Shaders */
         try {
             ShaderBuilder defaultBuilder;
             defaultBuilder.addStage(GL_VERTEX_SHADER, "shaders/shader_vert.glsl");
@@ -78,12 +69,20 @@ public:
         }
     }
 
+    /* Method to update matrices and quads whenever there's a lens system change */
     void refreshMatricesAndQuads() {
         m_default_Ma = m_lensSystem.getMa();
         m_default_Ms = m_lensSystem.getMs();
 
         m_preAptReflectionPairs = m_lensSystem.getPreAptReflections();
         m_postAptReflectionPairs = m_lensSystem.getPostAptReflections();
+
+        for (FlareQuad &flareQuad : m_preAptQuads) {
+            flareQuad.releaseArrayAndBuffer();
+        }
+        for (FlareQuad& flareQuad : m_postAptQuads) {
+            flareQuad.releaseArrayAndBuffer();
+        }
 
         m_preAptQuads.clear();
         m_postAptQuads.clear();
@@ -106,7 +105,6 @@ public:
             m_postAptQuads.push_back(FlareQuad(quad_points, quad_id));
             quad_id++;
         }
-
     }
 
     void update()
@@ -114,9 +112,9 @@ public:
         /* INIT */
 
         /* Create starburst texture */
-        //createStarburst(APERTURE_TEXTURE);
+        createStarburst(APERTURE_TEXTURE);
 
-        /* LIGHT SPHERE */
+        /* Light Sphere */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
         GLuint ibo_light;
         glCreateBuffers(1, &ibo_light);

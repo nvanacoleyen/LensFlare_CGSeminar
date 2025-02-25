@@ -5,6 +5,11 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+struct QuadData {
+    GLuint quadID;
+    float intensityVal;
+};
+
 class FlareQuad {
 public:
     FlareQuad();
