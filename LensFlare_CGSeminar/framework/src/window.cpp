@@ -82,7 +82,7 @@ Window::Window(std::string_view title, const glm::ivec2& windowSize, OpenGLVersi
 
     float xScale, yScale;
     glfwGetWindowContentScale(m_pWindow, &xScale, &yScale);
-    //std::cout << "Window content scale: " << xScale << ", " << yScale << std::endl;
+    std::cout << "Window content scale: " << xScale << ", " << yScale << std::endl;
 
     glfwGetWindowSize(m_pWindow, &m_windowSize.x, &m_windowSize.y);
 

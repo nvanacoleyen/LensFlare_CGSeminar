@@ -25,13 +25,16 @@ DISABLE_WARNINGS_POP()
 #include "preset_lens_systems.h"
 #include "starburst.h"
 #include "reverse_coating.h"
+#include "Windows.h"
 
 /* GLOBAL PARAMS */
-constexpr int FULL_WIDTH = 1920;
-constexpr int HEIGHT = 1080;
-constexpr int MENU_WIDTH = FULL_WIDTH / 4;
-constexpr int WIDTH = FULL_WIDTH - MENU_WIDTH;
-constexpr float DISPLAY_SCALING_FACTOR = 1.5; //TODO: automatize size and scale params
+const int FULL_WIDTH = GetSystemMetrics(SM_CXSCREEN);
+const int HEIGHT = GetSystemMetrics(SM_CYSCREEN);
+const int MENU_WIDTH = FULL_WIDTH / 4;
+const int WIDTH = FULL_WIDTH - MENU_WIDTH;
+HWND hwnd = GetConsoleWindow();
+UINT dpi = GetDpiForWindow(hwnd);
+const float DISPLAY_SCALING_FACTOR = static_cast<float>(dpi) / 96.0f;
 const char* APERTURE_TEXTURE = "resources/aperture.png";
 
 
