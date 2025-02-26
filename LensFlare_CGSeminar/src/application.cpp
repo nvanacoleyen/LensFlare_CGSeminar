@@ -28,20 +28,13 @@ DISABLE_WARNINGS_POP()
 #include "Windows.h"
 
 /* GLOBAL PARAMS */
-const int FULL_WIDTH = GetSystemMetrics(SM_CXSCREEN);
-const int HEIGHT = GetSystemMetrics(SM_CYSCREEN);
-const int MENU_WIDTH = FULL_WIDTH / 4;
-const int WIDTH = FULL_WIDTH - MENU_WIDTH;
-HWND hwnd = GetConsoleWindow();
-UINT dpi = GetDpiForWindow(hwnd);
-const float DISPLAY_SCALING_FACTOR = static_cast<float>(dpi) / 96.0f;
 const char* APERTURE_TEXTURE = "resources/aperture.png";
 
 
 class Application {
 public:
     Application()
-        : m_window("Lens Flare Rendering", glm::ivec2(FULL_WIDTH / DISPLAY_SCALING_FACTOR, HEIGHT / DISPLAY_SCALING_FACTOR), OpenGLVersion::GL45)
+        : m_window("Lens Flare Rendering", glm::ivec2(1920, 1080), OpenGLVersion::GL45)
     {
         m_window.registerKeyCallback([this](int key, int scancode, int action, int mods) {
             if (action == GLFW_PRESS)
@@ -56,7 +49,22 @@ public:
             else if (action == GLFW_RELEASE)
                 onMouseReleased(button, mods);
             });
-        glViewport(MENU_WIDTH, 0, WIDTH, HEIGHT);
+        const glm::ivec2 &window_size = m_window.getWindowSize();
+        glViewport(window_size.x/4, 0, window_size.x -(window_size.x /4), window_size.y);
+        m_window.registerWindowResizeCallback([this](const glm::ivec2& size) {
+            glViewport(size.x / 4, 0, size.x - (size.x / 4), size.y);
+            m_camera.setLeftSideIgnore(size.x / 4);
+            m_aspect = static_cast<float>(size.x - (size.x / 4)) / static_cast<float>(size.y);
+            m_mainProjectionMatrix = glm::perspective(m_fov, m_aspect, 0.01f, 100.0f);
+            });
+
+        /* Camera Params */
+        m_camera.setLeftSideIgnore(window_size.x / 4);
+        m_fov = glm::radians(50.0f);
+        m_distance = 0.5f;
+        m_aspect = static_cast<float>(window_size.x - (window_size.x / 4)) / static_cast<float>(window_size.y);
+        m_mainProjectionMatrix = glm::perspective(m_fov, m_aspect, 0.01f, 100.0f);
+
         /* Build Shaders */
         try {
             ShaderBuilder defaultBuilder;
@@ -115,7 +123,7 @@ public:
         /* INIT */
 
         /* Create starburst texture */
-        createStarburst(APERTURE_TEXTURE);
+        //createStarburst(APERTURE_TEXTURE);
 
         /* Light Sphere */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -254,7 +262,7 @@ public:
         std::vector<LensInterface> lensInterfaces = m_lensSystem.getLensInterfaces();
         refreshMatricesAndQuads();
 
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar;
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
 
         /* RENDER LOOP */
         while (!m_window.shouldClose()) {
@@ -262,7 +270,8 @@ public:
             m_camera.updateInput();
 
             ImGui::SetNextWindowPos(ImVec2(0, 0)); // Position at the top-left corner
-            ImGui::SetNextWindowSize(ImVec2(MENU_WIDTH, HEIGHT)); // Fixed width, full height
+            const glm::ivec2& window_size = m_window.getWindowSize();
+            ImGui::SetNextWindowSize(ImVec2(window_size.x / 4, window_size.y)); // Fixed width, full height
 
             // Use ImGui for easy input/output of ints, floats, strings, etc...
             // https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
@@ -280,6 +289,13 @@ public:
                 irisAperturePos = m_lensSystem.getIrisAperturePos();
                 lensInterfaces = m_lensSystem.getLensInterfaces();
                 refreshMatricesAndQuads();
+            }
+
+            if (ImGui::CollapsingHeader("Lens Prescription Details")) {
+                for (int i = 0; i < lensInterfaces.size(); i++) {
+                std::string lensInterfaceDescription = std::to_string(i) + ": d=" + std::format("{:.3f}", lensInterfaces[i].di) + ", n=" + std::format("{:.3f}", lensInterfaces[i].ni) + ", R=" + std::format("{:.3f}", lensInterfaces[i].Ri) + ", h=" + std::format("{:.3f}", lensInterfaces[i].hi) + ", lambda0=" + std::format("{:.3f}", lensInterfaces[i].lambda0);
+                ImGui::Text(lensInterfaceDescription.c_str());
+                }
             }
 
             if (ImGui::CollapsingHeader("Modify Interface")) {
@@ -343,11 +359,6 @@ public:
             if (ImGui::Button("Optimize Coatings")) {
                 optimizeCoatings = true;
             }
-
-            //for (int i = 0; i < lensInterfaces.size(); i++) {
-            //    std::string lensInterfaceDescription = "Interface " + std::to_string(i) + ", d = " + std::to_string(lensInterfaces[i].di) + ", n = " + std::to_string(lensInterfaces[i].ni) + ", R = " + std::to_string(lensInterfaces[i].Ri) + ", h = " + std::to_string(lensInterfaces[i].hi) + ", lambda0 = " + std::to_string(lensInterfaces[i].lambda0);
-            //    ImGui::Text(lensInterfaceDescription.c_str());
-            //}
 
             if (m_selectedQuadIndex != -1) {
                 //get pairs of the id reflection
@@ -646,14 +657,11 @@ private:
     Window m_window;
 
     /* Camera Params */
-    Camera m_camera{&m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f), MENU_WIDTH};
-    const float m_fov = glm::radians(50.0f);
-    //float m_visibleWidth = 0.14f;
-    float m_distance = 0.5f;
-    //// Calculate the FOV in radians
-    //float m_fov = 2.0f * atan(m_visibleWidth / (2.0f * m_distance));
-    const float m_aspect = static_cast<float>(WIDTH) / static_cast<float>(HEIGHT);
-    const glm::mat4 m_mainProjectionMatrix = glm::perspective(m_fov, m_aspect, 0.01f, 100.0f);
+    Camera m_camera{ &m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f), 0 };
+    float m_fov;
+    float m_distance;
+    float m_aspect;
+    glm::mat4 m_mainProjectionMatrix;
 
     /* Cursor Pos */
     int m_cursorPosX = 0;

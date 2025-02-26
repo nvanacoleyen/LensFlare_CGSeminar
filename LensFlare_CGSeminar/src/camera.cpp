@@ -26,6 +26,10 @@ void Camera::setUserInteraction(bool enabled)
     m_userInteraction = enabled;
 }
 
+void Camera::setLeftSideIgnore(int newLeftSideIgnore) {
+    leftSideIgnore = newLeftSideIgnore;
+}
+
 glm::vec3 Camera::cameraPos() const
 {
     return m_position;

@@ -14,6 +14,7 @@ public:
 
     void updateInput();
     void setUserInteraction(bool enabled);
+    void setLeftSideIgnore(int newLeftSideIgnore);
 
     glm::vec3 cameraPos() const;
     glm::mat4 viewMatrix() const;
