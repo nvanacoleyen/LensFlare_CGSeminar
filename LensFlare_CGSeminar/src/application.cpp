@@ -30,7 +30,6 @@ DISABLE_WARNINGS_POP()
 /* GLOBAL PARAMS */
 const char* APERTURE_TEXTURE = "resources/aperture.png";
 
-
 class Application {
 public:
     Application()
@@ -258,6 +257,7 @@ public:
         bool optimizeCoatings = false;
         bool lensInterfaceRefresh = false;
 
+
         /* Flare Paths and Matrices */
         std::vector<LensInterface> lensInterfaces = m_lensSystem.getLensInterfaces();
         refreshMatricesAndQuads();
@@ -472,6 +472,7 @@ public:
             glUniform1i(10, m_cursorPosX);
             glUniform1i(11, m_cursorPosY);
             glUniform1i(13, m_getGhostsAtMouse ? 1 : 0);
+            glUniform1i(14, m_resetAnnotations ? 1 : 0);
       
             glActiveTexture(GL_TEXTURE0); // Bind texture
             glBindTexture(GL_TEXTURE_2D, texApt);
@@ -684,6 +685,9 @@ private:
     bool m_getGhostsAtMouse = false;
     std::vector<int> m_selectedQuadIDs;
     int m_selectedQuadIndex = -1;
+
+    /* Annotations */
+    bool m_resetAnnotations = true;;
 
     /* Shaders */
     Shader m_defaultShader;
