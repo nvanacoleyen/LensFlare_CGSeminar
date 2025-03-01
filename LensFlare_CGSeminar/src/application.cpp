@@ -28,12 +28,15 @@ DISABLE_WARNINGS_POP()
 #include "Windows.h"
 
 /* GLOBAL PARAMS */
+HWND hwnd = GetConsoleWindow();
+UINT dpi = GetDpiForWindow(hwnd);
+const float DISPLAY_SCALING_FACTOR = static_cast<float>(dpi) / 96.0f;
 const char* APERTURE_TEXTURE = "resources/aperture.png";
 
 class Application {
 public:
     Application()
-        : m_window("Lens Flare Rendering", glm::ivec2(1920, 1080), OpenGLVersion::GL45)
+        : m_window("Lens Flare Rendering", glm::ivec2(1920 / DISPLAY_SCALING_FACTOR, 1080 / DISPLAY_SCALING_FACTOR), OpenGLVersion::GL45)
     {
         m_window.registerKeyCallback([this](int key, int scancode, int action, int mods) {
             if (action == GLFW_PRESS)
@@ -216,7 +219,7 @@ public:
 
         /* SHADER BUFFERS */
         m_defaultShader.bind();
-        const GLuint MAX_BUFFER_SIZE = 1000; // Maximum number of quad data entries to store
+        const GLuint MAX_BUFFER_SIZE = 10000; // Maximum number of quad data entries to store
         GLuint ssboQuadData;
         glGenBuffers(1, &ssboQuadData);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboQuadData);
@@ -227,7 +230,20 @@ public:
         glGenBuffers(1, &atomicCounterBuffer);
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
         glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, atomicCounterBuffer);
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, atomicCounterBuffer);
+
+        GLuint ssboAnnotationData;
+        glGenBuffers(1, &ssboAnnotationData);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboAnnotationData);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_BUFFER_SIZE * sizeof(AnnotationData), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboAnnotationData);
+
+        GLuint atomicCounterBufferAnnotations;
+        glGenBuffers(1, &atomicCounterBufferAnnotations);
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferAnnotations);
+        glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, atomicCounterBufferAnnotations);
+
 
         /* GUI PARAMS */
         int interfaceToUpdate = 0;
@@ -358,6 +374,10 @@ public:
 
             if (ImGui::Button("Optimize Coatings")) {
                 optimizeCoatings = true;
+            }
+
+            if (ImGui::Button("Reset Annotations")) {
+                m_resetAnnotations = true;
             }
 
             if (m_selectedQuadIndex != -1) {
@@ -542,6 +562,25 @@ public:
                 m_getGhostsAtMouse = false;
             }
 
+            if (m_resetAnnotations) {
+                GLuint annotationCount = 0;
+                glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferAnnotations);
+                glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &annotationCount);
+
+                m_annotationData.clear();
+                m_annotationData.reserve(annotationCount);
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboAnnotationData);
+                AnnotationData* ptr = (AnnotationData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+
+                // Directly copy the data from the mapped buffer to m_annotationData
+                std::copy(ptr, ptr + annotationCount, std::back_inserter(m_annotationData));
+
+                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+                m_resetAnnotations = false;
+            }
+
 
 
             //RENDER LIGHT SOURCE
@@ -574,6 +613,9 @@ public:
             //Reset atomic counter
             GLuint zero = 0;
             glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
+            glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
+
+            glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferAnnotations);
             glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -687,7 +729,8 @@ private:
     int m_selectedQuadIndex = -1;
 
     /* Annotations */
-    bool m_resetAnnotations = true;;
+    bool m_resetAnnotations = true;
+    std::vector<AnnotationData> m_annotationData;
 
     /* Shaders */
     Shader m_defaultShader;

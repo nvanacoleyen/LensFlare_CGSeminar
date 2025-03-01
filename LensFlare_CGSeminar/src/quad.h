@@ -6,8 +6,15 @@
 #include <vector>
 
 struct QuadData {
-    GLuint quadID;
+    int quadID;
     float intensityVal;
+};
+
+struct AnnotationData {
+    int quadID;
+    float quadHeight;
+    glm::vec2 quadCenterPos;
+    glm::vec4 quadColor;
 };
 
 class FlareQuad {

@@ -12,22 +12,15 @@ layout(location = 12) uniform int quadID;
 layout(location = 13) uniform bool getGhostsAtMouse;
 
 struct QuadData {
-    uint quadID;
+    int quadID;
     float intensityVal;
-};
-
-struct AnnotationData {
-    uint quadID;
-    vec2 quadCenter;
-    float quadHeight;
-    vec3 quadColor;
 };
 
 layout(std430, binding = 0) buffer QuadIDBuffer {
     QuadData quadData[];
 };
 
-layout(binding = 1, offset = 0) uniform atomic_uint quadIDCounter;
+layout(binding = 2, offset = 0) uniform atomic_uint quadIDCounter;
 
 layout(location = 0) out vec4 outColor;
 
@@ -60,11 +53,6 @@ void main()
                 quadData[index].intensityVal = intensityVal;
             }
         }
-    }
-
-    // Record all ghost details for annotations
-    if (resetAnnotations) {
-
     }
 
     outColor = vec4(color * intensityVal, 0.5);
