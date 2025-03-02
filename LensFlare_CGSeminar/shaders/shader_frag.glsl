@@ -5,7 +5,6 @@ layout(location = 1) uniform vec3 color;
 layout(location = 6) uniform float entrance_pupil_height;
 layout(location = 7) uniform sampler2D texApt;
 
-layout(location = 9) uniform float irisApertureHeight;
 layout(location = 10) uniform int cursorPosX;
 layout(location = 11) uniform int cursorPosY;
 layout(location = 12) uniform int quadID;
