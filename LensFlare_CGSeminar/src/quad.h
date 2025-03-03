@@ -10,6 +10,11 @@ struct QuadData {
     float intensityVal;
 };
 
+struct AnnotationData {
+    glm::vec2 posAnnotationTransform;
+    float sizeAnnotationTransform = 1.f;
+};
+
 //check byte alignment issues if any
 struct SnapshotData {
     int quadID;
@@ -28,7 +33,7 @@ public:
     void setPoints(std::vector<glm::vec3> points);
     std::vector<glm::vec3> getPoints();
     void releaseArrayAndBuffer();
-    void drawQuad(glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color);
+    void drawQuad(glm::mat2x2& Ma, glm::mat2x2& Ms, glm::vec3& color, AnnotationData& annotationData);
 
 private:
     void uploadDataIfNeeded(); // New method for data upload optimization

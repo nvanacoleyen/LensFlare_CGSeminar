@@ -47,7 +47,7 @@ void FlareQuad::uploadDataIfNeeded() {
     }
 }
 
-void FlareQuad::drawQuad(glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color) {
+void FlareQuad::drawQuad(glm::mat2x2& Ma, glm::mat2x2& Ms, glm::vec3& color, AnnotationData& annotationData) {
     // Upload data if points have changed
     uploadDataIfNeeded();
 
@@ -59,6 +59,9 @@ void FlareQuad::drawQuad(glm::mat2x2 Ma, glm::mat2x2 Ms, glm::vec3 color) {
     glUniformMatrix2fv(2, 1, GL_FALSE, glm::value_ptr(Ma)); // Projection Matrix
     glUniformMatrix2fv(3, 1, GL_FALSE, glm::value_ptr(Ms)); // Projection Matrix
     glUniform1i(12, m_id); // Quad ID
+    glUniform2fv(15, 1, glm::value_ptr(annotationData.posAnnotationTransform));
+    glUniform1f(16, annotationData.sizeAnnotationTransform);
+
 
     // Draw the quad
     glDrawArrays(GL_LINE_STRIP, 0, m_points.size());

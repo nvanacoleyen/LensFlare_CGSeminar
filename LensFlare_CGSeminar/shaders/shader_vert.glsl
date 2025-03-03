@@ -11,6 +11,8 @@ layout(location = 8) uniform mat4 sensorMatrix;
 layout(location = 9) uniform float irisApertureHeight;
 layout(location = 12) uniform int quadID;
 layout(location = 14) uniform bool m_takeSnapshot;
+layout(location = 15) uniform vec2 posAnnotationTransform;
+layout(location = 16) uniform float sizeAnnotationTransform;
 
 struct SnapshotData {
     int quadID;
@@ -84,5 +86,5 @@ void main()
     }
 
 
-    gl_Position = mvp * sensorMatrix * vec4(vec3(ray_x_s.x, ray_y_s.x, 30.0), 1.0);
+    gl_Position = mvp * sensorMatrix * vec4(vec3((vec2(ray_x_s.x, ray_y_s.x) * sizeAnnotationTransform) + posAnnotationTransform, 30.0), 1.0);
 }
