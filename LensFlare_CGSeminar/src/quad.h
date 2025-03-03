@@ -41,3 +41,10 @@ private:
     GLuint m_ebo_quad;
     bool m_pointsUpdated; // Flag to track if points have been updated
 };
+
+class AnnotationQuad {
+public:
+    AnnotationQuad();
+private:
+
+};

@@ -573,8 +573,18 @@ public:
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboAnnotationData);
                 AnnotationData* ptr = (AnnotationData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
 
-                // Directly copy the data from the mapped buffer to m_annotationData
-                std::copy(ptr, ptr + annotationCount, std::back_inserter(m_annotationData));
+                for (GLuint i = 0; i < annotationCount; ++i) {
+                    bool exists = false;
+                    for (const auto& data : m_annotationData) {
+                        if (data.quadID == ptr[i].quadID) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        m_annotationData.push_back(ptr[i]);
+                    }
+                }
 
                 glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
