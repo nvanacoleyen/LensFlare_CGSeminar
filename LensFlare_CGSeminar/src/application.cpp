@@ -232,17 +232,17 @@ public:
         glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, atomicCounterBuffer);
 
-        GLuint ssboAnnotationData;
-        glGenBuffers(1, &ssboAnnotationData);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboAnnotationData);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_BUFFER_SIZE * sizeof(AnnotationData), nullptr, GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboAnnotationData);
+        GLuint ssboSnapshotData;
+        glGenBuffers(1, &ssboSnapshotData);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboSnapshotData);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_BUFFER_SIZE * sizeof(SnapshotData), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboSnapshotData);
 
-        GLuint atomicCounterBufferAnnotations;
-        glGenBuffers(1, &atomicCounterBufferAnnotations);
-        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferAnnotations);
+        GLuint atomicCounterBufferSnapshot;
+        glGenBuffers(1, &atomicCounterBufferSnapshot);
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferSnapshot);
         glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, atomicCounterBufferAnnotations);
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, atomicCounterBufferSnapshot);
 
 
         /* GUI PARAMS */
@@ -492,7 +492,7 @@ public:
             glUniform1i(10, m_cursorPosX);
             glUniform1i(11, m_cursorPosY);
             glUniform1i(13, m_getGhostsAtMouse ? 1 : 0);
-            glUniform1i(14, m_resetAnnotations ? 1 : 0);
+            glUniform1i(14, m_takeSnapshot ? 1 : 0);
       
             glActiveTexture(GL_TEXTURE0); // Bind texture
             glBindTexture(GL_TEXTURE_2D, texApt);
@@ -563,34 +563,38 @@ public:
             }
 
             if (m_resetAnnotations) {
-                GLuint annotationCount = 0;
-                glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferAnnotations);
-                glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &annotationCount);
+                m_resetAnnotations = false;
+            }
 
-                m_annotationData.clear();
-                m_annotationData.reserve(annotationCount);
+            //take snapshot of the current state of the rendering
+            if (m_takeSnapshot) {
+                GLuint quadSnapshotCount = 0;
+                glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferSnapshot);
+                glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &quadSnapshotCount);
 
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboAnnotationData);
-                AnnotationData* ptr = (AnnotationData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+                m_snapshotData.clear();
+                m_snapshotData.reserve(quadSnapshotCount);
 
-                for (GLuint i = 0; i < annotationCount; ++i) {
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboSnapshotData);
+                SnapshotData* ptr = (SnapshotData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+
+                for (GLuint i = 0; i < quadSnapshotCount; ++i) {
                     bool exists = false;
-                    for (const auto& data : m_annotationData) {
+                    for (const auto& data : m_snapshotData) {
                         if (data.quadID == ptr[i].quadID) {
                             exists = true;
                             break;
                         }
                     }
                     if (!exists) {
-                        m_annotationData.push_back(ptr[i]);
+                        m_snapshotData.push_back(ptr[i]);
                     }
                 }
 
                 glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
-                m_resetAnnotations = false;
+                m_takeSnapshot = false;
             }
-
 
 
             //RENDER LIGHT SOURCE
@@ -625,7 +629,7 @@ public:
             glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBuffer);
             glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
 
-            glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferAnnotations);
+            glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferSnapshot);
             glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -740,7 +744,8 @@ private:
 
     /* Annotations */
     bool m_resetAnnotations = true;
-    std::vector<AnnotationData> m_annotationData;
+    bool m_takeSnapshot = false;
+    std::vector<SnapshotData> m_snapshotData;
 
     /* Shaders */
     Shader m_defaultShader;

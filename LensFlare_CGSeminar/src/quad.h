@@ -11,7 +11,7 @@ struct QuadData {
 };
 
 //check byte alignment issues if any
-struct AnnotationData {
+struct SnapshotData {
     int quadID;
     float quadHeight;
     float aptHeight;
@@ -40,11 +40,4 @@ private:
     GLuint m_vbo_quad;
     GLuint m_ebo_quad;
     bool m_pointsUpdated; // Flag to track if points have been updated
-};
-
-class AnnotationQuad {
-public:
-    AnnotationQuad();
-private:
-
 };
