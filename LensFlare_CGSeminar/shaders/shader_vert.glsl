@@ -36,6 +36,23 @@ out vec2 entrancePos;
 out vec2 aptPos;
 out float intensityVal;
 
+vec2 calculateInitialOffset(mat2 matrix, float y_initial) {
+    float a = matrix[0][0]; // Top-left element
+    float b = matrix[1][0]; // Top-right element
+
+    // Check if 'a' is zero to avoid division by zero
+    if (abs(a) < 1e-6) {
+        // Return a placeholder or handle the case where the matrix is singular
+        return vec2(0.0, y_initial); // Example fallback
+    }
+
+    // Calculate the initial offset value
+    float x_initial = -(b * y_initial) / a;
+
+    return vec2(x_initial, y_initial); // Return as a 2D vector
+}
+
+
 void main()
 {
     float x_offset = pos.x;
@@ -55,8 +72,8 @@ void main()
     vec2 ray_y_s = Ms * ray_y_a;
 
     //QUAD CENTER
-    vec2 quad_center_x = vec2(0.0, light_angle_x);
-    vec2 quad_center_y = vec2(0.0, -light_angle_y);
+    vec2 quad_center_x = calculateInitialOffset(Ma, light_angle_x);
+    vec2 quad_center_y = calculateInitialOffset(Ma, -light_angle_y);
 
     vec2 quad_center_x_s = Ms * Ma * quad_center_x;
     vec2 quad_center_y_s = Ms * Ma * quad_center_y;

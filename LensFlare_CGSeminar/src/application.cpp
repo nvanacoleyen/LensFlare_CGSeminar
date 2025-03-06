@@ -75,6 +75,7 @@ public:
             m_defaultShader = defaultBuilder.build();
             m_starburstShader = ShaderBuilder().addStage(GL_VERTEX_SHADER, "shaders/starburst_vertex.glsl").addStage(GL_FRAGMENT_SHADER, "shaders/starburst_frag.glsl").build();
             m_lightShader = ShaderBuilder().addStage(GL_VERTEX_SHADER, "shaders/light_vertex.glsl").addStage(GL_FRAGMENT_SHADER, "shaders/light_frag.glsl").build();
+            m_quadCenterShader = ShaderBuilder().addStage(GL_VERTEX_SHADER, "shaders/quadcenter_vert.glsl").addStage(GL_FRAGMENT_SHADER, "shaders/quadcenter_frag.glsl").build();
 
         }
         catch (ShaderLoadingException e) {
@@ -125,7 +126,7 @@ public:
         /* INIT */
 
         /* Create starburst texture */
-        //createStarburst(APERTURE_TEXTURE);
+        createStarburst(APERTURE_TEXTURE);
 
         /* Light Sphere */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -216,6 +217,25 @@ public:
 
         glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind the VBO
         glBindVertexArray(0); // Unbind the VAO
+
+        //QUADCENTERS
+
+        GLuint vbo_quadcenter;
+        glGenBuffers(1, &vbo_quadcenter);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_quadcenter);
+        glBufferData(GL_ARRAY_BUFFER, m_quadcenter_points.size() * sizeof(glm::vec2), m_quadcenter_points.data(), GL_STATIC_DRAW);
+
+        GLuint vao_quadcenter;
+        glGenVertexArrays(1, &vao_quadcenter);
+        glBindVertexArray(vao_quadcenter);
+
+        // Enable and define the vertex attribute for position
+        glEnableVertexAttribArray(0); // Use location=0 in your shader
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
+
+        // Unbind the VAO to prevent accidental modifications
+        glBindVertexArray(0);
+
 
         /* SHADER BUFFERS */
         m_defaultShader.bind();
@@ -568,6 +588,19 @@ public:
                         
                         std::cout << "Reflections at: " << m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].x << ", " << m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].y << std::endl;
                     }
+
+                    m_quadcenter_points.clear();
+
+                    for (const auto& data : m_snapshotData) {
+                        if (m_selectedQuadIDs[m_selectedQuadIndex] == data.quadID) {
+                            m_quadcenter_points.push_back(data.quadCenterPos);
+                        }
+                    }
+
+                    glBindBuffer(GL_ARRAY_BUFFER, vbo_quadcenter);
+                    glBufferData(GL_ARRAY_BUFFER, m_quadcenter_points.size() * sizeof(glm::vec2), m_quadcenter_points.data(), GL_STATIC_DRAW);
+
+
                 }
                 else {
                     m_selectedQuadIndex = -1;
@@ -605,6 +638,22 @@ public:
 
                 m_takeSnapshot = false;
             }
+
+
+
+
+
+            m_quadCenterShader.bind();
+            glPointSize(5.0f); // Sets the size of points in pixels
+            glm::vec3 quadCenterColor = glm::vec3(1.0, 0, 0);
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
+            glUniform3fv(1, 1, glm::value_ptr(quadCenterColor));
+            glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(m_sensorMatrix));
+
+            glBindVertexArray(vao_quadcenter);
+            glDrawArrays(GL_POINTS, 0, m_quadcenter_points.size());
+            glBindVertexArray(0);
+
 
 
             //RENDER LIGHT SOURCE
@@ -711,13 +760,16 @@ public:
                             quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(snapshotdata.quadCenterPos, 30.0, 1.0);
                         }
                     }
+                    quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
                     const glm::ivec2& window_size = m_window.getWindowSize();
                     glm::vec2 mycursorpos = m_window.getCursorPos();
                     mycursorpos = (mycursorpos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f);
-                    std::cout << "gl quad center screen pos: " << quadCenterScreenPos.x / quadCenterScreenPos.w << ", " << quadCenterScreenPos.y / quadCenterScreenPos.w << std::endl;
+                    std::cout << "gl quad center screen pos: " << quadCenterScreenPos.x << ", " << quadCenterScreenPos.y << std::endl; //NDC
                     std::cout << "window cursor pos: " << mycursorpos.x << ", " << mycursorpos.y << std::endl;
-                    m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = (mycursorpos - glm::vec2(quadCenterScreenPos.x / quadCenterScreenPos.w, quadCenterScreenPos.y / quadCenterScreenPos.w));
-                    m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform, 0.0f, 1.f);
+                    glm::vec2 diffVectorNDC = mycursorpos - glm::vec2(quadCenterScreenPos.x, quadCenterScreenPos.y);
+                    glm::vec4 worldSpaceVector = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(diffVectorNDC, 0.0f, 1.f);
+                    worldSpaceVector = worldSpaceVector / worldSpaceVector.w;
+                    m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = glm::vec2(worldSpaceVector.x, worldSpaceVector.y);
                     //m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform.x = -m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform.x; multiply by the inverse of mvp and sensor matrix
                 }
             }
@@ -788,11 +840,13 @@ private:
     std::vector<AnnotationData> m_annotationData;
     bool m_takeSnapshot = true;
     std::vector<SnapshotData> m_snapshotData;
+    std::vector<glm::vec2> m_quadcenter_points;
 
     /* Shaders */
     Shader m_defaultShader;
     Shader m_lightShader;
     Shader m_starburstShader;
+    Shader m_quadCenterShader;
 
     /* Light Source */
     const glm::vec3 m_lcolor{ 1, 1, 0.5 };
