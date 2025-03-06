@@ -446,7 +446,7 @@ public:
             }
 
             // Update Projection Matrix
-            const glm::mat4 mvp = m_mainProjectionMatrix * m_camera.viewMatrix();
+            m_mvp = m_mainProjectionMatrix * m_camera.viewMatrix();
             const glm::vec3 cameraPos = m_camera.cameraPos();
             const glm::vec3 cameraForward = m_camera.m_forward;
             const glm::vec3 cameraUp = m_camera.m_up;
@@ -456,9 +456,9 @@ public:
             float irisApertureHeight = m_lensSystem.getIrisApertureHeight();
             float entrancePupilHeight = m_lensSystem.getEntrancePupilHeight() / 2.f;
 
-            glm::mat4 sensorMatrix = glm::translate(glm::mat4(1.0f), cameraPos);
-            sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
-            sensorMatrix = glm::rotate(sensorMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
+            m_sensorMatrix = glm::translate(glm::mat4(1.0f), cameraPos);
+            m_sensorMatrix = glm::rotate(m_sensorMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
+            m_sensorMatrix = glm::rotate(m_sensorMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
             if (optimizeCoatings && m_selectedQuadIndex != -1) {
                 if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
@@ -477,6 +477,8 @@ public:
             std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, yawandPitch);
             std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, yawandPitch);
 
+            glm::vec2 cursorPos = m_window.getCursorPos();
+
             // Clear the screen
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
@@ -491,15 +493,15 @@ public:
             m_defaultShader.bind();
 
             /* Bind General Variables */
-            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp)); // Projection Matrix
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp)); // Projection Matrix
             glUniform1f(4, yawandPitch.x);
             glUniform1f(5, yawandPitch.y);
             glUniform1f(6, entrancePupilHeight);
-            glUniformMatrix4fv(8, 1, GL_FALSE, glm::value_ptr(sensorMatrix));
+            glUniformMatrix4fv(8, 1, GL_FALSE, glm::value_ptr(m_sensorMatrix));
             glUniform1f(9, irisApertureHeight);
 
-            glUniform1i(10, m_cursorPosX);
-            glUniform1i(11, m_cursorPosY);
+            glUniform1i(10, cursorPos.x);
+            glUniform1i(11, cursorPos.y);
             glUniform1i(13, m_getGhostsAtMouse ? 1 : 0);
             glUniform1i(14, m_takeSnapshot ? 1 : 0);
       
@@ -607,7 +609,7 @@ public:
 
             //RENDER LIGHT SOURCE
             m_lightShader.bind();
-            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp));
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
             glUniform3fv(1, 1, glm::value_ptr(m_lcolor));
             glUniform3fv(2, 1, glm::value_ptr(lightPos));
             glBindVertexArray(vao_light);
@@ -622,7 +624,7 @@ public:
             float starburstScale = 25;
 
             m_starburstShader.bind();
-            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(mvp));
+            glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
             glUniform3fv(1, 1, glm::value_ptr(starburstColor));
             glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(starburstMatrix));
             glUniform1f(3, starburstScale);
@@ -690,8 +692,6 @@ public:
     // If the mouse is moved this function will be called with the x, y screen-coordinates of the mouse
     void onMouseMove(const glm::dvec2& cursorPos)
     {
-        m_cursorPosX = cursorPos.x;
-        m_cursorPosY = cursorPos.y;
         //std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
     }
 
@@ -703,7 +703,32 @@ public:
         switch (button)
         {
         case GLFW_MOUSE_BUTTON_LEFT:
-            m_getGhostsAtMouse = true;
+            if (m_window.isKeyPressed(GLFW_KEY_Q)) { // Q for moving the selected ghost
+                if (m_selectedQuadIndex != -1) {
+                    glm::vec4 quadCenterScreenPos;
+                    for (SnapshotData& snapshotdata : m_snapshotData) {
+                        if (snapshotdata.quadID == m_selectedQuadIDs[m_selectedQuadIndex]) {
+                            quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(snapshotdata.quadCenterPos, 30.0, 1.0);
+                        }
+                    }
+                    const glm::ivec2& window_size = m_window.getWindowSize();
+                    glm::vec2 mycursorpos = m_window.getCursorPos();
+                    mycursorpos = (mycursorpos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f);
+                    std::cout << "gl quad center screen pos: " << quadCenterScreenPos.x / quadCenterScreenPos.w << ", " << quadCenterScreenPos.y / quadCenterScreenPos.w << std::endl;
+                    std::cout << "window cursor pos: " << mycursorpos.x << ", " << mycursorpos.y << std::endl;
+                    m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = (mycursorpos - glm::vec2(quadCenterScreenPos.x / quadCenterScreenPos.w, quadCenterScreenPos.y / quadCenterScreenPos.w));
+                    m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform, 0.0f, 1.f);
+                    //m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform.x = -m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform.x; multiply by the inverse of mvp and sensor matrix
+                }
+            }
+            else if (m_window.isKeyPressed(GLFW_KEY_E)) { // E for scaling the selected ghost
+                if (m_selectedQuadIndex != -1) {
+                    m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform = 1.0f;
+                }
+            }
+            else {
+                m_getGhostsAtMouse = true;
+            }
             break;
         default:
             break;
@@ -716,6 +741,14 @@ public:
     // mods - Any modifier buttons pressed
     void onMouseReleased(int button, int mods)
     {
+        switch (button)
+        {
+        case GLFW_MOUSE_BUTTON_RIGHT:
+            m_takeSnapshot = true;
+            break;
+        default:
+            break;
+        }
         //std::cout << "Released mouse button: " << button << std::endl;
     }
 
@@ -728,10 +761,7 @@ private:
     float m_distance;
     float m_aspect;
     glm::mat4 m_mainProjectionMatrix;
-
-    /* Cursor Pos */
-    int m_cursorPosX = 0;
-    int m_cursorPosY = 0;
+    glm::mat4 m_mvp;
 
     /* Lens System */
     //LensSystem m_lensSystem = testLens();
@@ -746,6 +776,8 @@ private:
     std::vector<FlareQuad> m_preAptQuads;
     std::vector<FlareQuad> m_postAptQuads;
 
+    glm::mat4 m_sensorMatrix;
+
     /* Ghost Selection */
     bool m_getGhostsAtMouse = false;
     std::vector<int> m_selectedQuadIDs;
@@ -754,7 +786,7 @@ private:
     /* Annotations */
     bool m_resetAnnotations = true;
     std::vector<AnnotationData> m_annotationData;
-    bool m_takeSnapshot = false;
+    bool m_takeSnapshot = true;
     std::vector<SnapshotData> m_snapshotData;
 
     /* Shaders */

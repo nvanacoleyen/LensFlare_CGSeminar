@@ -86,5 +86,5 @@ void main()
     }
 
 
-    gl_Position = mvp * sensorMatrix * vec4(vec3((vec2(ray_x_s.x, ray_y_s.x) * sizeAnnotationTransform) + posAnnotationTransform, 30.0), 1.0);
+    gl_Position = (mvp * sensorMatrix * vec4(vec3((vec2(ray_x_s.x, ray_y_s.x) * sizeAnnotationTransform + posAnnotationTransform), 30.0), 1.0));
 }
