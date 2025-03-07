@@ -763,14 +763,13 @@ public:
                     quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
                     const glm::ivec2& window_size = m_window.getWindowSize();
                     glm::vec2 mycursorpos = m_window.getCursorPos();
-                    mycursorpos = (mycursorpos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f);
-                    std::cout << "gl quad center screen pos: " << quadCenterScreenPos.x << ", " << quadCenterScreenPos.y << std::endl; //NDC
-                    std::cout << "window cursor pos: " << mycursorpos.x << ", " << mycursorpos.y << std::endl;
+                    mycursorpos = (mycursorpos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f); //NDC
+                    //std::cout << "gl quad center screen pos: " << quadCenterScreenPos.x << ", " << quadCenterScreenPos.y << std::endl; 
+                    //std::cout << "window cursor pos: " << mycursorpos.x << ", " << mycursorpos.y << std::endl;
                     glm::vec2 diffVectorNDC = mycursorpos - glm::vec2(quadCenterScreenPos.x, quadCenterScreenPos.y);
-                    glm::vec4 worldSpaceVector = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(diffVectorNDC, 0.0f, 1.f);
+                    glm::vec4 worldSpaceVector = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(diffVectorNDC, quadCenterScreenPos.z, 1.f);
                     worldSpaceVector = worldSpaceVector / worldSpaceVector.w;
                     m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = glm::vec2(worldSpaceVector.x, worldSpaceVector.y);
-                    //m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform.x = -m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform.x; multiply by the inverse of mvp and sensor matrix
                 }
             }
             else if (m_window.isKeyPressed(GLFW_KEY_E)) { // E for scaling the selected ghost
