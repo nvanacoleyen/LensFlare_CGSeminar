@@ -742,16 +742,7 @@ public:
     void onMouseMove(const glm::dvec2& cursorPos)
     {
         //std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
-    }
-
-    // If one of the mouse buttons is pressed this function will be called
-    // button - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__buttons.html
-    // mods - Any modifier buttons pressed
-    void onMouseClicked(int button, int mods)
-    {
-        switch (button)
-        {
-        case GLFW_MOUSE_BUTTON_LEFT:
+        if (m_window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) { //Very optimizable
             if (m_window.isKeyPressed(GLFW_KEY_Q)) { // Q for moving the selected ghost
                 if (m_selectedQuadIndex != -1) {
                     glm::vec4 quadCenterScreenPos;
@@ -762,7 +753,7 @@ public:
                     }
                     quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
                     const glm::ivec2& window_size = m_window.getWindowSize();
-                    glm::vec2 mycursorpos = m_window.getCursorPos();
+                    glm::vec2 mycursorpos = cursorPos;
                     mycursorpos = (mycursorpos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f); //NDC
                     //std::cout << "gl quad center screen pos: " << quadCenterScreenPos.x << ", " << quadCenterScreenPos.y << std::endl; 
                     //std::cout << "window cursor pos: " << mycursorpos.x << ", " << mycursorpos.y << std::endl;
@@ -774,11 +765,37 @@ public:
             }
             else if (m_window.isKeyPressed(GLFW_KEY_E)) { // E for scaling the selected ghost
                 if (m_selectedQuadIndex != -1) {
-                    m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform = 1.0f;
+                    glm::vec2 currentCursorPos = cursorPos;
+                    glm::vec2 cursorResizeVector = currentCursorPos - m_resizeInitialPos;
+                    //std::cout << "CURSOR AT :" << currentCursorPos.x << ", " << currentCursorPos.y << std::endl;
+                    float resizeWeight = sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float) m_window.getWindowSize().y;
+                    //std::cout << "WEIGHT : " << resizeWeight << std::endl;
+                    if (currentCursorPos.x > m_resizeInitialPos.x) {
+                        m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform += resizeWeight;
+                    }
+                    else if (m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform - resizeWeight > 0.0) {
+                        m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform -= resizeWeight;
+                    }
+                    
                 }
             }
-            else {
+        }
+    }
+
+    // If one of the mouse buttons is pressed this function will be called
+    // button - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__buttons.html
+    // mods - Any modifier buttons pressed
+    void onMouseClicked(int button, int mods)
+    {
+        switch (button)
+        {
+        case GLFW_MOUSE_BUTTON_LEFT:
+            if (!m_window.isKeyPressed(GLFW_KEY_Q) && !m_window.isKeyPressed(GLFW_KEY_E)) {
                 m_getGhostsAtMouse = true;
+            }
+            else if (m_window.isKeyPressed(GLFW_KEY_E)) {
+                m_resizeInitialPos = m_window.getCursorPos();
+                //std::cout << "INITIAL POINT AT:" << m_resizeInitialPos.x << ", " << m_resizeInitialPos.y << std::endl;
             }
             break;
         default:
@@ -840,6 +857,7 @@ private:
     bool m_takeSnapshot = true;
     std::vector<SnapshotData> m_snapshotData;
     std::vector<glm::vec2> m_quadcenter_points;
+    glm::vec2 m_resizeInitialPos;
 
     /* Shaders */
     Shader m_defaultShader;

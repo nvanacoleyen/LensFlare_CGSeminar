@@ -71,12 +71,13 @@ void main()
     vec2 ray_x_s = Ms * ray_x_a;
     vec2 ray_y_s = Ms * ray_y_a;
 
-    //QUAD CENTER
+    //FLARE CENTER, APT CENTER PROJECTED ON SENSOR
     vec2 quad_center_x = calculateInitialOffset(Ma, light_angle_x);
     vec2 quad_center_y = calculateInitialOffset(Ma, -light_angle_y);
 
     vec2 quad_center_x_s = Ms * Ma * quad_center_x;
     vec2 quad_center_y_s = Ms * Ma * quad_center_y;
+    vec2 quad_center_pos = vec2(quad_center_x_s.x, quad_center_y_s.x);
 
     float quad_height = sqrt(pow((ray_x_s.x - quad_center_x_s.x), 2.0) + pow((ray_y_s.x - quad_center_y_s.x), 2.0));
     float initial_quad_height = sqrt(pow(x_offset, 2.0) + pow(y_offset, 2.0));
@@ -87,7 +88,6 @@ void main()
         // Atomically increment the counter and get the index
         uint index = atomicCounterIncrement(snapshotCounter);
         if (index < snapshotData.length()) {
-            vec2 quad_center_pos = vec2(quad_center_x_s.x, quad_center_y_s.x);
             vec2 quad_center_x_a = Ma * quad_center_x;
             vec2 quad_center_y_a = Ma * quad_center_y;
             vec2 quad_center_apt_pos = (vec2(quad_center_x_a.x, quad_center_y_a.x) / irisApertureHeight) + vec2(0.5, 0.5);
@@ -103,5 +103,5 @@ void main()
     }
 
 
-    gl_Position = (mvp * sensorMatrix * vec4(vec3((vec2(ray_x_s.x, ray_y_s.x) * sizeAnnotationTransform + posAnnotationTransform), 30.0), 1.0));
+    gl_Position = (mvp * sensorMatrix * vec4(vec3(((vec2(ray_x_s.x, ray_y_s.x) - quad_center_pos) * sizeAnnotationTransform + quad_center_pos + posAnnotationTransform), 30.0), 1.0));
 }
