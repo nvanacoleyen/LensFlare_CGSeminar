@@ -736,6 +736,17 @@ public:
     void onKeyReleased(int key, int mods)
     {
         //std::cout << "Key released: " << key << std::endl;
+        switch (key)
+        {
+        case GLFW_KEY_W:
+        case GLFW_KEY_A:
+        case GLFW_KEY_S:
+        case GLFW_KEY_D:
+            m_takeSnapshot = true;
+            break;
+        default:
+            break;
+        }
     }
 
     // If the mouse is moved this function will be called with the x, y screen-coordinates of the mouse
