@@ -40,10 +40,9 @@ vec2 calculateInitialOffset(mat2 matrix, float y_initial) {
     float a = matrix[0][0]; // Top-left element
     float b = matrix[1][0]; // Top-right element
 
-    // Check if 'a' is zero to avoid division by zero
+    // Check if 'a' is zero to avoid division by zero, 
     if (abs(a) < 1e-6) {
-        // Return a placeholder or handle the case where the matrix is singular
-        return vec2(0.0, y_initial); // Example fallback
+        return vec2(0.0, y_initial); // fallback
     }
 
     // Calculate the initial offset value
