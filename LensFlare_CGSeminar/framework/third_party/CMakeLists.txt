@@ -9,6 +9,8 @@ if (NOT FRAMEWORK_BASIC_LIBRARY)
 	add_subdirectory("stb")
 	add_subdirectory("nativefiledialog")
 	add_subdirectory("toml")
+
 endif()
 
 add_subdirectory("glew/glew-2.1.0/build/cmake")
+add_subdirectory("pagmo2")

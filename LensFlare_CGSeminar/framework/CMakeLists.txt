@@ -7,6 +7,14 @@ include("cmake/CompilerWarnings.cmake") # Enable almost all compiler warnings an
 include("cmake/Sanitizers.cmake") # CMake options to enable address, memory, UB and thread sanitizers.
 include("cmake/StaticAnalyzers.cmake") # CMake options to enable clang-tidy or cpp-check.
 
+# Add TBB (Pagmo dependency)
+list(APPEND CMAKE_PREFIX_PATH "third_party/onetbb/lib/cmake/tbb")
+find_package(TBB REQUIRED)
+
+# Add Boost (Pagmo dependency)
+list(APPEND CMAKE_PREFIX_PATH "third_party/boost/lib64-msvc-14.3/cmake/Boost-1.87.0")
+find_package(Boost REQUIRED)
+
 add_subdirectory("third_party")
 
 if (FRAMEWORK_BASIC_LIBRARY)
@@ -31,13 +39,12 @@ else()
     PUBLIC "include/" 
     PUBLIC ${OPENGL_INCLUDE_DIRS} 
     PUBLIC "third_party/glew/glew-2.1.0/include/"
-	# PUBLIC "third_party/opencv/build/include/"
 	)
 
 	set(OpenCV_DIR "third_party/opencv/build")
 	find_package(OpenCV REQUIRED)
 
-	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS})
+	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS} Boost::boost TBB::tbb pagmo)
 	target_compile_features(CGFramework PUBLIC cxx_std_20)
 	set_property(TARGET CGFramework PROPERTY POSITION_INDEPENDENT_CODE ON)
 

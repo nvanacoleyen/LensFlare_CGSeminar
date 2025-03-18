@@ -3,6 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+LensFlare_CGSeminar/framework/third_party/boost/
+
 # User-specific files
 *.rsuser
 *.suo

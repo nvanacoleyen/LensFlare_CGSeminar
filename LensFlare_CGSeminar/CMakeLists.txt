@@ -63,3 +63,16 @@ add_custom_command(TARGET FinalProject POST_BUILD
     $<TARGET_FILE_DIR:FinalProject>
 )
 
+add_custom_command(TARGET FinalProject POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE_DIR:FinalProject>/framework/third_party/pagmo2/pagmo.dll"
+    $<TARGET_FILE_DIR:FinalProject>    
+)
+
+add_custom_command(TARGET FinalProject POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_LIST_DIR}/framework/third_party/onetbb/redist/intel64/vc14/tbb12_debug.dll"
+    $<TARGET_FILE_DIR:FinalProject>
+)
+
+
