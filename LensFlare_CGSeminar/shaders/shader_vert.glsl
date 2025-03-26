@@ -17,10 +17,7 @@ layout(location = 16) uniform float sizeAnnotationTransform;
 struct SnapshotData {
     int quadID;
     float quadHeight;
-    float aptHeight;
-    int padding;
     vec2 quadCenterPos;
-    vec2 aptCenterPos;
     vec4 quadColor;
 };
 
@@ -78,26 +75,26 @@ void main()
     vec2 quad_center_y_s = Ms * Ma * quad_center_y;
     vec2 quad_center_pos = vec2(quad_center_x_s.x, quad_center_y_s.x);
 
-    float quad_height = sqrt(pow((ray_x_s.x - quad_center_x_s.x), 2.0) + pow((ray_y_s.x - quad_center_y_s.x), 2.0));
-    float initial_quad_height = sqrt(pow(x_offset, 2.0) + pow(y_offset, 2.0));
-    intensityVal = initial_quad_height / quad_height;
+    // float quad_height = sqrt(pow((ray_x_s.x - quad_center_x_s.x), 2.0) + pow((ray_y_s.x - quad_center_y_s.x), 2.0));
+    // float initial_quad_height = sqrt(pow(x_offset, 2.0) + pow(y_offset, 2.0));
+
+    vec2 apt_one_x = vec2((1.0 - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
+    vec2 apt_one_y = vec2((1.0 + (light_angle_y * Ma[1][0])) / Ma[0][0], -light_angle_y);
+    vec2 apt_one_x_s = Ms * Ma * apt_one_x;
+    vec2 apt_one_y_s = Ms * Ma * apt_one_y;
+    float ghost_height_factor = length(vec2(apt_one_x_s.x, apt_one_y_s.x) - quad_center_pos) / length(vec2(1.0, 1.0));
+
+    intensityVal = 1 / (ghost_height_factor * sizeAnnotationTransform);
 
     // Record all ghost details
     if (m_takeSnapshot) {
         // Atomically increment the counter and get the index
         uint index = atomicCounterIncrement(snapshotCounter);
         if (index < snapshotData.length()) {
-            vec2 quad_center_x_a = Ma * quad_center_x;
-            vec2 quad_center_y_a = Ma * quad_center_y;
-            vec2 quad_center_apt_pos = (vec2(quad_center_x_a.x, quad_center_y_a.x) / irisApertureHeight) + vec2(0.5, 0.5);
-            float quad_apt_height = sqrt(pow((aptPos.x - quad_center_apt_pos.x), 2.0) + pow((aptPos.y - quad_center_apt_pos.y), 2.0));
-
             snapshotData[index].quadID = quadID;
-            snapshotData[index].quadHeight = quad_height;
-            snapshotData[index].quadCenterPos = quad_center_pos;
+            snapshotData[index].quadHeight = ghost_height_factor * sizeAnnotationTransform;
+            snapshotData[index].quadCenterPos = quad_center_pos + posAnnotationTransform;
             snapshotData[index].quadColor = vec4(color * intensityVal, 0.5);
-            snapshotData[index].aptCenterPos = quad_center_apt_pos;
-            snapshotData[index].aptHeight = quad_apt_height;
         }
     }
 

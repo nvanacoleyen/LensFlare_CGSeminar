@@ -19,10 +19,7 @@ struct AnnotationData {
 struct SnapshotData {
     int quadID;
     float quadHeight;
-    float aptHeight;
-    int padding;
     glm::vec2 quadCenterPos;
-    glm::vec2 aptCenterPos;
     glm::vec4 quadColor;
 };
 

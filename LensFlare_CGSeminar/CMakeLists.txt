@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 project(ComputerGraphics C CXX)
 
+# Set CMake to use C++17 or later if not already set
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Enable RTTI explicitly for MSVC
+if (MSVC)
+    add_compile_options(/GR) # Enable Runtime Type Information
+endif()
+
 # Set this before including framework such that it knows to use the OpenGL4.5 version of GLAD
 if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/framework")
 	# Create framework library and include CMake scripts (compiler warnings, sanitizers and static analyzers).
@@ -15,8 +24,8 @@ add_executable(FinalProject
     "src/ray_transfer_matrices.cpp"
 	"src/ray_transfer_matrices.h"
 	"src/lens_system.h"
-	"src/lens_system.cpp" "src/quad.cpp" "src/quad.h" "src/camera.cpp" "src/camera.h" "src/utils.h" "src/utils.cpp" "src/preset_lens_systems.cpp" "src/preset_lens_systems.h"  "src/starburst.cpp" "src/starburst.h" "src/reverse_coating.cpp" "src/reverse_coating.h")
-target_compile_features(FinalProject PRIVATE cxx_std_20)
+	"src/lens_system.cpp" "src/quad.cpp" "src/quad.h" "src/camera.cpp" "src/camera.h" "src/utils.h" "src/utils.cpp" "src/preset_lens_systems.cpp" "src/preset_lens_systems.h"  "src/starburst.cpp" "src/starburst.h" "src/reverse_coating.cpp" "src/reverse_coating.h" "src/lens_solver.h" "src/lens_solver.cpp" "src/playground.cpp")
+target_compile_features(FinalProject PRIVATE cxx_std_17)
 target_link_libraries(FinalProject PRIVATE CGFramework)
 enable_sanitizers(FinalProject)
 set_project_warnings(FinalProject)

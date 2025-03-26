@@ -7,6 +7,15 @@ include("cmake/CompilerWarnings.cmake") # Enable almost all compiler warnings an
 include("cmake/Sanitizers.cmake") # CMake options to enable address, memory, UB and thread sanitizers.
 include("cmake/StaticAnalyzers.cmake") # CMake options to enable clang-tidy or cpp-check.
 
+# Set CMake to use C++17 or later if not already set
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Enable RTTI explicitly for MSVC
+if (MSVC)
+    add_compile_options(/GR) # Enable Runtime Type Information
+endif()
+
 # Add TBB (Pagmo dependency)
 list(APPEND CMAKE_PREFIX_PATH "third_party/onetbb/lib/cmake/tbb")
 find_package(TBB REQUIRED)
@@ -44,7 +53,7 @@ else()
 	set(OpenCV_DIR "third_party/opencv/build")
 	find_package(OpenCV REQUIRED)
 
-	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS} Boost::boost TBB::tbb pagmo)
+	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS} Boost::boost TBB::tbb Eigen3::Eigen pagmo)
 	target_compile_features(CGFramework PUBLIC cxx_std_20)
 	set_property(TARGET CGFramework PROPERTY POSITION_INDEPENDENT_CODE ON)
 

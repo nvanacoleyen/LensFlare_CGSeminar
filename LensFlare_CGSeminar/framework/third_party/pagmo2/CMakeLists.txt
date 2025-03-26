@@ -8,7 +8,7 @@ cmake_policy(SET CMP0069 NEW)
 # NOTE: this should be done before the project command since the latter can set
 # CMAKE_BUILD_TYPE itself (it does so for nmake).
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING
         "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
     FORCE)
 endif()
@@ -31,7 +31,7 @@ option(PAGMO_BUILD_BENCHMARKS "Build the benchmarks." OFF)
 option(PAGMO_BUILD_TUTORIALS "Build tutorials." OFF)
 
 # Build option: enable features depending on Eigen3.
-option(PAGMO_WITH_EIGEN3 "Enable features depending on Eigen3 (such as CMAES). Requires Eigen3." OFF)
+option(PAGMO_WITH_EIGEN3 "Enable features depending on Eigen3 (such as CMAES). Requires Eigen3." ON)
 
 # Build option: enable NLopt.
 option(PAGMO_WITH_NLOPT "Enable wrappers for the NLopt algorithms." OFF)

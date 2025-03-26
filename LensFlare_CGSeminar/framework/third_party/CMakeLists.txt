@@ -13,4 +13,5 @@ if (NOT FRAMEWORK_BASIC_LIBRARY)
 endif()
 
 add_subdirectory("glew/glew-2.1.0/build/cmake")
+add_subdirectory("eigen")
 add_subdirectory("pagmo2")

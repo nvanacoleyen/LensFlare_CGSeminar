@@ -26,6 +26,7 @@ DISABLE_WARNINGS_POP()
 #include "starburst.h"
 #include "reverse_coating.h"
 #include "Windows.h"
+#include "lens_solver.h"
 
 /* GLOBAL PARAMS */
 HWND hwnd = GetConsoleWindow();
@@ -119,6 +120,7 @@ public:
             m_postAptQuads.push_back(FlareQuad(quad_points, quad_id));
             quad_id++;
         }
+        m_resetAnnotations = true;
     }
 
     void update()
@@ -126,7 +128,7 @@ public:
         /* INIT */
 
         /* Create starburst texture */
-        createStarburst(APERTURE_TEXTURE);
+        //createStarburst(APERTURE_TEXTURE);
 
         /* Light Sphere */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -292,6 +294,7 @@ public:
 
         bool optimizeCoatings = false;
         bool lensInterfaceRefresh = false;
+        bool optimizeWithEA = false;
 
 
         /* Flare Paths and Matrices */
@@ -396,17 +399,13 @@ public:
                 optimizeCoatings = true;
             }
 
-            if (ImGui::Button("Reset Annotations")) {
-                m_resetAnnotations = true;
+            if (ImGui::Button("Optimize with EA (DE)")) {
+                m_takeSnapshot = true;
+                optimizeWithEA = true;
             }
 
-            if (m_resetAnnotations) {
-                m_annotationData.clear();
-                int amount_ghosts = m_preAptReflectionPairs.size() + m_postAptReflectionPairs.size();
-                for (int i = 0; i < amount_ghosts; i++) {
-                    m_annotationData.push_back(AnnotationData());
-                }
-                m_resetAnnotations = false;
+            if (ImGui::Button("Reset Annotations")) {
+                m_resetAnnotations = true;
             }
 
             if (m_selectedQuadIndex != -1) {
@@ -463,6 +462,16 @@ public:
                 m_lensSystem.setIrisAperturePos(irisAperturePos);
                 irisAperturePosMemory = irisAperturePos;
                 refreshMatricesAndQuads();
+            }
+
+            // Reset annotations
+            if (m_resetAnnotations) {
+                m_annotationData.clear();
+                int amount_ghosts = m_preAptReflectionPairs.size() + m_postAptReflectionPairs.size();
+                for (int i = 0; i < amount_ghosts; i++) {
+                    m_annotationData.push_back(AnnotationData());
+                }
+                m_resetAnnotations = false;
             }
 
             // Update Projection Matrix
@@ -639,7 +648,14 @@ public:
                 m_takeSnapshot = false;
             }
 
+            if (optimizeWithEA) {
+                //Optimize
+                lensInterfaces = solve_Annotations(m_lensSystem, m_snapshotData, yawandPitch.x, yawandPitch.y);
 
+                m_lensSystem.setLensInterfaces(lensInterfaces);
+                optimizeWithEA = false;
+                m_resetAnnotations = true;
+            }
 
 
 
@@ -844,8 +860,8 @@ private:
 
     /* Lens System */
     //LensSystem m_lensSystem = testLens();
-    LensSystem m_lensSystem = someCanonLens();
-    //LensSystem m_lensSystem = heliarTronerLens();
+    //LensSystem m_lensSystem = someCanonLens();
+    LensSystem m_lensSystem = heliarTronerLens();
     glm::mat2x2 m_default_Ma = m_lensSystem.getMa();
     glm::mat2x2 m_default_Ms = m_lensSystem.getMs();
     std::vector<glm::vec2> m_preAptReflectionPairs = m_lensSystem.getPreAptReflections();
