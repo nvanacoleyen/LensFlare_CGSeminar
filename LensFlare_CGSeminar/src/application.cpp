@@ -650,9 +650,14 @@ public:
 
             if (optimizeWithEA) {
                 //Optimize
-                lensInterfaces = solve_Annotations(m_lensSystem, m_snapshotData, yawandPitch.x, yawandPitch.y);
+                m_lensSystem = solve_Annotations(m_lensSystem, m_snapshotData, yawandPitch.x, yawandPitch.y);
+                lensInterfaces = m_lensSystem.getLensInterfaces();
 
-                m_lensSystem.setLensInterfaces(lensInterfaces);
+                refreshMatricesAndQuads();
+
+                irisAperturePos = m_lensSystem.getIrisAperturePos();
+                irisAperturePosMemory = irisAperturePos;
+
                 optimizeWithEA = false;
                 m_resetAnnotations = true;
             }

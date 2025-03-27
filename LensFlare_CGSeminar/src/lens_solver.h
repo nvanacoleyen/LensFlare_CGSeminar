@@ -9,7 +9,6 @@
 
 struct LensSystemProblem {
     unsigned int m_num_interfaces;  // number of lens interfaces
-    unsigned int m_apt_pos; // The aperture position in the interfaces
     float m_light_angle_x;
     float m_light_angle_y;
     unsigned int m_dim;             // total number of decision variables
@@ -20,7 +19,7 @@ struct LensSystemProblem {
     //Simulate drawing a quad, only necessary info for snapshot
     SnapshotData simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y) const;
     // Set the problem dimension and bounds
-    void init(unsigned int num_interfaces, unsigned int apt_pos, std::vector<LensInterface>& currentLensInterfaces, float light_angle_x, float light_angle_y);
+    void init(unsigned int num_interfaces, std::vector<LensInterface>& currentLensInterfaces, float light_angle_x, float light_angle_y);
     // Set the render objectives for the fitness function
     void setRenderObjective(std::vector<SnapshotData> &renderObjective);
     // This function computes the fitness (objective) value.
@@ -29,4 +28,5 @@ struct LensSystemProblem {
     std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const;
 };
 
-std::vector<LensInterface> solve_Annotations(LensSystem& currentLensSystem, std::vector<SnapshotData> renderObjective, float light_angle_x, float light_angle_y);
+void sortByQuadHeight(std::vector<SnapshotData>& snapshotDataUnsorted);
+LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<SnapshotData> renderObjective, float light_angle_x, float light_angle_y);
