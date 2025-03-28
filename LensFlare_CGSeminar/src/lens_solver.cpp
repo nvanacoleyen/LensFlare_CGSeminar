@@ -26,15 +26,15 @@ void LensSystemProblem::init(unsigned int num_interfaces, std::vector<LensInterf
     for (int i = 0; i < m_num_interfaces; i++) {
         // di:
         m_lb[1 + (PARAMS_PER_INTERFACE * i)] = 0.1;
-        m_ub[1 + (PARAMS_PER_INTERFACE * i)] = 40.0;
+        m_ub[1 + (PARAMS_PER_INTERFACE * i)] = 100.0;
 
         // ni:
         m_lb[1 + (PARAMS_PER_INTERFACE * i) + 1] = 1.0;
-        m_ub[1 + (PARAMS_PER_INTERFACE * i) + 1] = 2.0;
+        m_ub[1 + (PARAMS_PER_INTERFACE * i) + 1] = 2.5;
 
         // Ri:
-        m_lb[1 + (PARAMS_PER_INTERFACE * i) + 2] = -500.0;
-        m_ub[1 + (PARAMS_PER_INTERFACE * i) + 2] = 500.0;
+        m_lb[1 + (PARAMS_PER_INTERFACE * i) + 2] = -1000.0;
+        m_ub[1 + (PARAMS_PER_INTERFACE * i) + 2] = 1000.0;
     }
 }
 
@@ -122,7 +122,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     for (int i = 0; i < forloopsize; i++) {
         //Change to sort all ghosts on size and compare that way instead of on id
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
-        float sizeError = 100 * abs(m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight);
+        float sizeError = 50 * abs(m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight);
         f += sizeError + posError;
     }    
 
