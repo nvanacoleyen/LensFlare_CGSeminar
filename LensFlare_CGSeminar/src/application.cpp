@@ -128,7 +128,7 @@ public:
         /* INIT */
 
         /* Create starburst texture */
-        //createStarburst(APERTURE_TEXTURE);
+        createStarburst(APERTURE_TEXTURE);
 
         /* Light Sphere */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -144,10 +144,11 @@ public:
         glVertexArrayVertexBuffer(vao_light, 0, vbo_light, offsetof(Vertex, position), sizeof(Vertex));
         glEnableVertexArrayAttrib(vao_light, 0);
 
-        /* Light POS */
+        /* Light */
         float light_pos_x = 0.0001f;
         float light_pos_y = 0.0001f;
         float light_pos_z = 25.f;
+        float light_intensity = 50.0f;
 
         /* Aperture Texture */
         int texWidth, texHeight, texChannels;
@@ -320,6 +321,7 @@ public:
             //ImGui::InputFloat("Light Pos Y", &light_pos_y);
             //ImGui::InputFloat("Light Pos Z", &light_pos_z);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
+			ImGui::InputFloat("Light Intensity", &light_intensity);
 
             //Button loading example lens system
             if (ImGui::Button("Load Example Lens System")) {
@@ -538,7 +540,6 @@ public:
             glBindTexture(GL_TEXTURE_2D, texApt);
             glUniform1i(7, 0);
 
-            glm::vec3 light_intensity(50.0f);
             /* Bind Quad Specific Variables */
             for (int i = 0; i < m_preAptReflectionPairs.size(); i++) {
                 if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] == i && highlightSelectedQuad) {

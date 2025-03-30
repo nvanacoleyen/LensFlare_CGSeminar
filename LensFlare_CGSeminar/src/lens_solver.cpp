@@ -26,7 +26,7 @@ void LensSystemProblem::init(unsigned int num_interfaces, std::vector<LensInterf
     for (int i = 0; i < m_num_interfaces; i++) {
         // di:
         m_lb[1 + (PARAMS_PER_INTERFACE * i)] = 0.1;
-        m_ub[1 + (PARAMS_PER_INTERFACE * i)] = 100.0;
+        m_ub[1 + (PARAMS_PER_INTERFACE * i)] = 125.0;
 
         // ni:
         m_lb[1 + (PARAMS_PER_INTERFACE * i) + 1] = 1.0;
@@ -122,7 +122,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     for (int i = 0; i < forloopsize; i++) {
         //Change to sort all ghosts on size and compare that way instead of on id
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
-        float sizeError = 50 * abs(m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight);
+        float sizeError = 40 * abs(m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight);
         f += sizeError + posError;
     }    
 
@@ -170,30 +170,26 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<Snapshot
     //Differential Evolution (DE) with 100 generations per evolve call.
     pagmo::algorithm algo{ pagmo::de{100} };
     //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
+    //pagmo::algorithm algo{ pagmo::pso(50u, 0.7298, 2.05, 2.05, 0.5, 6u, 2u, 4u, true, pagmo::random_device::next()) };
     // Create a population.
     unsigned int amount_dv = current_point.size();
 
     pagmo::archipelago archi;
-
-    //// Add islands 
-    for (int i = 0; i < 30; ++i) {
-        pagmo::population pop(prob, 500);
+    // Add islands 
+    for (int i = 0; i < 25; ++i) {
+        pagmo::population pop(prob, 10 * amount_dv);
         // Add current lens system to the population.
-        for (int i = 0; i < 1; i++) {
-            pop.push_back(current_point);
-        }
+        //for (int i = 0; i < 1; i++) {
+        //    pop.push_back(current_point);
+        //}
         archi.push_back(pagmo::island{ algo, pop });
     }
-
-    //pagmo::algorithm algo{ pagmo::pso(100u, 0.7298, 2.05, 2.05, 0.5, 5u, 2u, 4u, true, pagmo::random_device::next()) };
-
-    //pagmo::archipelago archi(30, algo, prob, 100);
 
 
     std::vector<double> c_solution = archi.get_champions_x()[0];
     double c_fitness = archi.get_champions_f()[0][0];
-    std::cout << "Current Solution Fitness: " << c_fitness << std::endl;
-    std::cout << "Current Solution decision vector: ";
+    std::cout << "Initial Best Fitness: " << c_fitness << std::endl;
+    std::cout << "Initial Best decision vector: ";
     for (double val : c_solution) {
         std::cout << val << " ";
     }
