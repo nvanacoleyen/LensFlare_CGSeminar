@@ -144,12 +144,6 @@ public:
         glVertexArrayVertexBuffer(vao_light, 0, vbo_light, offsetof(Vertex, position), sizeof(Vertex));
         glEnableVertexArrayAttrib(vao_light, 0);
 
-        /* Light */
-        float light_pos_x = 0.0001f;
-        float light_pos_y = 0.0001f;
-        float light_pos_z = 25.f;
-        float light_intensity = 50.0f;
-
         /* Aperture Texture */
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(APERTURE_TEXTURE, &texWidth, &texHeight, &texChannels, STBI_grey);
@@ -321,7 +315,7 @@ public:
             //ImGui::InputFloat("Light Pos Y", &light_pos_y);
             //ImGui::InputFloat("Light Pos Z", &light_pos_z);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
-			ImGui::InputFloat("Light Intensity", &light_intensity);
+			ImGui::InputFloat("Light Intensity", &m_light_intensity);
 
             //Button loading example lens system
             if (ImGui::Button("Load Example Lens System")) {
@@ -481,8 +475,7 @@ public:
             const glm::vec3 cameraPos = m_camera.cameraPos();
             const glm::vec3 cameraForward = m_camera.m_forward;
             const glm::vec3 cameraUp = m_camera.m_up;
-            const glm::vec3 lightPos = {light_pos_x, light_pos_y, light_pos_z};
-            glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, lightPos);
+            glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, m_light_pos);
             glm::vec2 cameraYawandPitch = m_camera.getYawAndPitch();
             float irisApertureHeight = m_lensSystem.getIrisApertureHeight();
             float entrancePupilHeight = m_lensSystem.getEntrancePupilHeight() / 2.f;
@@ -546,7 +539,7 @@ public:
                     m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, selected_ghost_color, m_annotationData[i]);
                 }
                 else {
-                    glm::vec3 ghost_color = light_intensity * preAPTtransmissions[i];
+                    glm::vec3 ghost_color = m_light_intensity * preAPTtransmissions[i];
                     m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, ghost_color, m_annotationData[i]);
                 }
             }
@@ -555,7 +548,7 @@ public:
                     m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], selected_ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
                 }
                 else {
-                    glm::vec3 ghost_color = light_intensity * postAPTtransmissions[i];
+                    glm::vec3 ghost_color = m_light_intensity * postAPTtransmissions[i];
                     m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
                 }
             }
@@ -648,7 +641,7 @@ public:
 
                 m_takeSnapshot = false;
             }
-
+             
             if (optimizeWithEA) {
                 //Optimize
                 m_lensSystem = solve_Annotations(m_lensSystem, m_snapshotData, yawandPitch.x, yawandPitch.y);
@@ -682,12 +675,12 @@ public:
             m_lightShader.bind();
             glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
             glUniform3fv(1, 1, glm::value_ptr(m_lcolor));
-            glUniform3fv(2, 1, glm::value_ptr(lightPos));
+            glUniform3fv(2, 1, glm::value_ptr(m_light_pos));
             glBindVertexArray(vao_light);
             glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((lightSphere.triangles.size() * 3)), GL_UNSIGNED_INT, nullptr);
 
             //RENDER STARBURST
-            glm::mat4 starburstMatrix = glm::translate(glm::mat4(1.0f), lightPos);
+            glm::mat4 starburstMatrix = glm::translate(glm::mat4(1.0f), m_light_pos);
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
@@ -775,22 +768,29 @@ public:
     void onMouseMove(const glm::dvec2& cursorPos)
     {
         //std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
-        if (m_window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) { //Very optimizable
+        if (m_window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
             if (m_window.isKeyPressed(GLFW_KEY_Q)) { // Q for moving the selected ghost
                 if (m_selectedQuadIndex != -1) {
                     glm::vec4 quadCenterScreenPos;
                     for (SnapshotData& snapshotdata : m_snapshotData) {
                         if (snapshotdata.quadID == m_selectedQuadIDs[m_selectedQuadIndex]) {
                             quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(snapshotdata.quadCenterPos, 30.0, 1.0);
+                            break;
                         }
                     }
                     quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
                     const glm::ivec2& window_size = m_window.getWindowSize();
                     glm::vec2 mycursorpos = cursorPos;
                     mycursorpos = (mycursorpos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f); //NDC
-                    //std::cout << "gl quad center screen pos: " << quadCenterScreenPos.x << ", " << quadCenterScreenPos.y << std::endl; 
-                    //std::cout << "window cursor pos: " << mycursorpos.x << ", " << mycursorpos.y << std::endl;
-                    glm::vec2 diffVectorNDC = mycursorpos - glm::vec2(quadCenterScreenPos.x, quadCenterScreenPos.y);
+
+					glm::vec4 lightPosNDC = m_mvp * glm::vec4(m_light_pos, 1.0);
+					lightPosNDC = lightPosNDC / lightPosNDC.w;
+
+                    float lightLineProjectionScalar = glm::dot(mycursorpos, glm::vec2(lightPosNDC)) / glm::dot(glm::vec2(lightPosNDC), glm::vec2(lightPosNDC));
+					glm::vec2 lightLineProjection = lightLineProjectionScalar * glm::vec2(lightPosNDC);
+
+                    // Calculate the diffVectorNDC using the projected cursor position
+                    glm::vec2 diffVectorNDC = glm::vec2(lightLineProjection) - glm::vec2(quadCenterScreenPos.x, quadCenterScreenPos.y);
                     glm::vec4 worldSpaceVector = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(diffVectorNDC, quadCenterScreenPos.z, 1.f);
                     worldSpaceVector = worldSpaceVector / worldSpaceVector.w;
                     m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = glm::vec2(worldSpaceVector.x, worldSpaceVector.y);
@@ -800,20 +800,18 @@ public:
                 if (m_selectedQuadIndex != -1) {
                     glm::vec2 currentCursorPos = cursorPos;
                     glm::vec2 cursorResizeVector = currentCursorPos - m_resizeInitialPos;
-                    //std::cout << "CURSOR AT :" << currentCursorPos.x << ", " << currentCursorPos.y << std::endl;
-                    float resizeWeight = sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float) m_window.getWindowSize().y;
-                    //std::cout << "WEIGHT : " << resizeWeight << std::endl;
+                    float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y) / 1.75f;
                     if (currentCursorPos.x > m_resizeInitialPos.x) {
                         m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform += resizeWeight;
                     }
                     else if (m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform - resizeWeight > 0.0) {
                         m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform -= resizeWeight;
                     }
-                    
                 }
             }
         }
     }
+
 
     // If one of the mouse buttons is pressed this function will be called
     // button - Integer that corresponds to numbers in https://www.glfw.org/docs/latest/group__buttons.html
@@ -900,6 +898,9 @@ private:
 
     /* Light Source */
     const glm::vec3 m_lcolor{ 1, 1, 0.5 };
+    /* Light */
+    glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 25.f };
+    float m_light_intensity = 50.0f;
 
 };
 

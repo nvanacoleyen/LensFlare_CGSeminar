@@ -124,7 +124,9 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
         float sizeError = 40 * abs(m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight);
         f += sizeError + posError;
-    }    
+    }  
+
+    f = f / forloopsize;
 
     return { f };
 }
@@ -168,7 +170,7 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<Snapshot
     // Convert the current lens system to a decision vector.
     std::vector<double> current_point = convertLensSystem(currentLensSystem.getIrisAperturePos(), currentLensInterfaces);
     //Differential Evolution (DE) with 100 generations per evolve call.
-    pagmo::algorithm algo{ pagmo::de{100} };
+    pagmo::algorithm algo{ pagmo::de{200} };
     //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
     //pagmo::algorithm algo{ pagmo::pso(50u, 0.7298, 2.05, 2.05, 0.5, 6u, 2u, 4u, true, pagmo::random_device::next()) };
     // Create a population.
@@ -179,9 +181,9 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<Snapshot
     for (int i = 0; i < 25; ++i) {
         pagmo::population pop(prob, 10 * amount_dv);
         // Add current lens system to the population.
-        //for (int i = 0; i < 1; i++) {
-        //    pop.push_back(current_point);
-        //}
+        for (int i = 0; i < 1; i++) {
+            pop.push_back(current_point);
+        }
         archi.push_back(pagmo::island{ algo, pop });
     }
 
