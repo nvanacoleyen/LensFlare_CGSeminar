@@ -45,6 +45,7 @@ void LensSystemProblem::setRenderObjective(std::vector<SnapshotData> &renderObje
 
 SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y) const {
 
+    //Projection of the aperture center onto the sensor
     glm::vec2 ghost_center_x = glm::vec2(-light_angle_x * Ma[1][0] / Ma[0][0], light_angle_x);
     glm::vec2 ghost_center_y = glm::vec2(light_angle_y * Ma[1][0] / Ma[0][0], -light_angle_y);
 
@@ -52,18 +53,13 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
     glm::vec2 ghost_center_y_s = Ms * Ma * ghost_center_y;
     glm::vec2 ghost_center_pos = glm::vec2(ghost_center_x_s.x, ghost_center_y_s.x);
 
-    // Compute quad height
+    // TODO: Compute quad height --> Change to use the height of the aperture
+    // TODO: Also compute the projection of the entrance pupil height and take the min of the two
     glm::vec2 apt_one_x = glm::vec2((1 - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
     glm::vec2 apt_one_y = glm::vec2((1 + (light_angle_y * Ma[1][0])) / Ma[0][0], -light_angle_y);
     glm::vec2 apt_one_x_s = Ms * Ma * apt_one_x;
     glm::vec2 apt_one_y_s = Ms * Ma * apt_one_y;
     float ghost_height_factor = glm::length(glm::vec2(apt_one_x_s.x, apt_one_y_s.x) - ghost_center_pos) / glm::length(glm::vec2(1, 1));
-
-    //// Compute initial quad height
-    //float initial_quad_height = std::sqrt(
-    //    std::pow(light_angle_x, 2.0f) +
-    //    std::pow(light_angle_y, 2.0f)
-    //);
 
     //// Compute intensity value
     //float intensityVal = initial_quad_height / quad_height;

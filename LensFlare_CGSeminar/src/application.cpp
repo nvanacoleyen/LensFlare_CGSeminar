@@ -396,7 +396,7 @@ public:
             }
 
             if (ImGui::Button("Optimize with EA (DE)")) {
-                m_takeSnapshot = true;
+                m_takeSnapshot = 2;
                 optimizeWithEA = true;
             }
 
@@ -527,7 +527,7 @@ public:
             glUniform1i(10, cursorPos.x);
             glUniform1i(11, cursorPos.y);
             glUniform1i(13, m_getGhostsAtMouse ? 1 : 0);
-            glUniform1i(14, m_takeSnapshot ? 1 : 0);
+            glUniform1i(14, m_takeSnapshot);
       
             glActiveTexture(GL_TEXTURE0); // Bind texture
             glBindTexture(GL_TEXTURE_2D, texApt);
@@ -613,7 +613,7 @@ public:
             }
 
             //take snapshot of the current state of the rendering
-            if (m_takeSnapshot) {
+            if (m_takeSnapshot != 0) {
                 GLuint quadSnapshotCount = 0;
                 glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounterBufferSnapshot);
                 glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &quadSnapshotCount);
@@ -639,7 +639,7 @@ public:
 
                 glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
-                m_takeSnapshot = false;
+                m_takeSnapshot = 0;
             }
              
             if (optimizeWithEA) {
@@ -753,12 +753,12 @@ public:
         //std::cout << "Key released: " << key << std::endl;
         switch (key)
         {
-        case GLFW_KEY_W:
-        case GLFW_KEY_A:
-        case GLFW_KEY_S:
-        case GLFW_KEY_D:
-            m_takeSnapshot = true;
-            break;
+        //case GLFW_KEY_W:
+        //case GLFW_KEY_A:
+        //case GLFW_KEY_S:
+        //case GLFW_KEY_D:
+        //    m_takeSnapshot = 1;
+        //    break;
         default:
             break;
         }
@@ -843,7 +843,7 @@ public:
         switch (button)
         {
         case GLFW_MOUSE_BUTTON_RIGHT:
-            m_takeSnapshot = true;
+            m_takeSnapshot = 1;
             break;
         default:
             break;
@@ -885,7 +885,7 @@ private:
     /* Annotations */
     bool m_resetAnnotations = true;
     std::vector<AnnotationData> m_annotationData;
-    bool m_takeSnapshot = true;
+    int m_takeSnapshot = 1;
     std::vector<SnapshotData> m_snapshotData;
     std::vector<glm::vec2> m_quadcenter_points;
     glm::vec2 m_resizeInitialPos;

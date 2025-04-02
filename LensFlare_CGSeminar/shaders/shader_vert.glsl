@@ -10,7 +10,7 @@ layout(location = 7) uniform sampler2D texApt;
 layout(location = 8) uniform mat4 sensorMatrix;
 layout(location = 9) uniform float irisApertureHeight;
 layout(location = 12) uniform int quadID;
-layout(location = 14) uniform bool m_takeSnapshot;
+layout(location = 14) uniform int m_takeSnapshot;
 layout(location = 15) uniform vec2 posAnnotationTransform;
 layout(location = 16) uniform float sizeAnnotationTransform;
 
@@ -86,9 +86,16 @@ void main()
 
     intensityVal = 1 / (ghost_height_factor * sizeAnnotationTransform);
 
-    // Record all ghost details
-    if (m_takeSnapshot) {
-        // Atomically increment the counter and get the index
+    // Record all ghost details without annotations
+    if (m_takeSnapshot == 1) {
+        uint index = atomicCounterIncrement(snapshotCounter);
+        if (index < snapshotData.length()) {
+            snapshotData[index].quadID = quadID;
+            snapshotData[index].quadHeight = ghost_height_factor;
+            snapshotData[index].quadCenterPos = quad_center_pos;
+            snapshotData[index].quadColor = vec4(color * intensityVal, 0.5);
+        }
+    } else if (m_takeSnapshot == 2) { //with annotations
         uint index = atomicCounterIncrement(snapshotCounter);
         if (index < snapshotData.length()) {
             snapshotData[index].quadID = quadID;
