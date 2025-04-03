@@ -17,7 +17,7 @@ struct LensSystemProblem {
     std::vector<SnapshotData> m_renderObjective;
     std::vector<LensInterface> m_currentLensInterfaces;
     //Simulate drawing a quad, only necessary info for snapshot
-    SnapshotData simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y) const;
+    SnapshotData simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y, float irisApertureHeight, float entrancePupilHeight) const;
     // Set the problem dimension and bounds
     void init(unsigned int num_interfaces, std::vector<LensInterface>& currentLensInterfaces, float light_angle_x, float light_angle_y);
     // Set the render objectives for the fitness function

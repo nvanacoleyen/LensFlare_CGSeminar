@@ -268,7 +268,6 @@ public:
         float newdi = 0.f;
         float newni = 0.f;
         float newRi = 0.f;
-        float newhi = 0.f;
         float newlambda0 = 0.0f;
 
         int interfaceToRemove = 0;
@@ -315,12 +314,23 @@ public:
             //ImGui::InputFloat("Light Pos Y", &light_pos_y);
             //ImGui::InputFloat("Light Pos Z", &light_pos_z);
             ImGui::InputInt("Aperture Position", &irisAperturePos);
-			ImGui::InputFloat("Light Intensity", &m_light_intensity);
+            ImGui::SliderFloat("Light Intensity", &m_light_intensity, 10.0f, 400.0f);
 
-            //Button loading example lens system
-            if (ImGui::Button("Load Example Lens System")) {
-                //m_lensSystem = heliarTronerLens();
+            //Button loading lens system
+            if (ImGui::Button("Load Heliar Troner Lens System")) {
+                m_lensSystem = heliarTronerLens();
+                irisAperturePos = m_lensSystem.getIrisAperturePos();
+                lensInterfaces = m_lensSystem.getLensInterfaces();
+                refreshMatricesAndQuads();
+            }
+            if (ImGui::Button("Load Canon Lens System")) {
                 m_lensSystem = someCanonLens();
+                irisAperturePos = m_lensSystem.getIrisAperturePos();
+                lensInterfaces = m_lensSystem.getLensInterfaces();
+                refreshMatricesAndQuads();
+            }
+            if (ImGui::Button("Load Test Lens System")) {
+                m_lensSystem = testLens();
                 irisAperturePos = m_lensSystem.getIrisAperturePos();
                 lensInterfaces = m_lensSystem.getLensInterfaces();
                 refreshMatricesAndQuads();
@@ -328,7 +338,7 @@ public:
 
             if (ImGui::CollapsingHeader("Lens Prescription Details")) {
                 for (int i = 0; i < lensInterfaces.size(); i++) {
-                std::string lensInterfaceDescription = std::to_string(i) + ": d=" + std::format("{:.3f}", lensInterfaces[i].di) + ", n=" + std::format("{:.3f}", lensInterfaces[i].ni) + ", R=" + std::format("{:.3f}", lensInterfaces[i].Ri) + ", h=" + std::format("{:.3f}", lensInterfaces[i].hi) + ", lambda0=" + std::format("{:.3f}", lensInterfaces[i].lambda0);
+                std::string lensInterfaceDescription = std::to_string(i) + ": d=" + std::format("{:.3f}", lensInterfaces[i].di) + ", n=" + std::format("{:.3f}", lensInterfaces[i].ni) + ", R=" + std::format("{:.3f}", lensInterfaces[i].Ri) + ", lambda0=" + std::format("{:.3f}", lensInterfaces[i].lambda0);
                 ImGui::Text(lensInterfaceDescription.c_str());
                 }
             }
@@ -340,14 +350,12 @@ public:
                             newdi = lensInterfaces[interfaceToUpdate].di;
                             newni = lensInterfaces[interfaceToUpdate].ni;
                             newRi = lensInterfaces[interfaceToUpdate].Ri;
-                            newhi = lensInterfaces[interfaceToUpdate].hi;
                             newlambda0 = lensInterfaces[interfaceToUpdate].lambda0;
                         }
                         else {
                                 newdi = 0.f;
                                 newni = 0.f;
                                 newRi = 0.f;
-                                newhi = 0.f;
                                 newlambda0 = 0.f;
                         }
                     interfaceToUpdatePreviousValue = interfaceToUpdate;
@@ -356,10 +364,9 @@ public:
                 ImGui::InputFloat("Thickness", &newdi);
                 ImGui::InputFloat("Refractive Index", &newni);
                 ImGui::InputFloat("Radius", &newRi);
-                ImGui::InputFloat("Height", &newhi);
                 ImGui::InputFloat("Lambda0", &newlambda0);
                 if (ImGui::Button("Update")) {
-                    LensInterface newLensInterface(newdi, newni, newRi, newhi, newlambda0);
+                    LensInterface newLensInterface(newdi, newni, newRi, newlambda0);
                     if (interfaceToUpdate < lensInterfaces.size() && interfaceToUpdate >= 0) {
                         //update an existing interface
                         lensInterfaces[interfaceToUpdate] = newLensInterface;
@@ -477,7 +484,7 @@ public:
             const glm::vec3 cameraUp = m_camera.m_up;
             glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, m_light_pos);
             glm::vec2 cameraYawandPitch = m_camera.getYawAndPitch();
-            float irisApertureHeight = m_lensSystem.getIrisApertureHeight();
+            float irisApertureHeight = m_lensSystem.getApertureHeight();
             float entrancePupilHeight = m_lensSystem.getEntrancePupilHeight() / 2.f;
 
             m_sensorMatrix = glm::translate(glm::mat4(1.0f), cameraPos);
@@ -900,7 +907,7 @@ private:
     const glm::vec3 m_lcolor{ 1, 1, 0.5 };
     /* Light */
     glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 25.f };
-    float m_light_intensity = 50.0f;
+    float m_light_intensity = 150.0f;
 
 };
 

@@ -9,10 +9,11 @@ float RED_WAVELENGTH = 650;
 float GREEN_WAVELENGTH = 550;
 float BLUE_WAVELENGTH = 475;
 
-LensSystem::LensSystem(int irisAperturePos, float sensorSize, std::vector<LensInterface> lensInterfaces) {
+LensSystem::LensSystem(int irisAperturePos, float apertureHeight, float entrancePupilHeight, std::vector<LensInterface>& lensInterfaces) {
 	m_iris_aperture_pos = irisAperturePos;
+	m_aperture_height = apertureHeight;
+	m_entrance_pupil_height = entrancePupilHeight;
 	m_lens_interfaces = lensInterfaces;
-	m_sensor_size = sensorSize;
 }
 
 void LensSystem::setIrisAperturePos(int newPos) {
@@ -23,12 +24,20 @@ int LensSystem::getIrisAperturePos() {
 	return m_iris_aperture_pos;
 }
 
-void LensSystem::setSensorSize(float newSize) {
-	m_sensor_size = newSize;
+void LensSystem::setApertureHeight(float newHeight) {
+	m_aperture_height = newHeight;
 }
 
-float LensSystem::getSensorSize() {
-	return m_sensor_size;
+float LensSystem::getApertureHeight() const {
+	return m_aperture_height;
+}
+
+void LensSystem::setEntrancePupilHeight(float newHeight) {
+	m_entrance_pupil_height = newHeight;
+}
+
+float LensSystem::getEntrancePupilHeight() const {
+	return m_entrance_pupil_height;
 }
 
 std::vector<LensInterface> LensSystem::getLensInterfaces() {
@@ -260,33 +269,6 @@ std::vector<float> LensSystem::getInterfacePositionsWithReflections(int firstRef
 	return interfacePositions;
 }
 
-float LensSystem::getEntrancePupilHeight() {
-	if (m_lens_interfaces.size() > 0) {
-		return m_lens_interfaces[0].hi;
-	}
-	else {
-		return 0.f;
-	}
-}
-
-float LensSystem::getIrisApertureHeight() {
-	if (m_lens_interfaces.size() > m_iris_aperture_pos) {
-		return m_lens_interfaces[m_iris_aperture_pos].hi;
-	}
-	else {
-		return 0.f;
-	}
-}
-
-float LensSystem::getSensorPosition() {
-	float pos = 0.0f;
-	for (const LensInterface &lensInterface : m_lens_interfaces) {
-		pos += lensInterface.di;
-	}
-	return pos;
-}
-
-
 //compute per lens interface
 glm::vec3 LensSystem::computeFresnelAR(
 	float theta0,	// angle of incidence
@@ -399,6 +381,7 @@ glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondRe
 }
 
 //Per ghost trace ray through system to get reflectance/transmission of color
+//TODO: change the ray to be the center of the aperture projection, not the center of the entrance pupil
 std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 yawAndPitch) {
 	std::vector<glm::vec3> results;
 	for (glm::vec2 reflectionPair : reflectionPos) {

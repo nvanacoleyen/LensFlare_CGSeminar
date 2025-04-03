@@ -18,23 +18,30 @@ void LensSystemProblem::init(unsigned int num_interfaces, std::vector<LensInterf
     m_currentLensInterfaces = currentLensInterfaces;
     m_light_angle_x = light_angle_x;
     m_light_angle_y = light_angle_y;
-    m_dim = 1 + (m_num_interfaces * PARAMS_PER_INTERFACE);
+    m_dim = 3 + (m_num_interfaces * PARAMS_PER_INTERFACE);
     m_lb.resize(m_dim);
     m_ub.resize(m_dim);
+    //apt pos
     m_lb[0] = 0;
     m_ub[0] = num_interfaces - 1;
-    for (int i = 0; i < m_num_interfaces; i++) {
+	//apt height
+    m_lb[1] = 1;
+    m_ub[1] = 20;
+	//entrance pupil height
+    m_lb[2] = 10;
+    m_ub[2] = 20;
+    for (int i = 1; i < m_num_interfaces + 1; i++) {
         // di:
-        m_lb[1 + (PARAMS_PER_INTERFACE * i)] = 0.1;
-        m_ub[1 + (PARAMS_PER_INTERFACE * i)] = 125.0;
+        m_lb[(PARAMS_PER_INTERFACE * i)] = 0.1;
+        m_ub[(PARAMS_PER_INTERFACE * i)] = 125.0;
 
         // ni:
-        m_lb[1 + (PARAMS_PER_INTERFACE * i) + 1] = 1.0;
-        m_ub[1 + (PARAMS_PER_INTERFACE * i) + 1] = 2.5;
+        m_lb[(PARAMS_PER_INTERFACE * i) + 1] = 1.0;
+        m_ub[(PARAMS_PER_INTERFACE * i) + 1] = 2.5;
 
         // Ri:
-        m_lb[1 + (PARAMS_PER_INTERFACE * i) + 2] = -1000.0;
-        m_ub[1 + (PARAMS_PER_INTERFACE * i) + 2] = 1000.0;
+        m_lb[(PARAMS_PER_INTERFACE * i) + 2] = -1000.0;
+        m_ub[(PARAMS_PER_INTERFACE * i) + 2] = 1000.0;
     }
 }
 
@@ -43,7 +50,7 @@ void LensSystemProblem::setRenderObjective(std::vector<SnapshotData> &renderObje
     m_renderObjective = renderObjective;
 }
 
-SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y) const {
+SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y, float irisApertureHeight, float entrancePupilHeight) const {
 
     //Projection of the aperture center onto the sensor
     glm::vec2 ghost_center_x = glm::vec2(-light_angle_x * Ma[1][0] / Ma[0][0], light_angle_x);
@@ -53,13 +60,13 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
     glm::vec2 ghost_center_y_s = Ms * Ma * ghost_center_y;
     glm::vec2 ghost_center_pos = glm::vec2(ghost_center_x_s.x, ghost_center_y_s.x);
 
-    // TODO: Compute quad height --> Change to use the height of the aperture
-    // TODO: Also compute the projection of the entrance pupil height and take the min of the two
-    glm::vec2 apt_one_x = glm::vec2((1 - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
-    glm::vec2 apt_one_y = glm::vec2((1 + (light_angle_y * Ma[1][0])) / Ma[0][0], -light_angle_y);
-    glm::vec2 apt_one_x_s = Ms * Ma * apt_one_x;
-    glm::vec2 apt_one_y_s = Ms * Ma * apt_one_y;
-    float ghost_height_factor = glm::length(glm::vec2(apt_one_x_s.x, apt_one_y_s.x) - ghost_center_pos) / glm::length(glm::vec2(1, 1));
+    glm::vec2 apt_h_x = glm::vec2((irisApertureHeight - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
+    glm::vec2 apt_h_x_s = Ms * Ma * apt_h_x;
+    float ghost_height = abs(apt_h_x_s.x - ghost_center_pos.x);
+
+	glm::vec2 entrance_pupil_h_x_s = Ms * Ma * glm::vec2(entrancePupilHeight, light_angle_x);
+    glm::vec2 entrance_pupil_center_x_s = Ms * Ma * glm::vec2(0.f, light_angle_x);
+	float entrance_pupil_height = abs(entrance_pupil_h_x_s.x - entrance_pupil_center_x_s.x);
 
     //// Compute intensity value
     //float intensityVal = initial_quad_height / quad_height;
@@ -67,7 +74,7 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
     SnapshotData snap;
     snap.quadID = quadId;
     snap.quadCenterPos = ghost_center_pos;
-    snap.quadHeight = ghost_height_factor;
+    snap.quadHeight = std::min(ghost_height, entrance_pupil_height);
 
     return snap;
 }
@@ -77,16 +84,15 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     //Construct lens system
     std::vector<LensInterface> newLensInterfaces;
     newLensInterfaces.reserve(m_num_interfaces);
-    for (int i = 0; i < m_num_interfaces; i++) {
+    for (int i = 1; i < m_num_interfaces + 1; i++) {
         LensInterface lens;
-        lens.di = dv[1 + (PARAMS_PER_INTERFACE * i)];
-        lens.ni = dv[1 + (PARAMS_PER_INTERFACE * i) + 1];
-        lens.Ri = dv[1 + (PARAMS_PER_INTERFACE * i) + 2];
-        lens.hi = m_currentLensInterfaces[i].hi;
-        lens.lambda0 = m_currentLensInterfaces[i].lambda0;
+        lens.di = dv[(PARAMS_PER_INTERFACE * i)];
+        lens.ni = dv[(PARAMS_PER_INTERFACE * i) + 1];
+        lens.Ri = dv[(PARAMS_PER_INTERFACE * i) + 2];
+        //lens.lambda0 = m_currentLensInterfaces[i-1].lambda0;
         newLensInterfaces.push_back(lens);
     }
-    LensSystem newLensSystem = LensSystem(std::round(dv[0]), 0.0, newLensInterfaces);
+    LensSystem newLensSystem = LensSystem(std::round(dv[0]), dv[1], dv[2], newLensInterfaces);
 
     //"Render"
     glm::mat2x2 default_Ma = newLensSystem.getMa();
@@ -99,10 +105,10 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     std::vector<SnapshotData> newSnapshot;
     
     for (int i = 0; i < preAptReflectionPairs.size(); i++) {
-        newSnapshot.push_back(simulateDrawQuad(i, preAptMas[i], default_Ms, m_light_angle_x, m_light_angle_y));
+        newSnapshot.push_back(simulateDrawQuad(i, preAptMas[i], default_Ms, m_light_angle_x, m_light_angle_y, dv[1], dv[2]));
     }
     for (int i = 0; i < postAptReflectionPairs.size(); i++) {
-        newSnapshot.push_back(simulateDrawQuad(i + preAptReflectionPairs.size(), default_Ma, postAptMss[i], m_light_angle_x, m_light_angle_y));
+        newSnapshot.push_back(simulateDrawQuad(i + preAptReflectionPairs.size(), default_Ma, postAptMss[i], m_light_angle_x, m_light_angle_y, dv[1], dv[2]));
     }
 
     sortByQuadHeight(newSnapshot);
@@ -132,10 +138,12 @@ std::pair<pagmo::vector_double, pagmo::vector_double> LensSystemProblem::get_bou
 }
 
 //Convert a vector of LensInterface into a decision vector.
-pagmo::vector_double convertLensSystem(unsigned int aptPos, const std::vector<LensInterface>& lens_system) {
+pagmo::vector_double convertLensSystem(unsigned int aptPos, const std::vector<LensInterface>& lens_system, float irisApertureHeight, float entrancePupilHeight) {
     pagmo::vector_double decision;
     decision.reserve(1 + (lens_system.size() * PARAMS_PER_INTERFACE));
     decision.push_back(aptPos);
+    decision.push_back(irisApertureHeight);
+    decision.push_back(entrancePupilHeight);
     for (const auto& lens : lens_system) {
         decision.push_back(lens.di);
         decision.push_back(lens.ni);
@@ -164,7 +172,7 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<Snapshot
     std::cout << "Created Pagmo UDP" << std::endl;
 
     // Convert the current lens system to a decision vector.
-    std::vector<double> current_point = convertLensSystem(currentLensSystem.getIrisAperturePos(), currentLensInterfaces);
+    std::vector<double> current_point = convertLensSystem(currentLensSystem.getIrisAperturePos(), currentLensInterfaces, currentLensSystem.getApertureHeight(), currentLensSystem.getEntrancePupilHeight());
     //Differential Evolution (DE) with 100 generations per evolve call.
     pagmo::algorithm algo{ pagmo::de{200} };
     //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
@@ -244,13 +252,12 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<Snapshot
 
     //Convert the best decision vector back into a vector of LensInterface
     std::vector<LensInterface> optimized_lens_system;
-    for (int i = 0; i < num_interfaces; i++) {
+    for (int i = 1; i < num_interfaces + 1; i++) {
         LensInterface lens;
-        lens.di = best_champion[1 + (PARAMS_PER_INTERFACE * i)];
-        lens.ni = best_champion[1 + (PARAMS_PER_INTERFACE * i) + 1];
-        lens.Ri = best_champion[1 + (PARAMS_PER_INTERFACE * i) + 2];
-        lens.hi = currentLensInterfaces[i].hi;
-        lens.lambda0 = currentLensInterfaces[i].lambda0;
+        lens.di = best_champion[(PARAMS_PER_INTERFACE * i)];
+        lens.ni = best_champion[(PARAMS_PER_INTERFACE * i) + 1];
+        lens.Ri = best_champion[(PARAMS_PER_INTERFACE * i) + 2];
+        lens.lambda0 = currentLensInterfaces[i-1].lambda0;
         optimized_lens_system.push_back(lens);
     }
 
@@ -260,9 +267,8 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<Snapshot
             << "di = " << optimized_lens_system[i].di << ", "
             << "ni = " << optimized_lens_system[i].ni << ", "
             << "Ri = " << optimized_lens_system[i].Ri << ", "
-            << "hi = " << optimized_lens_system[i].hi << ", "
             << "lambda0 = " << optimized_lens_system[i].lambda0 << std::endl;
     }
 
-    return LensSystem(std::round(best_champion[0]), 0.0, optimized_lens_system);
+    return LensSystem(std::round(best_champion[0]), best_champion[1], best_champion[2], optimized_lens_system);
 }

@@ -7,17 +7,18 @@ struct LensInterface {
 	float di; //positive displacement to the next interface at interface i (from thickness)
 	float ni; //the refractive indices at interface i
 	float Ri; //the lens radius (R > 0 / R = inf for convex / flat interfaces)
-	float hi; //the lens height
 	float lambda0 = 550.f; //Wavelength that the coating handles
 };
 
 class LensSystem {
 public:
-	LensSystem(int irisAperturePos, float sensorSize, std::vector<LensInterface> lensInterfaces);
+	LensSystem(int irisAperturePos, float apertureHeight, float entrancePupilHeight, std::vector<LensInterface>& lensInterfaces);
 	void setIrisAperturePos(int newPos);
 	int getIrisAperturePos();
-	void setSensorSize(float newSize);
-	float getSensorSize();
+	void setApertureHeight(float newHeight);
+	float getApertureHeight() const;
+	void setEntrancePupilHeight(float newHeight);
+	float getEntrancePupilHeight() const;
 	std::vector<LensInterface> getLensInterfaces();
 	void setLensInterfaces(std::vector<LensInterface> newLensInterfaces);
 	std::vector<glm::mat2x2> getRayTransferMatrices();
@@ -32,9 +33,6 @@ public:
 	std::vector<glm::mat2x2> getMs(std::vector<glm::vec2> reflectionPos);
 	std::vector<float> getInterfacePositions();
 	std::vector<float> getInterfacePositionsWithReflections(int firstReflectionPos, int secondReflectionPos);
-	float getEntrancePupilHeight();
-	float getIrisApertureHeight();
-	float getSensorPosition();
 	glm::vec3 computeFresnelAR(float theta0, float d1, float n0, float n1, float n2);
 	glm::vec3 propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray);
 	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 yawAndPitch);
@@ -43,5 +41,6 @@ public:
 private:
 	std::vector<LensInterface> m_lens_interfaces;
 	int m_iris_aperture_pos = 0;
-	float m_sensor_size = 0;
+	float m_aperture_height = 0;
+	float m_entrance_pupil_height = 0;
 };

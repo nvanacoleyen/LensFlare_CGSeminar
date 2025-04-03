@@ -6,6 +6,7 @@ layout(location = 2) uniform mat2 Ma;
 layout(location = 3) uniform mat2 Ms;
 layout(location = 4) uniform float light_angle_x;
 layout(location = 5) uniform float light_angle_y;
+layout(location = 6) uniform float entrance_pupil_height;
 layout(location = 7) uniform sampler2D texApt;
 layout(location = 8) uniform mat4 sensorMatrix;
 layout(location = 9) uniform float irisApertureHeight;
@@ -75,31 +76,32 @@ void main()
     vec2 quad_center_y_s = Ms * Ma * quad_center_y;
     vec2 quad_center_pos = vec2(quad_center_x_s.x, quad_center_y_s.x);
 
-    // float quad_height = sqrt(pow((ray_x_s.x - quad_center_x_s.x), 2.0) + pow((ray_y_s.x - quad_center_y_s.x), 2.0));
-    // float initial_quad_height = sqrt(pow(x_offset, 2.0) + pow(y_offset, 2.0));
+    vec2 apt_h_x = vec2((irisApertureHeight - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
+    vec2 apt_h_x_s = Ms * Ma * apt_h_x;
+    float ghost_height = abs(apt_h_x_s.x - quad_center_pos.x);
 
-    vec2 apt_one_x = vec2((1.0 - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
-    vec2 apt_one_y = vec2((1.0 + (light_angle_y * Ma[1][0])) / Ma[0][0], -light_angle_y);
-    vec2 apt_one_x_s = Ms * Ma * apt_one_x;
-    vec2 apt_one_y_s = Ms * Ma * apt_one_y;
-    float ghost_height_factor = length(vec2(apt_one_x_s.x, apt_one_y_s.x) - quad_center_pos) / length(vec2(1.0, 1.0));
-
-    intensityVal = 1 / (ghost_height_factor * sizeAnnotationTransform);
+    intensityVal = 1 / (ghost_height * sizeAnnotationTransform);
 
     // Record all ghost details without annotations
     if (m_takeSnapshot == 1) {
         uint index = atomicCounterIncrement(snapshotCounter);
         if (index < snapshotData.length()) {
+            vec2 entrance_pupil_h_x_s = Ms * Ma * vec2(entrance_pupil_height, light_angle_x);
+            vec2 entrance_pupil_center_x_s = Ms * Ma * vec2(0.f, light_angle_x);
+	        float entrance_pupil_height = abs(entrance_pupil_h_x_s.x - entrance_pupil_center_x_s.x);
             snapshotData[index].quadID = quadID;
-            snapshotData[index].quadHeight = ghost_height_factor;
+            snapshotData[index].quadHeight = min(ghost_height, entrance_pupil_height);
             snapshotData[index].quadCenterPos = quad_center_pos;
             snapshotData[index].quadColor = vec4(color * intensityVal, 0.5);
         }
     } else if (m_takeSnapshot == 2) { //with annotations
         uint index = atomicCounterIncrement(snapshotCounter);
         if (index < snapshotData.length()) {
+            vec2 entrance_pupil_h_x_s = Ms * Ma * vec2(entrance_pupil_height, light_angle_x);
+            vec2 entrance_pupil_center_x_s = Ms * Ma * vec2(0.f, light_angle_x);
+	        float entrance_pupil_height = abs(entrance_pupil_h_x_s.x - entrance_pupil_center_x_s.x);
             snapshotData[index].quadID = quadID;
-            snapshotData[index].quadHeight = ghost_height_factor * sizeAnnotationTransform;
+            snapshotData[index].quadHeight = min(ghost_height, entrance_pupil_height) * sizeAnnotationTransform;
             snapshotData[index].quadCenterPos = quad_center_pos + posAnnotationTransform;
             snapshotData[index].quadColor = vec4(color * intensityVal, 0.5);
         }
