@@ -38,7 +38,7 @@ add_executable(FinalProject
 	"src/reverse_coating.cpp"
 	"src/reverse_coating.h"
 	"src/lens_solver.h"
-	"src/lens_solver.cpp" )
+	"src/lens_solver.cpp")
 target_compile_features(FinalProject PRIVATE cxx_std_17)
 target_link_libraries(FinalProject PRIVATE CGFramework)
 enable_sanitizers(FinalProject)

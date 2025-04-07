@@ -9,6 +9,7 @@ layout(location = 10) uniform int cursorPosX;
 layout(location = 11) uniform int cursorPosY;
 layout(location = 12) uniform int quadID;
 layout(location = 13) uniform bool getGhostsAtMouse;
+layout(location = 17) uniform bool disableEntranceClipping;
 
 struct QuadData {
     int quadID;
@@ -30,9 +31,11 @@ in float intensityVal;
 void main()
 {
     // Entrance Clipping
-    float distToOpticalAxis = sqrt(pow(entrancePos.x, 2.0) + pow(entrancePos.y, 2.0));
-    if (distToOpticalAxis >= entrance_pupil_height) {
-        discard;
+    if (!disableEntranceClipping) {
+        float distToOpticalAxis = sqrt(pow(entrancePos.x, 2.0) + pow(entrancePos.y, 2.0));
+        if (distToOpticalAxis >= entrance_pupil_height) {
+            discard;
+        }
     }
 
     // Apply aperture texture to get the aperture shape

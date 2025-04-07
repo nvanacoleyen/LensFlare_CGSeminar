@@ -4,6 +4,7 @@
 #include <pagmo/algorithms/de.hpp>
 #include <pagmo/algorithms/cmaes.hpp>
 #include <pagmo/algorithms/pso.hpp>
+#include <pagmo/algorithms/sade.hpp>
 #include <pagmo/archipelago.hpp>
 #include <pagmo/population.hpp>
 #include <pagmo/island.hpp>
@@ -60,11 +61,11 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
     glm::vec2 ghost_center_y_s = Ms * Ma * ghost_center_y;
     glm::vec2 ghost_center_pos = glm::vec2(ghost_center_x_s.x, ghost_center_y_s.x);
 
-    glm::vec2 apt_h_x = glm::vec2((irisApertureHeight - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
+    glm::vec2 apt_h_x = glm::vec2(((irisApertureHeight / 2.0) - (light_angle_x * Ma[1][0])) / Ma[0][0], light_angle_x);
     glm::vec2 apt_h_x_s = Ms * Ma * apt_h_x;
     float ghost_height = abs(apt_h_x_s.x - ghost_center_pos.x);
 
-	glm::vec2 entrance_pupil_h_x_s = Ms * Ma * glm::vec2(entrancePupilHeight, light_angle_x);
+	glm::vec2 entrance_pupil_h_x_s = Ms * Ma * glm::vec2((entrancePupilHeight / 2.0), light_angle_x);
     glm::vec2 entrance_pupil_center_x_s = Ms * Ma * glm::vec2(0.f, light_angle_x);
 	float entrance_pupil_height = abs(entrance_pupil_h_x_s.x - entrance_pupil_center_x_s.x);
 
@@ -73,8 +74,15 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
 
     SnapshotData snap;
     snap.quadID = quadId;
-    snap.quadCenterPos = ghost_center_pos;
-    snap.quadHeight = std::min(ghost_height, entrance_pupil_height);
+    if (entrance_pupil_height < ghost_height) {
+        glm::vec2 entrance_pupil_center_y_s = Ms * Ma * glm::vec2(0.f, -light_angle_y);
+        snap.quadCenterPos = glm::vec2(entrance_pupil_center_x_s.x, entrance_pupil_center_y_s.x);
+        snap.quadHeight = entrance_pupil_height;
+    }
+    else {
+        snap.quadCenterPos = ghost_center_pos;
+        snap.quadHeight = ghost_height;
+    }
 
     return snap;
 }
@@ -174,7 +182,7 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<Snapshot
     // Convert the current lens system to a decision vector.
     std::vector<double> current_point = convertLensSystem(currentLensSystem.getIrisAperturePos(), currentLensInterfaces, currentLensSystem.getApertureHeight(), currentLensSystem.getEntrancePupilHeight());
     //Differential Evolution (DE) with 100 generations per evolve call.
-    pagmo::algorithm algo{ pagmo::de{200} };
+    pagmo::algorithm algo{ pagmo::sade{200} };
     //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
     //pagmo::algorithm algo{ pagmo::pso(50u, 0.7298, 2.05, 2.05, 0.5, 6u, 2u, 4u, true, pagmo::random_device::next()) };
     // Create a population.
