@@ -381,11 +381,18 @@ glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondRe
 }
 
 //Per ghost trace ray through system to get reflectance/transmission of color
-//TODO: change the ray to be the center of the aperture projection, not the center of the entrance pupil
-std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 yawAndPitch) {
+std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> &reflectionPos, std::vector<glm::vec2> &xRays, std::vector<glm::vec2> &yRays) {
 	std::vector<glm::vec3> results;
-	for (glm::vec2 reflectionPair : reflectionPos) {
-		results.push_back(propagateTransmission(reflectionPair.x, reflectionPair.y, glm::vec2(0.0f, yawAndPitch.x)) + propagateTransmission(reflectionPair.x, reflectionPair.y, glm::vec2(0.0f, yawAndPitch.y)));
+	for (int i = 0; i < reflectionPos.size(); i++) {
+		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRays[i]) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRays[i]));
+	}
+	return results;
+}
+
+std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> &reflectionPos, glm::vec2 &xRay, glm::vec2 &yRay) {
+	std::vector<glm::vec3> results;
+	for (int i = 0; i < reflectionPos.size(); i++) {
+		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRay) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRay));
 	}
 	return results;
 }

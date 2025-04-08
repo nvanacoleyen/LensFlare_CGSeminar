@@ -492,11 +492,11 @@ public:
 
             if (optimizeCoatings && m_selectedQuadIndex != -1) {
                 if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
-                    optimizeLensCoatingsBruteForce2(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], yawandPitch);
+                    optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], yawandPitch);
                     //optimizeLensCoatingsSimple(m_lensSystem, ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]]);
                 }
                 else {
-                    optimizeLensCoatingsBruteForce2(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], yawandPitch);
+                    optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], yawandPitch);
                     //optimizeLensCoatingsSimple(m_lensSystem, ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()]);
                 }
                 m_lens_interfaces = m_lensSystem.getLensInterfaces();
@@ -504,8 +504,17 @@ public:
                 optimizeCoatings = false;
             }
 
-            std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, yawandPitch);
-            std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, yawandPitch);
+
+            glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x);
+            glm::vec2 post_apt_center_ray_y = glm::vec2(yawandPitch.y * m_default_Ma[1][0] / m_default_Ma[0][0], -yawandPitch.y);
+            std::vector<glm::vec2> pre_apt_center_ray_x;
+            std::vector<glm::vec2> pre_apt_center_ray_y;
+            for (auto& const preAptMa : m_preAptMas) {
+                pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x));
+                pre_apt_center_ray_y.push_back(glm::vec2(yawandPitch.y * preAptMa[1][0] / preAptMa[0][0], -yawandPitch.y));
+            }
+            std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, pre_apt_center_ray_x, pre_apt_center_ray_y);
+            std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y);
 
             glm::vec2 cursorPos = m_window.getCursorPos();
 

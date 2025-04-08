@@ -72,6 +72,8 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
     //// Compute intensity value
     //float intensityVal = initial_quad_height / quad_height;
 
+    // Currently has no clue if the ghost is clipped by the entrance pupil or not!
+
     SnapshotData snap;
     snap.quadID = quadId;
     if (entrance_pupil_height < ghost_height) {
@@ -119,6 +121,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
         newSnapshot.push_back(simulateDrawQuad(i + preAptReflectionPairs.size(), default_Ma, postAptMss[i], m_light_angle_x, m_light_angle_y, dv[1], dv[2]));
     }
 
+    // Compare ghosts on size (directly related to intensity)
     sortByQuadHeight(newSnapshot);
 
     //Compute fitness
@@ -130,7 +133,6 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     }
 
     for (int i = 0; i < forloopsize; i++) {
-        //Change to sort all ghosts on size and compare that way instead of on id
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
         float sizeError = 40 * abs(m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight);
         f += sizeError + posError;

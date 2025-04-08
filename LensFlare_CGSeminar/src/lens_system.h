@@ -35,7 +35,8 @@ public:
 	std::vector<float> getInterfacePositionsWithReflections(int firstReflectionPos, int secondReflectionPos);
 	glm::vec3 computeFresnelAR(float theta0, float d1, float n0, float n1, float n2);
 	glm::vec3 propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray);
-	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 yawAndPitch);
+	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> &reflectionPos, std::vector<glm::vec2> &xRays, std::vector<glm::vec2> &yRays);
+	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2>& reflectionPos, glm::vec2& xRay, glm::vec2& yRay);
 	std::vector<glm::vec2> getPathIncidentAngleAtReflectionPos(glm::vec2 reflectionPair, glm::vec2 yawAndPitch);
 
 private:
