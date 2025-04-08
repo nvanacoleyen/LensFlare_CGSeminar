@@ -787,13 +787,13 @@ public:
                     }
                     quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
                     const glm::ivec2& window_size = m_window.getWindowSize();
-                    glm::vec2 mycursorpos = cursorPos;
-                    mycursorpos = (mycursorpos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f); //NDC
+                    glm::vec2 currentCursorPos = cursorPos;
+                    currentCursorPos = (currentCursorPos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f); //NDC
 
 					glm::vec4 lightPosNDC = m_mvp * glm::vec4(m_light_pos, 1.0);
 					lightPosNDC = lightPosNDC / lightPosNDC.w;
 
-                    float lightLineProjectionScalar = glm::dot(mycursorpos, glm::vec2(lightPosNDC)) / glm::dot(glm::vec2(lightPosNDC), glm::vec2(lightPosNDC));
+                    float lightLineProjectionScalar = glm::dot(currentCursorPos, glm::vec2(lightPosNDC)) / glm::dot(glm::vec2(lightPosNDC), glm::vec2(lightPosNDC));
 					glm::vec2 lightLineProjection = lightLineProjectionScalar * glm::vec2(lightPosNDC);
 
                     // Calculate the diffVectorNDC using the projected cursor position
@@ -803,90 +803,57 @@ public:
                     m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].posAnnotationTransform = glm::vec2(worldSpaceVector.x, worldSpaceVector.y);
                 }
             }
-            else if (m_window.isKeyPressed(GLFW_KEY_E)) { // E for scaling the selected ghost
+            else if (m_window.isKeyPressed(GLFW_KEY_E) || m_window.isKeyPressed(GLFW_KEY_A) || m_window.isKeyPressed(GLFW_KEY_S) || m_window.isKeyPressed(GLFW_KEY_D)) { // E for scaling the selected ghost
                 if (m_selectedQuadIndex != -1) {
-                    glm::vec2 currentCursorPos = cursorPos;
+					glm::vec2 currentCursorPos = cursorPos; // convert to glm::vec2 for operations
                     glm::vec2 cursorResizeVector = currentCursorPos - m_cursorClickInitialPos;
-                    float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y) / 2.f;
+                    float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y);
 					std::cout << "Resize weight: " << resizeWeight << std::endl;
-                    if (currentCursorPos.x > m_cursorClickInitialPos.x) {
-                        m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform += resizeWeight;
+                    if (currentCursorPos.x < m_cursorClickInitialPos.x) {
+						resizeWeight *= -1.f;
                     }
-                    else if (m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform - resizeWeight > 0.01) {
-                        m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform -= resizeWeight;
+
+                    if (m_window.isKeyPressed(GLFW_KEY_E)) {
+                        float sensitivity = 0.5f;
+						resizeWeight *= sensitivity;
+                        if (m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform + resizeWeight > 0.01) {
+                            m_annotationData[m_selectedQuadIDs[m_selectedQuadIndex]].sizeAnnotationTransform += resizeWeight;
+                        }
                     }
-                }
-            }
-            else if (m_window.isKeyPressed(GLFW_KEY_A)) {
-                glm::vec2 currentCursorPos = cursorPos;
-                glm::vec2 cursorResizeVector = currentCursorPos - m_cursorClickInitialPos;
-                float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y) / 2.f;
-                int interfaceToModify;
+                    else {
+                        int interfaceToModify;
+                        if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
+							interfaceToModify = m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]].y; // modify the second interface in reflection pair
+                        }
+                        else {
+                            interfaceToModify = m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].y;
+                        }
 
-                if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
-                    interfaceToModify = m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]].y;
-				}
-				else {
-					interfaceToModify = m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].y;
-				}
+                        if (m_window.isKeyPressed(GLFW_KEY_A)) {
+                            float sensitivity = 1.f;
+                            resizeWeight *= sensitivity;
+                            if (m_lens_interfaces[interfaceToModify].di + resizeWeight > 0.1 && m_lens_interfaces[interfaceToModify].di + resizeWeight < 250) {
+                                m_lens_interfaces[interfaceToModify].di += resizeWeight;
+                            } 
+						}
+						else if (m_window.isKeyPressed(GLFW_KEY_S)) {
+                            float sensitivity = 0.1f;
+                            resizeWeight *= sensitivity;
+                            if (m_lens_interfaces[interfaceToModify].ni + resizeWeight > 1 && m_lens_interfaces[interfaceToModify].ni + resizeWeight < 2.5) {
+                                m_lens_interfaces[interfaceToModify].ni += resizeWeight;
+                            }
+							
+						}
+						else if (m_window.isKeyPressed(GLFW_KEY_D)) {
+                            float sensitivity = 10.0f;
+                            resizeWeight *= sensitivity;
+                            m_lens_interfaces[interfaceToModify].Ri += resizeWeight;
+						}
 
-                if (currentCursorPos.x > m_cursorClickInitialPos.x) {
-					m_lens_interfaces[interfaceToModify].di += resizeWeight;
-                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                    refreshMatricesAndQuads();
-                }
-                else if (m_lens_interfaces[interfaceToModify].di - resizeWeight > 0.01) {
-                    m_lens_interfaces[interfaceToModify].di -= resizeWeight;
-                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                    refreshMatricesAndQuads();
-                }
-            }
-            else if (m_window.isKeyPressed(GLFW_KEY_S)) {
-                glm::vec2 currentCursorPos = cursorPos;
-                glm::vec2 cursorResizeVector = currentCursorPos - m_cursorClickInitialPos;
-                float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y) / 2.f;
-                int interfaceToModify;
+                        m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                        refreshMatricesAndQuads();
 
-                if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
-                    interfaceToModify = m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]].y;
-                }
-                else {
-                    interfaceToModify = m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].y;
-                }
-
-                if (currentCursorPos.x > m_cursorClickInitialPos.x) {
-                    m_lens_interfaces[interfaceToModify].ni += resizeWeight;
-                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                    refreshMatricesAndQuads();
-                }
-                else if (m_lens_interfaces[interfaceToModify].di - resizeWeight > 0.01) {
-                    m_lens_interfaces[interfaceToModify].ni -= resizeWeight;
-                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                    refreshMatricesAndQuads();
-                }
-            }
-            else if (m_window.isKeyPressed(GLFW_KEY_D)) {
-                glm::vec2 currentCursorPos = cursorPos;
-                glm::vec2 cursorResizeVector = currentCursorPos - m_cursorClickInitialPos;
-                float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y) / 2.f;
-                int interfaceToModify;
-
-                if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
-                    interfaceToModify = m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]].y;
-                }
-                else {
-                    interfaceToModify = m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()].y;
-                }
-
-                if (currentCursorPos.x > m_cursorClickInitialPos.x) {
-                    m_lens_interfaces[interfaceToModify].Ri += resizeWeight;
-                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                    refreshMatricesAndQuads();
-                }
-                else {
-                    m_lens_interfaces[interfaceToModify].Ri -= resizeWeight;
-                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                    refreshMatricesAndQuads();
+                    }
                 }
             }
         }
