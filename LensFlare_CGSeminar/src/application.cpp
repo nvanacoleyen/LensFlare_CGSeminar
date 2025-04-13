@@ -310,10 +310,14 @@ public:
             // Use ImGui for easy input/output of ints, floats, strings, etc...
             // https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
             ImGui::Begin("Settings", NULL, window_flags);
-            ImGui::InputInt("Aperture Position", &irisAperturePos);
-            ImGui::SliderFloat("Light Intensity", &m_light_intensity, 10.0f, 2000.0f);
 
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Light Settings");
+
+            ImGui::SliderFloat("Light Intensity", &m_light_intensity, 10.0f, 2000.0f);
+            //TODO: ADD LIGHT COLOR
+            
             //Button loading lens system
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Preset Lens Systems");
             if (ImGui::Button("Load Heliar Troner Lens System")) {
                 m_lensSystem = heliarTronerLens();
                 irisAperturePos = m_lensSystem.getIrisAperturePos();
@@ -326,13 +330,15 @@ public:
                 m_lens_interfaces = m_lensSystem.getLensInterfaces();
                 refreshMatricesAndQuads();
             }
-            if (ImGui::Button("Load Test Lens System")) {
-                m_lensSystem = testLens();
-                irisAperturePos = m_lensSystem.getIrisAperturePos();
-                m_lens_interfaces = m_lensSystem.getLensInterfaces();
-                refreshMatricesAndQuads();
-            }
 
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Global Lens Settings");
+            ImGui::InputInt("Aperture Position", &irisAperturePos);
+			ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 20.0f);
+			ImGui::SliderFloat("Iris Aperture Height", &m_lensSystem.m_aperture_height, 0.0f, 20.0f);
+            ImGui::Checkbox("Disable Entrance Clipping", &disableEntranceClipping);
+
+            ImGui::Text("Lens Interface Settings");
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Preset Lens Systems");
             if (ImGui::CollapsingHeader("Lens Prescription Details")) {
                 for (int i = 0; i < m_lens_interfaces.size(); i++) {
                 std::string lensInterfaceDescription = std::to_string(i) + ": d=" + std::format("{:.3f}", m_lens_interfaces[i].di) + ", n=" + std::format("{:.3f}", m_lens_interfaces[i].ni) + ", R=" + std::format("{:.3f}", m_lens_interfaces[i].Ri) + ", lambda0=" + std::format("{:.3f}", m_lens_interfaces[i].lambda0);
@@ -393,20 +399,9 @@ public:
                 }
             }
 
-            ImGui::ColorEdit3("Ghost Selection Color", (float*)&selected_ghost_color);
-
-            if (ImGui::Button("Optimize Coatings")) {
-                optimizeCoatings = true;
-            }
-
-            if (ImGui::Button("Optimize Lens System with EA")) {
-                m_takeSnapshot = 2;
-                optimizeWithEA = true;
-            }
-
-            if (ImGui::Button("Reset Annotations")) {
-                m_resetAnnotations = true;
-            }
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Ghost Settings");
+            ImGui::ColorEdit3("Ghost Color", (float*)&selected_ghost_color);
+            ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
 
             if (m_selectedQuadIndex != -1) {
                 //get pairs of the id reflection
@@ -426,8 +421,16 @@ public:
                     selectedQuadIdMemory = selectedQuadId;
                     lensInterfaceRefresh = false;
                 }
-             
-                ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
+
+				ImGui::Text("Modify Size and Location:");
+				//TODO: Add toggle for changing first or second interface in the reflection pair
+                ImGui::Text("Change Thickness (d) with A");
+                ImGui::Text("Change Refractive Index (n) with S");
+                ImGui::Text("Change Radius (R) with D");
+                std::string lensInterfaceDescription = std::to_string(secondQuadReflectionInterface) + ": d=" + std::format("{:.3f}", m_lens_interfaces[secondQuadReflectionInterface].di) + ", n=" + std::format("{:.3f}", m_lens_interfaces[secondQuadReflectionInterface].ni) + ", R=" + std::format("{:.3f}", m_lens_interfaces[secondQuadReflectionInterface].Ri);
+                ImGui::Text(lensInterfaceDescription.c_str());
+
+                ImGui::Text("Modify Color:");
                 std::string label_lambda = "Lambda0 of Interface ";
                 ImGui::Text((label_lambda + std::to_string(firstQuadReflectionInterface)).c_str());
                 ImGui::InputFloat("(1)", &firstQuadReflectionInterfaceLambda0);
@@ -438,7 +441,14 @@ public:
                     m_lens_interfaces[secondQuadReflectionInterface].lambda0 = secondQuadReflectionInterfaceLambda0;
                     m_lensSystem.setLensInterfaces(m_lens_interfaces);
                 }
-            } else {
+
+                if (ImGui::Button("Optimize Selected Ghost Color with Brute Force Search")) {
+                    optimizeCoatings = true;
+                }
+
+
+            }
+            else {
                 selectedQuadId = -1;
                 selectedQuadIdMemory = -1;
                 firstQuadReflectionInterface = -1;
@@ -446,8 +456,16 @@ public:
                 firstQuadReflectionInterfaceLambda0 = 0.0;
                 secondQuadReflectionInterfaceLambda0 = 0.0;
             }
+            
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Global Lens Optimization");
+            if (ImGui::Button("Optimize Lens System with EA")) {
+                m_takeSnapshot = 2;
+                optimizeWithEA = true;
+            }
 
-			ImGui::Checkbox("Disable Entrance Clipping", &disableEntranceClipping);
+            if (ImGui::Button("Reset Annotations")) {
+                m_resetAnnotations = true;
+            }
 
             ImGui::End();
 
@@ -493,11 +511,9 @@ public:
             if (optimizeCoatings && m_selectedQuadIndex != -1) {
                 if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
                     optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], yawandPitch);
-                    //optimizeLensCoatingsSimple(m_lensSystem, ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]]);
                 }
                 else {
                     optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], yawandPitch);
-                    //optimizeLensCoatingsSimple(m_lensSystem, ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()]);
                 }
                 m_lens_interfaces = m_lensSystem.getLensInterfaces();
                 lensInterfaceRefresh = true;

@@ -38,10 +38,11 @@ public:
 	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> &reflectionPos, std::vector<glm::vec2> &xRays, std::vector<glm::vec2> &yRays);
 	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2>& reflectionPos, glm::vec2& xRay, glm::vec2& yRay);
 	std::vector<glm::vec2> getPathIncidentAngleAtReflectionPos(glm::vec2 reflectionPair, glm::vec2 yawAndPitch);
+	float m_aperture_height = 0;
+	float m_entrance_pupil_height = 0;
 
 private:
 	std::vector<LensInterface> m_lens_interfaces;
 	int m_iris_aperture_pos = 0;
-	float m_aperture_height = 0;
-	float m_entrance_pupil_height = 0;
+	
 };
