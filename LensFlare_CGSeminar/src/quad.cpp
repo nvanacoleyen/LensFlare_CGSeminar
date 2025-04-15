@@ -67,3 +67,21 @@ void FlareQuad::drawQuad(glm::mat2x2& Ma, glm::mat2x2& Ms, glm::vec3& color, Ann
     glDrawArrays(GL_LINE_STRIP, 0, m_points.size());
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
+
+void FlareQuad::drawQuad(glm::vec3& color, AnnotationData& annotationData) {
+    // Upload data if points have changed
+    uploadDataIfNeeded();
+
+    // Bind VAO
+    glBindVertexArray(m_vao_quad);
+
+    // Set shader uniforms
+    glUniform2fv(2, 1, glm::value_ptr(annotationData.posAnnotationTransform));
+    glUniform1f(3, annotationData.sizeAnnotationTransform);
+    glUniform3fv(4, 1, glm::value_ptr(color)); // Color
+    glUniform1i(8, m_id); // Quad ID
+
+    // Draw the quad
+    glDrawArrays(GL_LINE_STRIP, 0, m_points.size());
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}

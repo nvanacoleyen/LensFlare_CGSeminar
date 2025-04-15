@@ -28,9 +28,11 @@ public:
     FlareQuad();
     FlareQuad(std::vector<glm::vec3> points, int id); // Must be an array of 4 points!
     void setPoints(std::vector<glm::vec3> points);
+    int getID() const { return m_id; }
     std::vector<glm::vec3> getPoints();
     void releaseArrayAndBuffer();
     void drawQuad(glm::mat2x2& Ma, glm::mat2x2& Ms, glm::vec3& color, AnnotationData& annotationData);
+    void drawQuad(glm::vec3& color, AnnotationData& annotationData);
 
 private:
     void uploadDataIfNeeded(); // New method for data upload optimization

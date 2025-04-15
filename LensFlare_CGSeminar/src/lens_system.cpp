@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <numbers>
+#include <algorithm> 
 
 float RED_WAVELENGTH = 650;
 float GREEN_WAVELENGTH = 550;
@@ -278,8 +279,9 @@ glm::vec3 LensSystem::computeFresnelAR(
 	float n2		// RI of the 2nd medium
 ) {
 	// refraction angles in coating and the 2nd medium
-	float theta1 = asin(sin(theta0) * n0 / n1);
-	float theta2 = asin(sin(theta0) * n0 / n2);
+	float test = sin(theta0) * n0 / n1;
+	float theta1 = asin(std::clamp(sin(theta0) * n0 / n1, -1.f, 1.f));
+	float theta2 = asin(std::clamp(sin(theta0) * n0 / n2, -1.f, 1.f));
 	// amplitude for outer refl. / transmission on topmost interface
 	float rs01 = -sin(theta0-theta1) / sin(theta0 + theta1);
 	float rp01 = tan(theta0-theta1) / tan(theta0 + theta1);
@@ -287,7 +289,7 @@ glm::vec3 LensSystem::computeFresnelAR(
 	float tp01 = ts01 * cos(theta0-theta1);
 	// amplitude for inner reflection
 	float rs12 = -sin(theta1-theta2) / sin(theta1 + theta2);
-	float rp12 = +tan(theta1-theta2) / tan(theta1 + theta2);
+	float rp12 = tan(theta1-theta2) / tan(theta1 + theta2);
 	// after passing through first surface twice :
 	// 2 transmissions and 1 reflection
 	float ris = ts01 * ts01 * rs12;
@@ -299,27 +301,27 @@ glm::vec3 LensSystem::computeFresnelAR(
 	/* RED */
 	float r_relPhase = 4 * std::numbers::pi / RED_WAVELENGTH * (delay - dx * sin(theta0));
 	// Add up sines of different phase and amplitude
-	float r_out_s2 = rs01 * rs01 + ris * ris + -
+	float r_out_s2 = rs01 * rs01 + ris * ris +
 		2 * rs01 * ris * cos(r_relPhase);
-	float r_out_p2 = rp01 * rp01 + rip * rip + -
+	float r_out_p2 = rp01 * rp01 + rip * rip +
 		2 * rp01 * rip * cos(r_relPhase);
-	float r_res = std::min((r_out_s2 + r_out_p2) / 2, 1.0f); // reflectivity
+	float r_res = std::min((r_out_s2 + r_out_p2) / 2, 1.f); // reflectivity
 	/* GREEN */
 	float g_relPhase = 4 * std::numbers::pi / GREEN_WAVELENGTH * (delay - dx * sin(theta0));
 	// Add up sines of different phase and amplitude
-	float g_out_s2 = rs01 * rs01 + ris * ris + -
+	float g_out_s2 = rs01 * rs01 + ris * ris +
 		2 * rs01 * ris * cos(g_relPhase);
-	float g_out_p2 = rp01 * rp01 + rip * rip + -
+	float g_out_p2 = rp01 * rp01 + rip * rip +
 		2 * rp01 * rip * cos(g_relPhase);
-	float g_res = std::min((g_out_s2 + g_out_p2) / 2, 1.0f); // reflectivity
+	float g_res = std::min((g_out_s2 + g_out_p2) / 2, 1.f); // reflectivity
 	/* BLUE */
 	float b_relPhase = 4 * std::numbers::pi / BLUE_WAVELENGTH * (delay - dx * sin(theta0));
 	// Add up sines of different phase and amplitude
-	float b_out_s2 = rs01 * rs01 + ris * ris + -
+	float b_out_s2 = rs01 * rs01 + ris * ris +
 		2 * rs01 * ris * cos(b_relPhase);
-	float b_out_p2 = rp01 * rp01 + rip * rip + -
+	float b_out_p2 = rp01 * rp01 + rip * rip +
 		2 * rp01 * rip * cos(b_relPhase);
-	float b_res = std::min((b_out_s2 + b_out_p2) / 2, 1.0f); // reflectivity
+	float b_res = std::min((b_out_s2 + b_out_p2) / 2, 1.f); // reflectivity
 
 	return  glm::vec3(r_res, g_res, b_res);
 }

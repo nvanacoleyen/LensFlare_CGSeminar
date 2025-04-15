@@ -51,8 +51,8 @@ void optimizeLensCoatingsBruteForce(LensSystem& lensSystem, glm::vec3 desiredCol
     float minSecondLambda0 = lensInterfaces[reflectionPair.y].lambda0;
 
     //visible spectrum
-    /*float minlambda = 350;
-    float maxlambda = 800;*/
+    //float minlambda = 350;
+    //float maxlambda = 800;
     float minlambda = 1;
     float maxlambda = 10000;
 
