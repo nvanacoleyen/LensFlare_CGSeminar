@@ -143,7 +143,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
 
     for (int i = 0; i < m_renderObjective.size(); i++) {
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
-        float sizeError = abs(m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight);
+        float sizeError = m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight;
 		f += 3 * (sizeError * sizeError) + (posError * posError); //square because human perception more sensitive to big errors than small ones
     }  
 
