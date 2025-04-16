@@ -228,7 +228,7 @@ std::vector<double> runEA(pagmo::archipelago archi) {
 	return best_champion;
 }
 
-LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<SnapshotData> renderObjective, float light_angle_x, float light_angle_y) {
+LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y) {
 
     std::vector<LensInterface> currentLensInterfaces = currentLensSystem.getLensInterfaces();
     unsigned int num_interfaces = currentLensInterfaces.size();
@@ -309,7 +309,7 @@ int interfacesNeeded(int ghostsWanted) {
     return n;
 }
 
-LensSystem solve_Annotations(std::vector<SnapshotData> renderObjective, float light_angle_x, float light_angle_y) {
+LensSystem solve_Annotations(std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y) {
 
     unsigned int num_interfaces = interfacesNeeded(renderObjective.size());
 
