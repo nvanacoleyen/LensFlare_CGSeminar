@@ -15,13 +15,13 @@ void LensCoatingProblem::init(unsigned int num_interfaces, float light_angle_x, 
     m_light_angle_x = light_angle_x;
     m_light_angle_y = light_angle_y;
     m_light_intensity = lightIntensity;
-    m_dim = m_num_interfaces
+    m_dim = m_num_interfaces;
     m_lb.resize(m_dim);
     m_ub.resize(m_dim);
     for (int i = 0; i < m_num_interfaces; i++) {
         // lambda:
-        m_lb[i] = 300;
-        m_ub[i] = 800;
+        m_lb[i] = 1.0;
+        m_ub[i] = 10000.0;
     }
 }
 
@@ -30,7 +30,7 @@ void LensCoatingProblem::setRenderObjective(std::vector<glm::vec3>& renderObject
 }
 
 void LensCoatingProblem::setLensSystem(LensSystem& lensSystem) {
-    m_lensSystem = lensSystem;
+    m_lensSystem.push_back(lensSystem);
     m_preAptReflectionPairs = lensSystem.getPreAptReflections();
     m_postAptReflectionPairs = lensSystem.getPostAptReflections();
 }
@@ -39,7 +39,7 @@ pagmo::vector_double LensCoatingProblem::fitness(const pagmo::vector_double& dv)
     //Construct lens system
     std::vector<LensInterface> newLensInterfaces;
     newLensInterfaces.reserve(m_num_interfaces);
-    std::vector<LensInterface> currentLensInterfaces = m_lensSystem.getLensInterfaces();
+    std::vector<LensInterface> currentLensInterfaces = m_lensSystem[0].getLensInterfaces();
     for (int i = 0; i < m_num_interfaces; i++) {
         LensInterface lens;
         lens.di = currentLensInterfaces[i].di;
@@ -48,15 +48,16 @@ pagmo::vector_double LensCoatingProblem::fitness(const pagmo::vector_double& dv)
         lens.lambda0 = dv[i];
         newLensInterfaces.push_back(lens);
     }
-    LensSystem newLensSystem = LensSystem(m_lensSystem.getIrisAperturePos(), m_lensSystem.getApertureHeight(), m_lensSystem.getEntrancePupilHeight(), newLensInterfaces);
+    LensSystem newLensSystem = LensSystem(m_lensSystem[0].getIrisAperturePos(), m_lensSystem[0].getApertureHeight(), m_lensSystem[0].getEntrancePupilHeight(), newLensInterfaces);
 
     //"Render
-    glm::mat2x2 m_default_Ma = m_lensSystem.getMa();
+    glm::mat2x2 m_default_Ma = m_lensSystem[0].getMa();
+    std::vector<glm::mat2x2> preAptMas = m_lensSystem[0].getMa(m_preAptReflectionPairs);
     glm::vec2 post_apt_center_ray_x = glm::vec2(-m_light_angle_x / 10 * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_x / 10);
     glm::vec2 post_apt_center_ray_y = glm::vec2(m_light_angle_y / 10 * m_default_Ma[1][0] / m_default_Ma[0][0], -m_light_angle_y / 10);
     std::vector<glm::vec2> pre_apt_center_ray_x;
     std::vector<glm::vec2> pre_apt_center_ray_y;
-    for (auto& const preAptMa : m_preAptMas) {
+    for (auto& const preAptMa : preAptMas) {
         pre_apt_center_ray_x.push_back(glm::vec2(-m_light_angle_x / 10 * preAptMa[1][0] / preAptMa[0][0], m_light_angle_x / 10));
         pre_apt_center_ray_y.push_back(glm::vec2(m_light_angle_y / 10 * preAptMa[1][0] / preAptMa[0][0], -m_light_angle_y / 10));
     }
@@ -73,7 +74,9 @@ pagmo::vector_double LensCoatingProblem::fitness(const pagmo::vector_double& dv)
         f += pow(glm::length(m_renderObjective[i + preAPTtransmissions.size()] - (postAPTtransmissions[i] * m_light_intensity)), 2);
     }
 
-    return { f / dv.size()};
+    f = f / dv.size();
+
+    return { f };
 }
 
 std::pair<pagmo::vector_double, pagmo::vector_double> LensCoatingProblem::get_bounds() const {
@@ -89,7 +92,7 @@ pagmo::vector_double convertLensSystem(const std::vector<LensInterface>& lens_sy
     return decision;
 }
 
-std::vector<double> runEA(pagmo::archipelago archi) {
+std::vector<double> runEACoatings(pagmo::archipelago archi) {
     std::vector<double> c_solution = archi.get_champions_x()[0];
     double c_fitness = archi.get_champions_f()[0][0];
     std::cout << "Initial Best Fitness: " << c_fitness << std::endl;
@@ -137,14 +140,14 @@ std::vector<double> runEA(pagmo::archipelago archi) {
     return best_champion;
 }
 
-LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<glm::vec3>& renderObjective, float light_angle_x, float light_angle_y, float lightIntensity) {
+LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<glm::vec3>& renderObjective, float light_angle_x, float light_angle_y, float lightIntensity) {
     
     std::vector<LensInterface> currentLensInterfaces = currentLensSystem.getLensInterfaces();
     unsigned int num_interfaces = currentLensInterfaces.size();
     LensCoatingProblem my_problem;
     my_problem.init(num_interfaces, light_angle_x, light_angle_y, lightIntensity);
     my_problem.setRenderObjective(renderObjective);
-    my_problem.setLensSystem(lensSystem);
+    my_problem.setLensSystem(currentLensSystem);
     pagmo::problem prob{ my_problem };
     std::cout << "Created Pagmo UDP" << std::endl;
 
@@ -166,7 +169,7 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<glm::vec
         archi.push_back(pagmo::island{ algo, pop });
     }
 
-    std::vector<double> best_champion = runEA(archi);
+    std::vector<double> best_champion = runEACoatings(archi);
 
     //Convert the best decision vector back into a vector of LensInterface
     std::vector<LensInterface> optimized_lens_system;
@@ -175,7 +178,7 @@ LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<glm::vec
         lens.di = currentLensInterfaces[i].di;
         lens.ni = currentLensInterfaces[i].ni;
         lens.Ri = currentLensInterfaces[i].Ri;
-        lens.lambda0 = best_champion;
+        lens.lambda0 = best_champion[i];
         optimized_lens_system.push_back(lens);
     }
 

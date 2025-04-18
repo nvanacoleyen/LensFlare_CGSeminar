@@ -21,7 +21,7 @@ void LensSystem::setIrisAperturePos(int newPos) {
 	m_iris_aperture_pos = newPos;
 }
 
-int LensSystem::getIrisAperturePos() {
+int LensSystem::getIrisAperturePos() const {
 	return m_iris_aperture_pos;
 }
 
@@ -41,7 +41,7 @@ float LensSystem::getEntrancePupilHeight() const {
 	return m_entrance_pupil_height;
 }
 
-std::vector<LensInterface> LensSystem::getLensInterfaces() {
+std::vector<LensInterface> LensSystem::getLensInterfaces() const {
 	return m_lens_interfaces;
 }
 
@@ -92,7 +92,7 @@ std::vector<glm::mat2x2> LensSystem::getRayTransferMatricesWithReflection(int fi
 	return rayTransferMatrices;
 }
 
-glm::mat2x2 LensSystem::getMa() {
+glm::mat2x2 LensSystem::getMa() const {
 	glm::mat2x2 Ma = glm::mat2(1.0f);
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
 	for (int i = 0; i < m_iris_aperture_pos; i++) {
@@ -120,7 +120,7 @@ glm::mat2x2 LensSystem::getMs() {
 	return Ms;
 }
 
-glm::mat2x2 LensSystem::getMa(int firstReflectionPos, int secondReflectionPos) {
+glm::mat2x2 LensSystem::getMa(int firstReflectionPos, int secondReflectionPos) const {
 	glm::mat2x2 Ma = glm::mat2(1.0f);
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
 	//check if reflection makes sense
@@ -222,7 +222,7 @@ std::vector<glm::vec2> LensSystem::getPostAptReflections() {
 	return reflectionPairs;
 }
 
-std::vector<glm::mat2x2> LensSystem::getMa(std::vector<glm::vec2> reflectionPos) {
+std::vector<glm::mat2x2> LensSystem::getMa(std::vector<glm::vec2> reflectionPos) const {
 	std::vector<glm::mat2x2> Mas;
 	for (glm::vec2 reflectionPair : reflectionPos) {
 		Mas.push_back(this->getMa(reflectionPair.x, reflectionPair.y));
@@ -271,13 +271,13 @@ std::vector<float> LensSystem::getInterfacePositionsWithReflections(int firstRef
 }
 
 //compute per lens interface
-glm::vec3 LensSystem::computeFresnelAR(
+glm::vec3 LensSystem::computeFresnelAR (
 	float theta0,	// angle of incidence
 	float d1,		// thickness of AR coating
 	float n0,		// RI of 1st medium
 	float n1,		// RI of coating layer
 	float n2		// RI of the 2nd medium
-) {
+) const {
 	// refraction angles in coating and the 2nd medium
 	float test = sin(theta0) * n0 / n1;
 	float theta1 = asin(std::clamp(sin(theta0) * n0 / n1, -1.f, 1.f));
@@ -326,7 +326,7 @@ glm::vec3 LensSystem::computeFresnelAR(
 	return  glm::vec3(r_res, g_res, b_res);
 }
 
-glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray) {
+glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray) const {
 	glm::vec3 transmissions = glm::vec3(1.f, 1.f, 1.f);
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
 	glm::vec2 propagated_ray = ray;
@@ -383,7 +383,7 @@ glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondRe
 }
 
 //Per ghost trace ray through system to get reflectance/transmission of color
-std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> &reflectionPos, std::vector<glm::vec2> &xRays, std::vector<glm::vec2> &yRays) {
+std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, std::vector<glm::vec2> xRays, std::vector<glm::vec2> yRays) const {
 	std::vector<glm::vec3> results;
 	for (int i = 0; i < reflectionPos.size(); i++) {
 		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRays[i]) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRays[i]));
@@ -391,7 +391,7 @@ std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> &refle
 	return results;
 }
 
-std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> &reflectionPos, glm::vec2 &xRay, glm::vec2 &yRay) {
+std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 xRay, glm::vec2 yRay) const {
 	std::vector<glm::vec3> results;
 	for (int i = 0; i < reflectionPos.size(); i++) {
 		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRay) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRay));

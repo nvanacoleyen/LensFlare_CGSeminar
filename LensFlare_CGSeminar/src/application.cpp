@@ -27,6 +27,7 @@ DISABLE_WARNINGS_POP()
 #include "reverse_coating.h"
 #include "Windows.h"
 #include "lens_solver.h"
+#include "coating_solver.h"
 
 /* GLOBAL PARAMS */
 HWND hwnd = GetConsoleWindow();
@@ -292,7 +293,7 @@ public:
         int irisAperturePos = m_lensSystem.getIrisAperturePos();
         int irisAperturePosMemory = irisAperturePos;
 
-        glm::vec3 selected_ghost_color = glm::vec3(10.0f, 0.0f, 0.0f);
+        glm::vec3 selected_ghost_color = glm::vec3(1.0f, 0.0f, 0.0f);
 
         bool highlightSelectedQuad = true;
         int selectedQuadId = -1;
@@ -305,8 +306,9 @@ public:
 
         bool optimizeCoatings = false;
         bool lensInterfaceRefresh = false;
-        bool optimizeWithEA = false;
+        bool optimizeLensSystemWithEA = false;
         bool disableEntranceClipping = false;
+        bool optimizeLensCoatingsWithEA = false;
 
         /* Flare Paths and Matrices */
         m_lens_interfaces = m_lensSystem.getLensInterfaces();
@@ -431,6 +433,14 @@ public:
                 ImGui::ColorEdit3("Ghost Color", (float*)&selected_ghost_color);
                 ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
 
+                if (ImGui::Button("Annotate Color")) {
+                    if (m_selectedQuadIndex != -1) {
+                        //get pairs of the id reflection
+                        selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
+						m_colorAnnotations[selectedQuadId] = selected_ghost_color;
+                    }
+                }
+
                 if (m_selectedQuadIndex != -1) {
                     //get pairs of the id reflection
                     selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
@@ -488,7 +498,11 @@ public:
                 ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Global Lens Optimization");
                 if (ImGui::Button("Optimize Lens System with EA")) {
                     m_takeSnapshot = 2;
-                    optimizeWithEA = true;
+                    optimizeLensSystemWithEA = true;
+                }
+
+                if (ImGui::Button("Optimize Coatings with EA")) {
+                    optimizeLensCoatingsWithEA = true;
                 }
 
                 if (ImGui::Button("Reset Annotations")) {
@@ -542,7 +556,7 @@ public:
 				}
 				if (ImGui::Button("Build with EA")) {
                     //RUN EA and reset params
-                    optimizeWithEA = true;
+                    optimizeLensSystemWithEA = true;
 				}
 
             }
@@ -579,6 +593,7 @@ public:
             // Reset annotations
             if (m_resetAnnotations) {
                 m_annotationData.clear();
+                m_colorAnnotations.clear();
 				int amount_ghosts = 0;
                 if (!m_buildFromScratch) {
                     amount_ghosts = m_preAptReflectionPairs.size() + m_postAptReflectionPairs.size();
@@ -588,6 +603,7 @@ public:
                 }
                 for (int i = 0; i < amount_ghosts; i++) {
                     m_annotationData.push_back(AnnotationData());
+					m_colorAnnotations.push_back(glm::vec3(-1.0f, -1.0f, -1.0f));
                 }
                 m_resetAnnotations = false;
             }
@@ -691,8 +707,13 @@ public:
                         m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, selected_ghost_color, m_annotationData[i]);
                     }
                     else {
-                        glm::vec3 ghost_color = m_light_intensity * preAPTtransmissions[i];
-                        m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, ghost_color, m_annotationData[i]);
+                        if (m_colorAnnotations[i] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
+							m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, m_colorAnnotations[i], m_annotationData[i]);
+						}
+                        else {
+                            glm::vec3 ghost_color = m_light_intensity * preAPTtransmissions[i];
+                            m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, ghost_color, m_annotationData[i]);
+                        }
                     }
                 }
                 for (int i = 0; i < m_postAptReflectionPairs.size(); i++) {
@@ -700,8 +721,13 @@ public:
                         m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], selected_ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
                     }
                     else {
-                        glm::vec3 ghost_color = m_light_intensity * postAPTtransmissions[i];
-                        m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
+                        if (m_colorAnnotations[i + m_preAptReflectionPairs.size()] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
+                            m_preAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], m_colorAnnotations[i + m_preAptReflectionPairs.size()], m_annotationData[i + m_preAptReflectionPairs.size()]);
+                        }
+                        else {
+                            glm::vec3 ghost_color = m_light_intensity * postAPTtransmissions[i];
+                            m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
+                        }
                     }
                 }
 
@@ -794,9 +820,9 @@ public:
                     m_takeSnapshot = 0;
                 }
              
-                if (optimizeWithEA) {
+                if (optimizeLensSystemWithEA) {
                     //Optimize
-                    m_lensSystem = solve_Annotations(m_lensSystem, m_snapshotData, yawandPitch.x, yawandPitch.y);
+                    m_lensSystem = solveLensAnnotations(m_lensSystem, m_snapshotData, yawandPitch.x, yawandPitch.y);
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
 
                     refreshMatricesAndQuads();
@@ -804,8 +830,30 @@ public:
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     irisAperturePosMemory = irisAperturePos;
 
-                    optimizeWithEA = false;
+                    optimizeLensSystemWithEA = false;
                     m_resetAnnotations = true;
+                }
+
+                if (optimizeLensCoatingsWithEA) {
+                    std::vector<glm::vec3> renderObjective;
+                    for (int i = 0; i < m_colorAnnotations.size(); i++) {
+                        if (m_colorAnnotations[i] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
+                            renderObjective.push_back(m_colorAnnotations[i]);
+                        }
+                        else {
+							if (i < m_preAptReflectionPairs.size()) {
+								renderObjective.push_back(preAPTtransmissions[i] * m_light_intensity);
+							}
+							else {
+								renderObjective.push_back(postAPTtransmissions[i - m_preAptReflectionPairs.size()] * m_light_intensity);
+							}
+                        }
+                    }
+
+                    m_lensSystem = solveCoatingAnnotations(m_lensSystem, renderObjective, yawandPitch.x, yawandPitch.y, m_light_intensity);
+                    m_lens_interfaces = m_lensSystem.getLensInterfaces();
+					optimizeLensCoatingsWithEA = false;
+					m_resetAnnotations = true;
                 }
 
                 m_quadCenterShader.bind();
@@ -830,8 +878,6 @@ public:
             }
             //BUILD FROM SCRATCH
             else {
-                //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, build_ssboQuadData);
-                //glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 5, build_atomicCounterBuffer);
 
 				m_builderShader.bind();
                 //Global uniforms
@@ -880,10 +926,6 @@ public:
                         m_selectedQuadIDs.push_back(data.quadID);
                     }
 
-                    //for (const auto& id : m_selectedQuadIDs) {
-                    //    std::cout << "Quad ID " << id << " rendered at the target pixel." << std::endl;
-                    //}
-
                     if (!m_selectedQuadIDs.empty()) {
                         m_selectedQuadIndex = 0;
                         std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;
@@ -896,7 +938,7 @@ public:
                     m_getGhostsAtMouse = false;
                 }
 
-                if (optimizeWithEA) {
+                if (optimizeLensSystemWithEA) {
 					std::vector<SnapshotData> snapshotData;
 					for (auto& AnnotationData : m_annotationData) {
 						SnapshotData conversion;
@@ -905,15 +947,16 @@ public:
 						snapshotData.push_back(conversion);
 					}
                     //Optimize
-                    m_lensSystem = solve_Annotations(snapshotData, yawandPitch.x, yawandPitch.y);
+                    m_lensSystem = solveLensAnnotations(snapshotData, yawandPitch.x, yawandPitch.y);
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
 
                     refreshMatricesAndQuads();
 
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     irisAperturePosMemory = irisAperturePos;
+                    m_lensSystem.setEntrancePupilHeight(30);
 
-                    optimizeWithEA = false;
+                    optimizeLensSystemWithEA = false;
                     m_resetAnnotations = true;
                     m_buildFromScratch = false;
 					m_calibrateLightSource = true;
@@ -1192,13 +1235,16 @@ private:
     std::vector<int> m_selectedQuadIDs;
     int m_selectedQuadIndex = -1;
 
-    /* Annotations */
+    /* Ghost Annotations */
     bool m_resetAnnotations = true;
     std::vector<AnnotationData> m_annotationData;
     int m_takeSnapshot = 1;
     std::vector<SnapshotData> m_snapshotData;
     std::vector<glm::vec2> m_quadcenter_points;
     glm::vec2 m_cursorClickInitialPos;
+
+    /* Coating Annotations */
+	std::vector<glm::vec3> m_colorAnnotations;
 
     /* Lens Builder */
     bool m_buildFromScratch = false;

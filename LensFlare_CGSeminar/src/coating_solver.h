@@ -9,15 +9,15 @@
 #include <glm/glm.hpp>
 
 struct LensCoatingProblem {
+    unsigned int m_dim;             // total number of decision variables
+    pagmo::vector_double m_lb;       // lower bounds for each variable
+    pagmo::vector_double m_ub;       // upper bounds for each variable
     unsigned int m_num_interfaces;  // number of lens interfaces
     float m_light_angle_x;
     float m_light_angle_y;
     float m_light_intensity;
-    unsigned int m_dim;             // total number of decision variables
-    pagmo::vector_double m_lb;       // lower bounds for each variable
-    pagmo::vector_double m_ub;       // upper bounds for each variable
     std::vector<glm::vec3> m_renderObjective;
-    LensSystem m_lensSystem;
+    std::vector<LensSystem> m_lensSystem;
     std::vector<glm::vec2> m_preAptReflectionPairs;
     std::vector<glm::vec2> m_postAptReflectionPairs;
     // Set the problem dimension and bounds
@@ -32,4 +32,4 @@ struct LensCoatingProblem {
     std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const;
 };
 
-LensSystem solve_Annotations(LensSystem& currentLensSystem, std::vector<glm::vec3>& renderObjective, float light_angle_x, float light_angle_y, float lightIntensity);
+LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<glm::vec3>& renderObjective, float light_angle_x, float light_angle_y, float lightIntensity);
