@@ -145,7 +145,13 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
         float sizeError = m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight;
 		f += 3 * (sizeError * sizeError) + (posError * posError); //square because human perception more sensitive to big errors than small ones
-    }  
+    } 
+
+    if (newSnapshot.size() > m_renderObjective.size()) {
+        for (int i = m_renderObjective.size(); i < newSnapshot.size(); i++) {
+			f += 5 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
+        }
+    }
 
     f = f / m_renderObjective.size();
 
@@ -253,9 +259,9 @@ LensSystem solveLensAnnotations(LensSystem& currentLensSystem, std::vector<Snaps
     for (int i = 0; i < 25; ++i) {
         pagmo::population pop(prob, 10 * amount_dv);
         // Add current lens system to the population.
-        //for (int i = 0; i < 1; i++) {
-        //    pop.push_back(current_point);
-        //}
+        for (int i = 0; i < 1; i++) {
+            pop.push_back(current_point);
+        }
         archi.push_back(pagmo::island{ algo, pop });
     }
 

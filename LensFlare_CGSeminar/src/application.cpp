@@ -647,13 +647,13 @@ public:
                 }
 
 
-                glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x / 10 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x / 10);
-                glm::vec2 post_apt_center_ray_y = glm::vec2(yawandPitch.y / 10 * m_default_Ma[1][0] / m_default_Ma[0][0], -yawandPitch.y / 10);
+                glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x / 20);
+                glm::vec2 post_apt_center_ray_y = glm::vec2(yawandPitch.y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], -yawandPitch.y / 20);
                 std::vector<glm::vec2> pre_apt_center_ray_x;
                 std::vector<glm::vec2> pre_apt_center_ray_y;
                 for (auto& const preAptMa : m_preAptMas) {
-                    pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x / 10 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x / 10));
-                    pre_apt_center_ray_y.push_back(glm::vec2(yawandPitch.y / 10 * preAptMa[1][0] / preAptMa[0][0], -yawandPitch.y / 10));
+                    pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x / 20));
+                    pre_apt_center_ray_y.push_back(glm::vec2(yawandPitch.y / 20 * preAptMa[1][0] / preAptMa[0][0], -yawandPitch.y / 20));
                 }
                 std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, pre_apt_center_ray_x, pre_apt_center_ray_y);
                 std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y);
@@ -722,7 +722,7 @@ public:
                     }
                     else {
                         if (m_colorAnnotations[i + m_preAptReflectionPairs.size()] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
-                            m_preAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], m_colorAnnotations[i + m_preAptReflectionPairs.size()], m_annotationData[i + m_preAptReflectionPairs.size()]);
+                            m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], m_colorAnnotations[i + m_preAptReflectionPairs.size()], m_annotationData[i + m_preAptReflectionPairs.size()]);
                         }
                         else {
                             glm::vec3 ghost_color = m_light_intensity * postAPTtransmissions[i];
@@ -1139,7 +1139,7 @@ public:
                         if (m_window.isKeyPressed(GLFW_KEY_A)) {
                             float sensitivity = 1.f;
                             resizeWeight *= sensitivity;
-                            if (m_lens_interfaces[interfaceToModify].di + resizeWeight > 0.1 && m_lens_interfaces[interfaceToModify].di + resizeWeight < 250) {
+                            if (m_lens_interfaces[interfaceToModify].di + resizeWeight > 0.001 && m_lens_interfaces[interfaceToModify].di + resizeWeight < 250) {
                                 m_lens_interfaces[interfaceToModify].di += resizeWeight;
                             } 
 						}
