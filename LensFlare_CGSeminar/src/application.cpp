@@ -283,10 +283,6 @@ public:
 
         int interfaceToUpdate = 0;
         int interfaceToUpdatePreviousValue = -1;
-        float newdi = 0.f;
-        float newni = 0.f;
-        float newRi = 0.f;
-        float newlambda0 = 0.0f;
 
         int interfaceToRemove = 0;
         
@@ -378,45 +374,62 @@ public:
 
                 if (ImGui::CollapsingHeader("Modify Interface")) {
                     ImGui::InputInt("Interface to Update", &interfaceToUpdate);
-                        if (interfaceToUpdate != interfaceToUpdatePreviousValue) {
-                            if (interfaceToUpdate < m_lens_interfaces.size() && interfaceToUpdate >= 0) {
-                                newdi = m_lens_interfaces[interfaceToUpdate].di;
-                                newni = m_lens_interfaces[interfaceToUpdate].ni;
-                                newRi = m_lens_interfaces[interfaceToUpdate].Ri;
-                                newlambda0 = m_lens_interfaces[interfaceToUpdate].lambda0;
-                            }
-                            else {
-                                    newdi = 0.f;
-                                    newni = 0.f;
-                                    newRi = 0.f;
-                                    newlambda0 = 0.f;
-                            }
-                        interfaceToUpdatePreviousValue = interfaceToUpdate;
+                    int interfaceCount = m_lens_interfaces.size();
+
+                    // If index is valid show sliders
+                    if (interfaceToUpdate >= 0 && interfaceToUpdate < interfaceCount) {
+                        LensInterface& lensInterface = m_lens_interfaces[interfaceToUpdate];
+
+                        ImGui::SliderFloat("Thickness", &lensInterface.di, 0.0f, 200.0f);
+                        ImGui::SliderFloat("Refractive Index", &lensInterface.ni, 1.0f, 2.5f);
+                        //ImGui::SliderFloat("Radius", &lensInterface.Ri, 0.001f, 1500.0f);
+                        bool convexLens = false;
+                        if (lensInterface.Ri > 0) {
+							convexLens = true;
+						}
+                        float minRadius = 1.0f;
+                        float maxRadius = 1000.0f;
+                        float exponent = 6.0f; // to make log scale stronger
+                        float sliderValue = pow((log(abs(lensInterface.Ri)) - log(minRadius)) / (log(maxRadius) - log(minRadius)), exponent);
+                        ImGui::SliderFloat("Radius (Stronger Log Scale)", &sliderValue, 0.0f, 1.0f);
+                        lensInterface.Ri = exp(log(minRadius) + pow(sliderValue, 1.0f / exponent) * (log(maxRadius) - log(minRadius)));
+
+                        if (!convexLens) {
+							lensInterface.Ri = -lensInterface.Ri;
                         }
 
-                    ImGui::InputFloat("Thickness", &newdi);
-                    ImGui::InputFloat("Refractive Index", &newni);
-                    ImGui::InputFloat("Radius", &newRi);
-                    ImGui::InputFloat("Lambda0", &newlambda0);
-                    if (ImGui::Button("Update")) {
-                        LensInterface newLensInterface(newdi, newni, newRi, newlambda0);
-                        if (interfaceToUpdate < m_lens_interfaces.size() && interfaceToUpdate >= 0) {
-                            //update an existing interface
-                            m_lens_interfaces[interfaceToUpdate] = newLensInterface;
-                        }
-                        else if (interfaceToUpdate < 0) {
-                            //add at the front
-                            m_lens_interfaces.insert(m_lens_interfaces.begin(), newLensInterface);
-                        }
-                        else {
-                            //add at the back
-                            m_lens_interfaces.push_back(newLensInterface);
-                        }
+                        ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 700.0f);
+
                         m_lensSystem.setLensInterfaces(m_lens_interfaces);
                         refreshMatricesAndQuads();
+                    }
+                    // If index equals the size of the vector, allow adding a new interface
+                    else if (interfaceToUpdate == interfaceCount) {
+                        float newdi = 10.0f;
+                        float newni = 1.0f;
+                        float newRi = 100.0f;
+                        float newlambda0 = 400.0f;
 
+                        ImGui::Text("End of System. Create new Interface:");
+                        ImGui::SliderFloat("Thickness", &newdi, 0.0f, 200.0f);
+                        ImGui::SliderFloat("Refractive Index", &newni, 1.0f, 2.5f);
+                        ImGui::SliderFloat("Radius", &newRi, 0.001f, 1500.0f);
+                        ImGui::SliderFloat("Lambda0", &newlambda0, 380.0f, 700.0f);
+
+                        if (ImGui::Button("Add Interface")) {
+                            LensInterface newLensInterface(newdi, newni, newRi, newlambda0);
+                            m_lens_interfaces.push_back(newLensInterface);
+                            m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                            refreshMatricesAndQuads();
+                        }
+                    }
+                    else {
+                        ImGui::Text("Invalid index.");
                     }
                 }
+
+
+
 
                 if (ImGui::CollapsingHeader("Remove Interface")) {
                     ImGui::InputInt("Interface to Remove", &interfaceToRemove);

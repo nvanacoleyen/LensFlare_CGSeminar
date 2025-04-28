@@ -149,7 +149,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
 
     if (newSnapshot.size() > m_renderObjective.size()) {
         for (int i = m_renderObjective.size(); i < newSnapshot.size(); i++) {
-			f += 5 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
+			f += 10 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
         }
     }
 
@@ -259,9 +259,9 @@ LensSystem solveLensAnnotations(LensSystem& currentLensSystem, std::vector<Snaps
     for (int i = 0; i < 25; ++i) {
         pagmo::population pop(prob, 10 * amount_dv);
         // Add current lens system to the population.
-        for (int i = 0; i < 1; i++) {
+        /*for (int i = 0; i < 1; i++) {
             pop.push_back(current_point);
-        }
+        }*/
         archi.push_back(pagmo::island{ algo, pop });
     }
 
