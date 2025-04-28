@@ -309,6 +309,8 @@ public:
         bool disableEntranceClipping = false;
         bool optimizeLensCoatingsWithEA = false;
 
+        float ghostIntensity = 1.0f;
+
         /* Flare Paths and Matrices */
         m_lens_interfaces = m_lensSystem.getLensInterfaces();
         refreshMatricesAndQuads();
@@ -373,45 +375,168 @@ public:
                 ImGui::InputInt("Aperture Position", &irisAperturePos);
                 ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 40.0f);
                 ImGui::Checkbox("Disable Entrance Clipping", &disableEntranceClipping);
-            
-                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Lens Interface Settings");
-                if (ImGui::CollapsingHeader("Lens Prescription")) {
-                    if (ImGui::BeginTable("Lens Prescription", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-                        ImGui::TableSetupColumn("Index");
-                        ImGui::TableSetupColumn("d");
-                        ImGui::TableSetupColumn("n");
-                        ImGui::TableSetupColumn("R");
-                        ImGui::TableSetupColumn("lambda0");
-                        ImGui::TableHeadersRow();
 
-                        for (int i = 0; i < m_lens_interfaces.size(); i++) {
-                            ImGui::TableNextRow();
-                            ImGui::TableSetColumnIndex(0);
-                            ImGui::Text("%d", i);
-                            ImGui::TableSetColumnIndex(1);
-                            ImGui::Text("%.3f", m_lens_interfaces[i].di);
-                            ImGui::TableSetColumnIndex(2);
-                            ImGui::Text("%.3f", m_lens_interfaces[i].ni);
-                            ImGui::TableSetColumnIndex(3);
-                            ImGui::Text("%.3f", m_lens_interfaces[i].Ri);
-                            ImGui::TableSetColumnIndex(4);
-                            ImGui::Text("%.3f", m_lens_interfaces[i].lambda0);
+                if (!(m_optimizeInterfacesWithEA || m_optimizeCoatingsWithEA)) {
+
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Lens Interface Settings");
+                    if (ImGui::CollapsingHeader("Lens Prescription")) {
+                        if (ImGui::BeginTable("Lens Prescription", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                            ImGui::TableSetupColumn("Index");
+                            ImGui::TableSetupColumn("d");
+                            ImGui::TableSetupColumn("n");
+                            ImGui::TableSetupColumn("R");
+                            ImGui::TableSetupColumn("lambda0");
+                            ImGui::TableHeadersRow();
+
+                            for (int i = 0; i < m_lens_interfaces.size(); i++) {
+                                ImGui::TableNextRow();
+                                ImGui::TableSetColumnIndex(0);
+                                ImGui::Text("%d", i);
+                                ImGui::TableSetColumnIndex(1);
+                                ImGui::Text("%.3f", m_lens_interfaces[i].di);
+                                ImGui::TableSetColumnIndex(2);
+                                ImGui::Text("%.3f", m_lens_interfaces[i].ni);
+                                ImGui::TableSetColumnIndex(3);
+                                ImGui::Text("%.3f", m_lens_interfaces[i].Ri);
+                                ImGui::TableSetColumnIndex(4);
+                                ImGui::Text("%.3f", m_lens_interfaces[i].lambda0);
+                            }
+
+                            ImGui::EndTable();
+                        }
+                    }
+
+
+                    if (ImGui::CollapsingHeader("Modify Interface")) {
+                        ImGui::InputInt("Interface to Update", &interfaceToUpdate);
+                        int interfaceCount = m_lens_interfaces.size();
+
+                        // If index is valid show sliders
+                        if (interfaceToUpdate >= 0 && interfaceToUpdate < interfaceCount) {
+                            LensInterface& lensInterface = m_lens_interfaces[interfaceToUpdate];
+
+                            if (ImGui::SliderFloat("Thickness", &lensInterface.di, 0.001f, 250.0f)) {
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
+                            if (ImGui::SliderFloat("Refractive Index", &lensInterface.ni, 1.0f, 2.5f)) {
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
+                            int convexLens = 0;
+                            if (lensInterface.Ri > 0) {
+							    convexLens = 1;
+						    }
+                            bool radioButtonChange = false;
+                            if (ImGui::RadioButton("Convex", &convexLens, 1)) {
+                                radioButtonChange = true;
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::RadioButton("Concave", &convexLens, 0)) {
+                                radioButtonChange = true;
+                            }
+                            float minRadius = 1.0f;
+                            float maxRadius = 1000.0f;
+                            float sliderValue = (log(abs(lensInterface.Ri)) - log(minRadius)) / (log(maxRadius) - log(minRadius));
+                            ImGui::SliderFloat("Radius", &sliderValue, 0.0f, 1.0f, std::format("{:.3f}", lensInterface.Ri).c_str());
+                            lensInterface.Ri = exp(log(minRadius) + sliderValue * (log(maxRadius) - log(minRadius)));
+                            if (convexLens == 0) {
+							    lensInterface.Ri = -lensInterface.Ri;
+                            }
+                            if (ImGui::IsItemEdited() || radioButtonChange) {
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
+                            if (ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 700.0f)) {
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
+
+                        }
+                        // If index equals the size of the vector, allow adding a new interface
+                        else if (interfaceToUpdate == interfaceCount) {
+                            ImGui::Text("End of System. Create new Interface:");
+                            ImGui::SliderFloat("Thickness", &newdi, 0.001f, 250.0f);
+                            ImGui::SliderFloat("Refractive Index", &newni, 1.0f, 2.5f);
+                            int convexLens = 0;
+                            if (newRi > 0) {
+                                convexLens = 1;
+                            }
+
+                            ImGui::RadioButton("Convex", &convexLens, 1);
+                            ImGui::SameLine();
+                            ImGui::RadioButton("Concave", &convexLens, 0);
+                            float minRadius = 1.0f;
+                            float maxRadius = 1000.0f;
+                            float sliderValue = (log(abs(newRi)) - log(minRadius)) / (log(maxRadius) - log(minRadius));
+                            ImGui::SliderFloat("Radius", &sliderValue, 0.0f, 1.0f, std::format("{:.3f}", newRi).c_str());
+                            newRi = exp(log(minRadius) + sliderValue * (log(maxRadius) - log(minRadius)));
+                            if (convexLens == 0) {
+                                newRi = -newRi;
+                            }
+                            ImGui::SliderFloat("Lambda0", &newlambda0, 380.0f, 700.0f);
+
+                            if (ImGui::Button("Add Interface")) {
+                                LensInterface newLensInterface(newdi, newni, newRi, newlambda0);
+                                m_lens_interfaces.push_back(newLensInterface);
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                                newdi = 10.0f;
+                                newni = 1.0f;
+                                newRi = 100.0f;
+                                newlambda0 = 400.0f;
+                            }
+                        }
+                        else {
+                            ImGui::Text("Invalid index.");
+                        }
+                    }
+
+
+                    if (ImGui::CollapsingHeader("Remove Interface")) {
+                        ImGui::InputInt("Interface to Remove", &interfaceToRemove);
+                        if (ImGui::Button("Remove")) {
+                            if (interfaceToRemove >= 0 && interfaceToRemove < m_lens_interfaces.size()) {
+                                m_lens_interfaces.erase(m_lens_interfaces.begin() + interfaceToRemove);
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
+                        }
+                    }
+
+                    if (m_selectedQuadIndex != -1) {
+                        //get pairs of the id reflection
+                        selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
+                        if (selectedQuadId != selectedQuadIdMemory || lensInterfaceRefresh == true) {
+                            //update vals
+                            if (selectedQuadId < m_preAptReflectionPairs.size()) {
+                                selectedQuadReflectionInterfaces = m_preAptReflectionPairs[selectedQuadId];
+                            }
+                            else {
+                                selectedQuadReflectionInterfaces = m_postAptReflectionPairs[selectedQuadId - m_preAptReflectionPairs.size()];
+                            }
+                            selectedQuadIdMemory = selectedQuadId;
+                            lensInterfaceRefresh = false;
                         }
 
-                        ImGui::EndTable();
-                    }
-                }
+                        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Ghost Settings");
+                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "Color:");
+                        ImGui::ColorEdit3("Ghost Color", (float*)&selected_ghost_color);
+                        ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
 
+                        if (ImGui::Button("Optimize Selected Ghost Color with Brute Force Search")) {
+                            optimizeCoatings = true;
+                        }
 
-                if (ImGui::CollapsingHeader("Modify Interface")) {
-                    ImGui::InputInt("Interface to Update", &interfaceToUpdate);
-                    int interfaceCount = m_lens_interfaces.size();
+                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "Reflection Interface Settings:");
 
-                    // If index is valid show sliders
-                    if (interfaceToUpdate >= 0 && interfaceToUpdate < interfaceCount) {
-                        LensInterface& lensInterface = m_lens_interfaces[interfaceToUpdate];
+                        ImGui::RadioButton("First Reflection Interface", &selectedInterfaceInPair, 0);
+                        ImGui::SameLine();
+                        ImGui::RadioButton("Second Reflection Interface", &selectedInterfaceInPair, 1);
 
-                        if (ImGui::SliderFloat("Thickness", &lensInterface.di, 0.001f, 250.0f)) {
+                        LensInterface& lensInterface = m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]];
+
+                        if (ImGui::SliderFloat("Thickness", &lensInterface.di, 0.001f, 200.0f)) {
                             m_lensSystem.setLensInterfaces(m_lens_interfaces);
                             refreshMatricesAndQuads();
                         }
@@ -421,8 +546,8 @@ public:
                         }
                         int convexLens = 0;
                         if (lensInterface.Ri > 0) {
-							convexLens = 1;
-						}
+                            convexLens = 1;
+                        }
                         bool radioButtonChange = false;
                         if (ImGui::RadioButton("Convex", &convexLens, 1)) {
                             radioButtonChange = true;
@@ -437,192 +562,105 @@ public:
                         ImGui::SliderFloat("Radius", &sliderValue, 0.0f, 1.0f, std::format("{:.3f}", lensInterface.Ri).c_str());
                         lensInterface.Ri = exp(log(minRadius) + sliderValue * (log(maxRadius) - log(minRadius)));
                         if (convexLens == 0) {
-							lensInterface.Ri = -lensInterface.Ri;
+                            lensInterface.Ri = -lensInterface.Ri;
                         }
                         if (ImGui::IsItemEdited() || radioButtonChange) {
                             m_lensSystem.setLensInterfaces(m_lens_interfaces);
                             refreshMatricesAndQuads();
                         }
+
                         if (ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 700.0f)) {
                             m_lensSystem.setLensInterfaces(m_lens_interfaces);
                             refreshMatricesAndQuads();
                         }
 
-                    }
-                    // If index equals the size of the vector, allow adding a new interface
-                    else if (interfaceToUpdate == interfaceCount) {
-                        ImGui::Text("End of System. Create new Interface:");
-                        ImGui::SliderFloat("Thickness", &newdi, 0.001f, 250.0f);
-                        ImGui::SliderFloat("Refractive Index", &newni, 1.0f, 2.5f);
-                        int convexLens = 0;
-                        if (newRi > 0) {
-                            convexLens = 1;
+                        if (ImGui::BeginTable("Lens Interface Settings Table", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                            ImGui::TableSetupColumn("Index");
+                            ImGui::TableSetupColumn("d");
+                            ImGui::TableSetupColumn("n");
+                            ImGui::TableSetupColumn("R");
+                            ImGui::TableSetupColumn("lambda0");
+                            ImGui::TableHeadersRow();
+
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::Text("%d", (int) selectedQuadReflectionInterfaces[selectedInterfaceInPair]);
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].di);
+                            ImGui::TableSetColumnIndex(2);
+                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].ni);
+                            ImGui::TableSetColumnIndex(3);
+                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].Ri);
+                            ImGui::TableSetColumnIndex(4);
+                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].lambda0);
+
+                            ImGui::EndTable();
                         }
 
-                        ImGui::RadioButton("Convex", &convexLens, 1);
-                        ImGui::SameLine();
-                        ImGui::RadioButton("Concave", &convexLens, 0);
-                        float minRadius = 1.0f;
-                        float maxRadius = 1000.0f;
-                        float sliderValue = (log(abs(newRi)) - log(minRadius)) / (log(maxRadius) - log(minRadius));
-                        ImGui::SliderFloat("Radius", &sliderValue, 0.0f, 1.0f, std::format("{:.3f}", newRi).c_str());
-                        newRi = exp(log(minRadius) + sliderValue * (log(maxRadius) - log(minRadius)));
-                        if (convexLens == 0) {
-                            newRi = -newRi;
-                        }
-                        ImGui::SliderFloat("Lambda0", &newlambda0, 380.0f, 700.0f);
-
-                        if (ImGui::Button("Add Interface")) {
-                            LensInterface newLensInterface(newdi, newni, newRi, newlambda0);
-                            m_lens_interfaces.push_back(newLensInterface);
-                            m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                            refreshMatricesAndQuads();
-                            newdi = 10.0f;
-                            newni = 1.0f;
-                            newRi = 100.0f;
-                            newlambda0 = 400.0f;
-                        }
                     }
                     else {
-                        ImGui::Text("Invalid index.");
-                    }
-                }
-
-
-                if (ImGui::CollapsingHeader("Remove Interface")) {
-                    ImGui::InputInt("Interface to Remove", &interfaceToRemove);
-                    if (ImGui::Button("Remove")) {
-                        if (interfaceToRemove >= 0 && interfaceToRemove < m_lens_interfaces.size()) {
-                            m_lens_interfaces.erase(m_lens_interfaces.begin() + interfaceToRemove);
-                            m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                            refreshMatricesAndQuads();
-                        }
-                    }
-                }
-
-                if (m_selectedQuadIndex != -1) {
-                    //get pairs of the id reflection
-                    selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
-                    if (selectedQuadId != selectedQuadIdMemory || lensInterfaceRefresh == true) {
-                        //update vals
-                        if (selectedQuadId < m_preAptReflectionPairs.size()) {
-                            selectedQuadReflectionInterfaces = m_preAptReflectionPairs[selectedQuadId];
-                        }
-                        else {
-                            selectedQuadReflectionInterfaces = m_postAptReflectionPairs[selectedQuadId - m_preAptReflectionPairs.size()];
-                        }
-                        selectedQuadIdMemory = selectedQuadId;
-                        lensInterfaceRefresh = false;
+                        selectedQuadId = -1;
+                        selectedQuadIdMemory = -1;
                     }
 
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Ghost Settings");
-                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "Color:");
-                    ImGui::ColorEdit3("Ghost Color", (float*)&selected_ghost_color);
-                    ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
-
-                    if (ImGui::Button("Optimize Selected Ghost Color with Brute Force Search")) {
-                        optimizeCoatings = true;
-                    }
-
-                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "Reflection Interface Settings:");
-
-                    ImGui::RadioButton("First Reflection Interface", &selectedInterfaceInPair, 0);
-                    ImGui::SameLine();
-                    ImGui::RadioButton("Second Reflection Interface", &selectedInterfaceInPair, 1);
-
-                    LensInterface& lensInterface = m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]];
-
-                    if (ImGui::SliderFloat("Thickness", &lensInterface.di, 0.001f, 200.0f)) {
-                        m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                        refreshMatricesAndQuads();
-                    }
-                    if (ImGui::SliderFloat("Refractive Index", &lensInterface.ni, 1.0f, 2.5f)) {
-                        m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                        refreshMatricesAndQuads();
-                    }
-                    int convexLens = 0;
-                    if (lensInterface.Ri > 0) {
-                        convexLens = 1;
-                    }
-                    bool radioButtonChange = false;
-                    if (ImGui::RadioButton("Convex", &convexLens, 1)) {
-                        radioButtonChange = true;
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::RadioButton("Concave", &convexLens, 0)) {
-                        radioButtonChange = true;
-                    }
-                    float minRadius = 1.0f;
-                    float maxRadius = 1000.0f;
-                    float sliderValue = (log(abs(lensInterface.Ri)) - log(minRadius)) / (log(maxRadius) - log(minRadius));
-                    ImGui::SliderFloat("Radius", &sliderValue, 0.0f, 1.0f, std::format("{:.3f}", lensInterface.Ri).c_str());
-                    lensInterface.Ri = exp(log(minRadius) + sliderValue * (log(maxRadius) - log(minRadius)));
-                    if (convexLens == 0) {
-                        lensInterface.Ri = -lensInterface.Ri;
-                    }
-                    if (ImGui::IsItemEdited() || radioButtonChange) {
-                        m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                        refreshMatricesAndQuads();
-                    }
-
-                    if (ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 700.0f)) {
-                        m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                        refreshMatricesAndQuads();
-                    }
-
-                    if (ImGui::BeginTable("Lens Interface Settings Table", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-                        ImGui::TableSetupColumn("Index");
-                        ImGui::TableSetupColumn("d");
-                        ImGui::TableSetupColumn("n");
-                        ImGui::TableSetupColumn("R");
-                        ImGui::TableSetupColumn("lambda0");
-                        ImGui::TableHeadersRow();
-
-                        ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(0);
-                        ImGui::Text("%d", (int) selectedQuadReflectionInterfaces[selectedInterfaceInPair]);
-                        ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].di);
-                        ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].ni);
-                        ImGui::TableSetColumnIndex(3);
-                        ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].Ri);
-                        ImGui::TableSetColumnIndex(4);
-                        ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].lambda0);
-
-                        ImGui::EndTable();
-                    }
-
-                }
-                else {
-                    selectedQuadId = -1;
-                    selectedQuadIdMemory = -1;
                 }
             
-                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Global Lens Optimization");
-                if (ImGui::Button("Optimize Lens System with EA")) {
-                    m_takeSnapshot = 2;
-                    optimizeLensSystemWithEA = true;
-                }
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Lens Optimizations");
 
-                if (ImGui::Button("Annotate Color")) {
-                    if (m_selectedQuadIndex != -1) {
-                        //get pairs of the id reflection
-                        selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
-                        m_colorAnnotations[selectedQuadId] = selected_ghost_color;
+				if (m_optimizeInterfacesWithEA) {
+                    if (ImGui::Button("Abort")) {
+						m_optimizeInterfacesWithEA = false;
+                        m_resetAnnotations = true;
+                    }
+                    if (ImGui::Button("Reset Annotations")) {
+                        m_resetAnnotations = true;
+                    }
+                    ImGui::SliderFloat("Ghost Intensity", &ghostIntensity, 0.1, 2);
+                    if (ImGui::Button("Run EA")) {
+                        m_takeSnapshot = 2;
+                        optimizeLensSystemWithEA = true;
+                        m_optimizeInterfacesWithEA = false;
+                    }
+				}
+                else if (m_optimizeCoatingsWithEA) {
+                    if (ImGui::Button("Abort")) {
+                        m_optimizeCoatingsWithEA = false;
+                        m_resetAnnotations = true;
+                    }
+                    if (ImGui::Button("Reset Annotations")) {
+                        m_resetAnnotations = true;
+                    }
+                    if (m_selectedQuadIndex != 1) {
+                        ImGui::ColorEdit3("Ghost Color", (float*)&selected_ghost_color);
+                        ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
+                    }
+                    if (ImGui::Button("Annotate Color")) {
+                        if (m_selectedQuadIndex != -1) {
+                            //get pairs of the id reflection
+                            selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
+                            m_colorAnnotations[selectedQuadId] = selected_ghost_color;
+                        }
+                    }
+                    if (ImGui::Button("Run EA")) {
+                        optimizeLensCoatingsWithEA = true;
+                        m_optimizeCoatingsWithEA = false;
                     }
                 }
+				else {
+					if (ImGui::Button("Optimize Ghost Size and Location")) {
+						selected_ghost_color = glm::vec3(1.0f, 0.0f, 0.0f);
+						m_optimizeInterfacesWithEA = true;
+						m_resetAnnotations = true;
+					}
+					if (ImGui::Button("Optimize Colors")) {
+						m_optimizeCoatingsWithEA = true;
+						m_resetAnnotations = true;
+					}
 
-                if (ImGui::Button("Optimize Coatings with EA")) {
-                    optimizeLensCoatingsWithEA = true;
-                }
-
-                if (ImGui::Button("Reset Annotations")) {
-                    m_resetAnnotations = true;
                 }
             }
 
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Build from Scratch");
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Lens Creator");
             if (m_buildFromScratch) {
                 if (ImGui::Button("Abort")) {
                     //reset params
@@ -666,14 +704,14 @@ public:
                 if (ImGui::Button("Reset Annotations")) {
                     m_resetAnnotations = true;
 				}
-				if (ImGui::Button("Build with EA")) {
+				if (ImGui::Button("Build")) {
                     //RUN EA and reset params
                     optimizeLensSystemWithEA = true;
 				}
 
             }
             else {
-                if (ImGui::Button("Start")) {
+                if (ImGui::Button("Build from Scratch")) {
                     m_buildFromScratch = true;
                     m_buildQuadIDCounter = 0;
                     m_selectedQuadIndex = -1;
@@ -772,20 +810,12 @@ public:
 
                 if (m_calibrateLightSource) {
                     double totalSum = 0.0;
-                    //int totalCount = 0;
-
-                    // Process preAPTtransmissions
                     for (const auto& vec : preAPTtransmissions) {
                         totalSum += vec.x + vec.y + vec.z;
-                        //totalCount += 3;
                     }
-
-                    // Process postAPTtransmissions
                     for (const auto& vec : postAPTtransmissions) {
                         totalSum += vec.x + vec.y + vec.z;
-                        //totalCount += 3;
                     }
-
 					m_light_intensity = (1.0f / (totalSum)) * 20;
 					min_light_intensity = m_light_intensity * 0.1f;
 					max_light_intensity = m_light_intensity * 5.0f;
@@ -818,8 +848,12 @@ public:
                     if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] == i && highlightSelectedQuad) {
                         m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, selected_ghost_color, m_annotationData[i]);
                     }
+                    else if (m_optimizeInterfacesWithEA) {
+                        glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 15 * ghostIntensity);
+                        m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, greyscaleColor, m_annotationData[i]);
+                    }
                     else {
-                        if (m_colorAnnotations[i] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
+                        if (m_optimizeCoatingsWithEA && m_colorAnnotations[i] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
 							m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, m_colorAnnotations[i], m_annotationData[i]);
 						}
                         else {
@@ -832,8 +866,12 @@ public:
                     if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size() == i && highlightSelectedQuad) {
                         m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], selected_ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
                     }
+                    else if (m_optimizeInterfacesWithEA) {
+                        glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 15 * ghostIntensity);
+                        m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], greyscaleColor, m_annotationData[i + m_preAptReflectionPairs.size()]);
+                    }
                     else {
-                        if (m_colorAnnotations[i + m_preAptReflectionPairs.size()] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
+                        if (m_optimizeCoatingsWithEA && m_colorAnnotations[i + m_preAptReflectionPairs.size()] != glm::vec3(-1.0f, -1.0f, -1.0f)) {
                             m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], m_colorAnnotations[i + m_preAptReflectionPairs.size()], m_annotationData[i + m_preAptReflectionPairs.size()]);
                         }
                         else {
@@ -1170,74 +1208,76 @@ public:
     void onMouseMove(const glm::dvec2& cursorPos)
     {
         //std::cout << "Mouse at position: " << cursorPos.x << " " << cursorPos.y << std::endl;
-        if (m_window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
-            if (m_window.isKeyPressed(GLFW_KEY_Q)) { // Q for moving the selected ghost
-                if (m_selectedQuadIndex != -1) {
-                    glm::vec4 quadCenterScreenPos;
-                    for (SnapshotData& snapshotdata : m_snapshotData) {
-                        if (snapshotdata.quadID == m_selectedQuadIDs[m_selectedQuadIndex]) {
-                            quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(snapshotdata.quadCenterPos, 30.0, 1.0);
-                            break;
-                        }
-                    }
-                    quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
-                    const glm::ivec2& window_size = m_window.getWindowSize();
-                    glm::vec2 currentCursorPos = cursorPos;
-                    currentCursorPos = (currentCursorPos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f); //NDC
-
-					glm::vec4 lightPosNDC = m_mvp * glm::vec4(m_light_pos, 1.0);
-					lightPosNDC = lightPosNDC / lightPosNDC.w;
-
-                    float lightLineProjectionScalar = glm::dot(currentCursorPos, glm::vec2(lightPosNDC)) / glm::dot(glm::vec2(lightPosNDC), glm::vec2(lightPosNDC));
-					glm::vec2 lightLineProjection = lightLineProjectionScalar * glm::vec2(lightPosNDC);
-
-                    // Calculate the diffVectorNDC using the projected cursor position
-                    glm::vec2 diffVectorNDC = glm::vec2(lightLineProjection) - glm::vec2(quadCenterScreenPos.x, quadCenterScreenPos.y);
-                    glm::vec4 worldSpaceVector = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(diffVectorNDC, quadCenterScreenPos.z, 1.f);
-                    worldSpaceVector = worldSpaceVector / worldSpaceVector.w;
-                    int annotationIndex = -1;
-                    if (!m_buildFromScratch) {
-                        annotationIndex = m_selectedQuadIDs[m_selectedQuadIndex];
-                    }
-                    else {
-						for (int i = 0; i < m_lens_builder_quads.size(); i++) {
-							if (m_lens_builder_quads[i].getID() == m_selectedQuadIDs[m_selectedQuadIndex]) {
-								annotationIndex = i;
-								break;
-							}
-						}
-					}
-                    m_annotationData[annotationIndex].posAnnotationTransform = glm::vec2(worldSpaceVector.x, worldSpaceVector.y);
-                }
-            }
-            else if (m_window.isKeyPressed(GLFW_KEY_E)) { // E for scaling the selected ghost
-                if (m_selectedQuadIndex != -1) {
-					glm::vec2 currentCursorPos = cursorPos; // convert to glm::vec2 for operations
-                    glm::vec2 cursorResizeVector = currentCursorPos - m_cursorClickInitialPos;
-                    float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y);
-					std::cout << "Resize weight: " << resizeWeight << std::endl;
-                    if (currentCursorPos.x < m_cursorClickInitialPos.x) {
-						resizeWeight *= -1.f;
-                    }
-
-                    float sensitivity = 0.5f;
-					resizeWeight *= sensitivity;
-                    int annotationIndex = -1;
-                    if (!m_buildFromScratch) {
-                        annotationIndex = m_selectedQuadIDs[m_selectedQuadIndex];
-                    }
-                    else {
-                        for (int i = 0; i < m_lens_builder_quads.size(); i++) {
-                            if (m_lens_builder_quads[i].getID() == m_selectedQuadIDs[m_selectedQuadIndex]) {
-                                annotationIndex = i;
+		if (m_optimizeInterfacesWithEA || m_buildFromScratch) {
+            if (m_window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+                if (m_window.isKeyPressed(GLFW_KEY_Q)) { // Q for moving the selected ghost
+                    if (m_selectedQuadIndex != -1) {
+                        glm::vec4 quadCenterScreenPos;
+                        for (SnapshotData& snapshotdata : m_snapshotData) {
+                            if (snapshotdata.quadID == m_selectedQuadIDs[m_selectedQuadIndex]) {
+                                quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(snapshotdata.quadCenterPos, 30.0, 1.0);
                                 break;
                             }
                         }
+                        quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
+                        const glm::ivec2& window_size = m_window.getWindowSize();
+                        glm::vec2 currentCursorPos = cursorPos;
+                        currentCursorPos = (currentCursorPos - glm::vec2(window_size.x / 4.f + (((3.f * window_size.x) / 4.f) / 2.f), window_size.y / 2.f)) / glm::vec2(((3.f * window_size.x) / 4.f) / 2.f, window_size.y / 2.f); //NDC
+
+					    glm::vec4 lightPosNDC = m_mvp * glm::vec4(m_light_pos, 1.0);
+					    lightPosNDC = lightPosNDC / lightPosNDC.w;
+
+                        float lightLineProjectionScalar = glm::dot(currentCursorPos, glm::vec2(lightPosNDC)) / glm::dot(glm::vec2(lightPosNDC), glm::vec2(lightPosNDC));
+					    glm::vec2 lightLineProjection = lightLineProjectionScalar * glm::vec2(lightPosNDC);
+
+                        // Calculate the diffVectorNDC using the projected cursor position
+                        glm::vec2 diffVectorNDC = glm::vec2(lightLineProjection) - glm::vec2(quadCenterScreenPos.x, quadCenterScreenPos.y);
+                        glm::vec4 worldSpaceVector = glm::inverse(m_sensorMatrix) * glm::inverse(m_mvp) * glm::vec4(diffVectorNDC, quadCenterScreenPos.z, 1.f);
+                        worldSpaceVector = worldSpaceVector / worldSpaceVector.w;
+                        int annotationIndex = -1;
+                        if (!m_buildFromScratch) {
+                            annotationIndex = m_selectedQuadIDs[m_selectedQuadIndex];
+                        }
+                        else {
+						    for (int i = 0; i < m_lens_builder_quads.size(); i++) {
+							    if (m_lens_builder_quads[i].getID() == m_selectedQuadIDs[m_selectedQuadIndex]) {
+								    annotationIndex = i;
+								    break;
+							    }
+						    }
+					    }
+                        m_annotationData[annotationIndex].posAnnotationTransform = glm::vec2(worldSpaceVector.x, worldSpaceVector.y);
                     }
-                    if (m_annotationData[annotationIndex].sizeAnnotationTransform + resizeWeight > 0.01) {
-                        m_annotationData[annotationIndex].sizeAnnotationTransform += resizeWeight;
-                    }
+                }
+                else if (m_window.isKeyPressed(GLFW_KEY_E)) { // E for scaling the selected ghost
+                    if (m_selectedQuadIndex != -1) {
+					    glm::vec2 currentCursorPos = cursorPos; // convert to glm::vec2 for operations
+                        glm::vec2 cursorResizeVector = currentCursorPos - m_cursorClickInitialPos;
+                        float resizeWeight = (sqrt(pow(cursorResizeVector.x, 2.f) + pow(cursorResizeVector.y, 2.f)) / (float)m_window.getWindowSize().y);
+					    std::cout << "Resize weight: " << resizeWeight << std::endl;
+                        if (currentCursorPos.x < m_cursorClickInitialPos.x) {
+						    resizeWeight *= -1.f;
+                        }
+
+                        float sensitivity = 0.5f;
+					    resizeWeight *= sensitivity;
+                        int annotationIndex = -1;
+                        if (!m_buildFromScratch) {
+                            annotationIndex = m_selectedQuadIDs[m_selectedQuadIndex];
+                        }
+                        else {
+                            for (int i = 0; i < m_lens_builder_quads.size(); i++) {
+                                if (m_lens_builder_quads[i].getID() == m_selectedQuadIDs[m_selectedQuadIndex]) {
+                                    annotationIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        if (m_annotationData[annotationIndex].sizeAnnotationTransform + resizeWeight > 0.01) {
+                            m_annotationData[annotationIndex].sizeAnnotationTransform += resizeWeight;
+                        }
                     
+                    }
                 }
             }
         }
@@ -1252,9 +1292,12 @@ public:
         switch (button)
         {
         case GLFW_MOUSE_BUTTON_LEFT:
-            if (m_window.isKeyPressed(GLFW_KEY_E)) {
+            if (m_window.isKeyPressed(GLFW_KEY_E) && (m_optimizeInterfacesWithEA || m_buildFromScratch)) {
                 m_cursorClickInitialPos = m_window.getCursorPos();
                 //std::cout << "INITIAL POINT AT:" << m_resizeInitialPos.x << ", " << m_resizeInitialPos.y << std::endl;
+            }
+            else if (m_window.isKeyPressed(GLFW_KEY_Q)) {
+				//do nothing
             }
             else {
                 m_getGhostsAtMouse = true;
@@ -1325,6 +1368,8 @@ private:
 
     /* Lens Builder */
     bool m_buildFromScratch = false;
+    bool m_optimizeInterfacesWithEA = false;
+    bool m_optimizeCoatingsWithEA = false;
     std::vector<FlareQuad> m_lens_builder_quads;
 	int m_buildQuadIDCounter = 0;
 
