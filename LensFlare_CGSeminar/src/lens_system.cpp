@@ -78,11 +78,11 @@ std::vector<glm::mat2x2> LensSystem::getRayTransferMatricesWithReflection(int fi
 			}
 		}
 		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri)); //reflection step
+		//iterate until second reflection
 		for (int i = firstReflectionPos - 1; i > secondReflectionPos; i--) {
 			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
 		}
 		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di));
-		//rayTransferMatrices.push_back(glm::inverse(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[secondReflectionPos].Ri))); //reflection step
 		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri)); //reflection step
 		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di));
 		for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); i++) {
@@ -270,7 +270,7 @@ std::vector<float> LensSystem::getInterfacePositionsWithReflections(int firstRef
 	return interfacePositions;
 }
 
-//compute per lens interface
+//compute per lens interface, adapted code from "Supplemental Material — Physically-Based Real-Time Lens Flare Rendering"
 glm::vec3 LensSystem::computeFresnelAR (
 	float theta0,	// angle of incidence
 	float d1,		// thickness of AR coating
@@ -326,75 +326,70 @@ glm::vec3 LensSystem::computeFresnelAR (
 	return  glm::vec3(r_res, g_res, b_res);
 }
 
-glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray) const {
-	glm::vec3 transmissions = glm::vec3(1.f, 1.f, 1.f);
+glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray, bool quarterWaveCoating) const {
+	glm::vec3 transmissions(1.f);
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
 	glm::vec2 propagated_ray = ray;
-	float n1 = 0;
-	float d1 = 0;
-	//check if reflection makes sense
-	if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < m_lens_interfaces.size()) {
-		//iterate until first reflection
-		for (int i = 0; i < firstReflectionPos; i++) {
-			if (i == 0) {
-				n1 = std::max(sqrt(1.f * m_lens_interfaces[i].ni), 1.38f); // 1.38 = lowest achievable
-				d1 = m_lens_interfaces[i].lambda0 / 4 / n1; // phase delay
-				transmissions *= (glm::vec3(1.f, 1.f, 1.f) - computeFresnelAR(propagated_ray.y, d1, 1.f, n1, m_lens_interfaces[i].ni));
-				propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
-			}
-			else {
-				n1 = std::max(sqrt(m_lens_interfaces[i - 1].ni * m_lens_interfaces[i].ni), 1.38f); // 1.38 = lowest achievable
-				d1 = m_lens_interfaces[i].lambda0 / 4 / n1; // phase delay
-				transmissions *= (glm::vec3(1.f, 1.f, 1.f) - computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[i - 1].ni, n1, m_lens_interfaces[i].ni));
-				propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
-			}
-		}
-		n1 = std::max(sqrt(m_lens_interfaces[firstReflectionPos - 1].ni * m_lens_interfaces[firstReflectionPos].ni), 1.38f); // 1.38 = lowest achievable
-		d1 = m_lens_interfaces[firstReflectionPos].lambda0 / 4 / n1; // phase delay
-		transmissions *= computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[firstReflectionPos - 1].ni, n1, m_lens_interfaces[firstReflectionPos].ni);
-		propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri) * propagated_ray; //reflection step
-		for (int i = firstReflectionPos - 1; i > secondReflectionPos; i--) {
-			n1 = std::max(sqrt(m_lens_interfaces[i - 1].ni * m_lens_interfaces[i].ni), 1.38f); // 1.38 = lowest achievable
-			d1 = m_lens_interfaces[i-1].lambda0 / 4 / n1; // phase delay
-			transmissions *= (glm::vec3(1.f, 1.f, 1.f) - computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[i].ni, n1, m_lens_interfaces[i - 1].ni));
-			propagated_ray = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
-		}
-		if (secondReflectionPos == 0) {
-			n1 = std::max(sqrt(1.f * m_lens_interfaces[secondReflectionPos].ni), 1.38f); // 1.38 = lowest achievable
-			d1 = m_lens_interfaces[secondReflectionPos].lambda0 / 4 / n1; // phase delay
-			transmissions *= computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[secondReflectionPos].ni, n1, 1.f);
-		}
-		else {
-			n1 = std::max(sqrt(m_lens_interfaces[secondReflectionPos - 1].ni * m_lens_interfaces[secondReflectionPos].ni), 1.38f); // 1.38 = lowest achievable
-			d1 = m_lens_interfaces[secondReflectionPos].lambda0 / 4 / n1; // phase delay
-			transmissions *= computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[secondReflectionPos].ni, n1, m_lens_interfaces[secondReflectionPos - 1].ni);
-		}
-		propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
-		propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri) * propagated_ray; //reflection step
-		propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
-		for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); i++) {
-			n1 = std::max(sqrt(m_lens_interfaces[i - 1].ni * m_lens_interfaces[i].ni), 1.38f); // 1.38 = lowest achievable
-			d1 = m_lens_interfaces[i].lambda0 / 4 / n1; // phase delay
-			transmissions *= (glm::vec3(1.f, 1.f, 1.f) - computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[i - 1].ni, n1, m_lens_interfaces[i].ni));
-			propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
-		}
+
+	auto computeOpticalParams = [&](int i) -> std::pair<float, float> {
+		float n = quarterWaveCoating ? std::max(sqrt((i == 0 ? 1.f : m_lens_interfaces[i - 1].ni) * m_lens_interfaces[i].ni), 1.1f) // 1.1 is lowest achievable ni in coatings
+			: std::max(m_lens_interfaces[i].c_ni, 1.1f);
+		float d = quarterWaveCoating ? m_lens_interfaces[i].lambda0 / (4 * n)
+			: m_lens_interfaces[i].c_di;
+		return { n, d };
+		};
+
+	// Forward propagation until first reflection
+	for (int i = 0; i < firstReflectionPos; ++i) {
+		auto [n1, d1] = computeOpticalParams(i);
+		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, (i == 0 ? 1.f : m_lens_interfaces[i - 1].ni), n1, m_lens_interfaces[i].ni);
+		propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, (i == 0 ? 1.f : m_lens_interfaces[i - 1].ni), m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
 	}
+
+	// First reflection
+	auto [n1, d1] = computeOpticalParams(firstReflectionPos);
+	transmissions *= computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[firstReflectionPos - 1].ni, n1, m_lens_interfaces[firstReflectionPos].ni);
+	propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri) * propagated_ray;
+
+	// Backward propagation until second reflection
+	for (int i = firstReflectionPos - 1; i > secondReflectionPos; --i) {
+		auto [n1, d1] = computeOpticalParams(i);
+		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[i].ni, n1, m_lens_interfaces[i - 1].ni);
+		propagated_ray = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
+	}
+
+	// Second reflection handling
+	auto [n1_second, d1_second] = computeOpticalParams(secondReflectionPos);
+	transmissions *= computeFresnelAR(propagated_ray.y, d1_second, m_lens_interfaces[secondReflectionPos].ni, n1_second, (secondReflectionPos == 0 ? 1.f : m_lens_interfaces[secondReflectionPos - 1].ni));
+
+	propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
+	propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri) * propagated_ray;
+	propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
+
+	// Forward propagation after second reflection
+	for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); ++i) {
+		auto [n1, d1] = computeOpticalParams(i);
+		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[i - 1].ni, n1, m_lens_interfaces[i].ni);
+		propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
+	}
+
 	return transmissions;
 }
 
+
 //Per ghost trace ray through system to get reflectance/transmission of color
-std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, std::vector<glm::vec2> xRays, std::vector<glm::vec2> yRays) const {
+std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, std::vector<glm::vec2> xRays, std::vector<glm::vec2> yRays, bool quarterWaveCoating) const {
 	std::vector<glm::vec3> results;
 	for (int i = 0; i < reflectionPos.size(); i++) {
-		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRays[i]) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRays[i]));
+		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRays[i], quarterWaveCoating) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRays[i], quarterWaveCoating));
 	}
 	return results;
 }
 
-std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 xRay, glm::vec2 yRay) const {
+std::vector<glm::vec3> LensSystem::getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 xRay, glm::vec2 yRay, bool quarterWaveCoating) const {
 	std::vector<glm::vec3> results;
 	for (int i = 0; i < reflectionPos.size(); i++) {
-		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRay) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRay));
+		results.push_back(propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, xRay, quarterWaveCoating) + propagateTransmission(reflectionPos[i].x, reflectionPos[i].y, yRay, quarterWaveCoating));
 	}
 	return results;
 }

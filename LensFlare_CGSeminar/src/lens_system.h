@@ -8,6 +8,8 @@ struct LensInterface {
 	float ni; //the refractive indices at interface i
 	float Ri; //the lens radius (R > 0 / R = inf for convex / flat interfaces)
 	float lambda0 = 550.f; //Wavelength that the coating handles
+	float c_di = 100; //Coating thickness, in nm
+	float c_ni = 1.3; //Coating refractive index
 };
 
 class LensSystem {
@@ -34,9 +36,9 @@ public:
 	std::vector<float> getInterfacePositions();
 	std::vector<float> getInterfacePositionsWithReflections(int firstReflectionPos, int secondReflectionPos);
 	glm::vec3 computeFresnelAR(float theta0, float d1, float n0, float n1, float n2) const;
-	glm::vec3 propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray) const;
-	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, std::vector<glm::vec2> xRays, std::vector<glm::vec2> yRays) const;
-	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 xRay, glm::vec2 yRay) const;
+	glm::vec3 propagateTransmission(int firstReflectionPos, int secondReflectionPos, glm::vec2 ray, bool quarterWaveCoating) const;
+	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, std::vector<glm::vec2> xRays, std::vector<glm::vec2> yRays, bool quarterWaveCoating) const;
+	std::vector<glm::vec3> getTransmission(std::vector<glm::vec2> reflectionPos, glm::vec2 xRay, glm::vec2 yRay, bool quarterWaveCoating) const;
 	std::vector<glm::vec2> getPathIncidentAngleAtReflectionPos(glm::vec2 reflectionPair, glm::vec2 yawAndPitch);
 	float m_aperture_height = 0;
 	float m_entrance_pupil_height = 0;

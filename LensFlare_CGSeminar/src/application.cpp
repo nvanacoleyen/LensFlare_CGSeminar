@@ -122,8 +122,24 @@ public:
             m_postAptQuads.push_back(FlareQuad(quad_points, quad_id));
             quad_id++;
         }
+
+        refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
+
         m_resetAnnotations = true;
         m_calibrateLightSource = true;
+    }
+
+    void refreshTransmissions(glm::vec2 yawandPitch, bool quarterWaveCoating) {
+        glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x / 20);
+        glm::vec2 post_apt_center_ray_y = glm::vec2(-yawandPitch.y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.y / 20);
+        std::vector<glm::vec2> pre_apt_center_ray_x;
+        std::vector<glm::vec2> pre_apt_center_ray_y;
+        for (auto& const preAptMa : m_preAptMas) {
+            pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x / 20));
+            pre_apt_center_ray_y.push_back(glm::vec2(-yawandPitch.y / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.y / 20));
+        }
+        m_preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, pre_apt_center_ray_x, pre_apt_center_ray_y, quarterWaveCoating);
+        m_postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y, quarterWaveCoating);
     }
 
     void update()
@@ -289,6 +305,8 @@ public:
         float newni = 1.0f;
         float newRi = 100.0f;
         float newlambda0 = 400.0f;
+        float newc_di = 70.f;
+        float newc_ni = 1.38f;
 
         int interfaceToRemove = 0;
         
@@ -376,34 +394,61 @@ public:
                 ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 40.0f);
                 ImGui::Checkbox("Disable Entrance Clipping", &disableEntranceClipping);
 
+                ImGui::Text("Coatings: ");
+                if (ImGui::RadioButton("Quarter Wave", &m_quarterWaveCoating, 1)) {
+                    refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
+                    calibrate light 
+                }
+                ImGui::SameLine();
+                if (ImGui::RadioButton("Custom", &m_quarterWaveCoating, 0)) {
+                    refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
+                }
+
                 if (!(m_optimizeInterfacesWithEA || m_optimizeCoatingsWithEA)) {
 
                     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Lens Interface Settings");
                     if (ImGui::CollapsingHeader("Lens Prescription")) {
-                        if (ImGui::BeginTable("Lens Prescription", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-                            ImGui::TableSetupColumn("Index");
-                            ImGui::TableSetupColumn("d");
-                            ImGui::TableSetupColumn("n");
-                            ImGui::TableSetupColumn("R");
+                        if (m_quarterWaveCoating) {
+                            ImGui::BeginTable("Lens Prescription", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+                        }
+                        else {
+                            ImGui::BeginTable("Lens Prescription", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+                        }
+                        ImGui::TableSetupColumn("Index");
+                        ImGui::TableSetupColumn("d");
+                        ImGui::TableSetupColumn("n");
+                        ImGui::TableSetupColumn("R");
+                        if (m_quarterWaveCoating) {
                             ImGui::TableSetupColumn("lambda0");
-                            ImGui::TableHeadersRow();
+                        }
+                        else {
+                            ImGui::TableSetupColumn("c_d");
+                            ImGui::TableSetupColumn("c_n");
+                        }
+                        ImGui::TableHeadersRow();
 
-                            for (int i = 0; i < m_lens_interfaces.size(); i++) {
-                                ImGui::TableNextRow();
-                                ImGui::TableSetColumnIndex(0);
-                                ImGui::Text("%d", i);
-                                ImGui::TableSetColumnIndex(1);
-                                ImGui::Text("%.3f", m_lens_interfaces[i].di);
-                                ImGui::TableSetColumnIndex(2);
-                                ImGui::Text("%.3f", m_lens_interfaces[i].ni);
-                                ImGui::TableSetColumnIndex(3);
-                                ImGui::Text("%.3f", m_lens_interfaces[i].Ri);
-                                ImGui::TableSetColumnIndex(4);
+                        for (int i = 0; i < m_lens_interfaces.size(); i++) {
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::Text("%d", i);
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::Text("%.3f", m_lens_interfaces[i].di);
+                            ImGui::TableSetColumnIndex(2);
+                            ImGui::Text("%.3f", m_lens_interfaces[i].ni);
+                            ImGui::TableSetColumnIndex(3);
+                            ImGui::Text("%.3f", m_lens_interfaces[i].Ri);
+                            ImGui::TableSetColumnIndex(4);
+                            if (m_quarterWaveCoating) {
                                 ImGui::Text("%.3f", m_lens_interfaces[i].lambda0);
                             }
-
-                            ImGui::EndTable();
+                            else {
+                                ImGui::Text("%.3f", m_lens_interfaces[i].c_di);
+                                ImGui::TableSetColumnIndex(5);
+                                ImGui::Text("%.3f", m_lens_interfaces[i].c_ni);
+                            }
                         }
+
+                        ImGui::EndTable();
                     }
 
 
@@ -447,11 +492,23 @@ public:
                                 m_lensSystem.setLensInterfaces(m_lens_interfaces);
                                 refreshMatricesAndQuads();
                             }
-                            if (ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 700.0f)) {
-                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                                refreshMatricesAndQuads();
+                            if (m_quarterWaveCoating) {
+                                if (ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 740.0f)) {
+                                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                    refreshMatricesAndQuads();
+                                }
                             }
-
+                            else {
+                                if (ImGui::SliderFloat("Coating Thickness", &lensInterface.c_di, 40, 500.0f)) {
+                                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                    refreshMatricesAndQuads();
+                                }
+                                if (ImGui::SliderFloat("Coating Refractive Index", &lensInterface.c_ni, 1.1f, 1.9f)) {
+                                    m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                    refreshMatricesAndQuads();
+                                }
+                            }
+                            
                         }
                         // If index equals the size of the vector, allow adding a new interface
                         else if (interfaceToUpdate == interfaceCount) {
@@ -474,7 +531,13 @@ public:
                             if (convexLens == 0) {
                                 newRi = -newRi;
                             }
-                            ImGui::SliderFloat("Lambda0", &newlambda0, 380.0f, 700.0f);
+                            if (m_quarterWaveCoating) {
+                                ImGui::SliderFloat("Lambda0", &newlambda0, 380.0f, 740.0f);
+                            }
+                            else {
+                                ImGui::SliderFloat("Coating Thickness", &newc_di, 40, 500.0f);
+                                ImGui::SliderFloat("Coating Refractive Index", &newc_ni, 1.1f, 1.9f);
+                            }
 
                             if (ImGui::Button("Add Interface")) {
                                 LensInterface newLensInterface(newdi, newni, newRi, newlambda0);
@@ -485,6 +548,8 @@ public:
                                 newni = 1.0f;
                                 newRi = 100.0f;
                                 newlambda0 = 400.0f;
+                                newc_di = 50.0f;
+                                newc_ni = 1.38f;
                             }
                         }
                         else {
@@ -569,33 +634,63 @@ public:
                             refreshMatricesAndQuads();
                         }
 
-                        if (ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 700.0f)) {
-                            m_lensSystem.setLensInterfaces(m_lens_interfaces);
-                            refreshMatricesAndQuads();
+                        if (m_quarterWaveCoating) {
+                            if (ImGui::SliderFloat("Lambda0", &lensInterface.lambda0, 380.0f, 740.0f)) {
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
+                        }
+                        else {
+                            if (ImGui::SliderFloat("Coating Thickness", &lensInterface.c_di, 40, 500.0f)) {
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
+                            if (ImGui::SliderFloat("Coating Refractive Index", &lensInterface.c_ni, 1.1f, 1.9f)) {
+                                m_lensSystem.setLensInterfaces(m_lens_interfaces);
+                                refreshMatricesAndQuads();
+                            }
                         }
 
-                        if (ImGui::BeginTable("Lens Interface Settings Table", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-                            ImGui::TableSetupColumn("Index");
-                            ImGui::TableSetupColumn("d");
-                            ImGui::TableSetupColumn("n");
-                            ImGui::TableSetupColumn("R");
+                        if (m_quarterWaveCoating) {
+                            ImGui::BeginTable("Lens Prescription", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+                        }
+                        else {
+                            ImGui::BeginTable("Lens Prescription", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+                        }
+                        ImGui::TableSetupColumn("Index");
+                        ImGui::TableSetupColumn("d");
+                        ImGui::TableSetupColumn("n");
+                        ImGui::TableSetupColumn("R");
+                        if (m_quarterWaveCoating) {
                             ImGui::TableSetupColumn("lambda0");
-                            ImGui::TableHeadersRow();
-
-                            ImGui::TableNextRow();
-                            ImGui::TableSetColumnIndex(0);
-                            ImGui::Text("%d", (int) selectedQuadReflectionInterfaces[selectedInterfaceInPair]);
-                            ImGui::TableSetColumnIndex(1);
-                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].di);
-                            ImGui::TableSetColumnIndex(2);
-                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].ni);
-                            ImGui::TableSetColumnIndex(3);
-                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].Ri);
-                            ImGui::TableSetColumnIndex(4);
-                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].lambda0);
-
-                            ImGui::EndTable();
                         }
+                        else {
+                            ImGui::TableSetupColumn("c_d");
+                            ImGui::TableSetupColumn("c_n");
+                        }
+                        ImGui::TableHeadersRow();
+
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%d", (int) selectedQuadReflectionInterfaces[selectedInterfaceInPair]);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].di);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].ni);
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].Ri);
+                        ImGui::TableSetColumnIndex(4);
+                        if (m_quarterWaveCoating) {
+                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].lambda0);
+                        }
+                        else {
+                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].c_di);
+                            ImGui::TableSetColumnIndex(5);
+                            ImGui::Text("%.3f", m_lens_interfaces[selectedQuadReflectionInterfaces[selectedInterfaceInPair]].c_ni);
+                        }
+
+                        ImGui::EndTable();
+                        
 
                     }
                     else {
@@ -766,7 +861,7 @@ public:
             const glm::vec3 cameraPos = m_camera.cameraPos();
             const glm::vec3 cameraForward = m_camera.m_forward;
             const glm::vec3 cameraUp = m_camera.m_up;
-            glm::vec2 yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, m_light_pos);
+            m_yawandPitch = getYawandPitch(cameraPos, cameraForward, cameraUp, m_light_pos);
             glm::vec2 cameraYawandPitch = m_camera.getYawAndPitch();
             float irisApertureHeight = m_lensSystem.getApertureHeight();
             float entrancePupilHeight = m_lensSystem.getEntrancePupilHeight() / 2.f;
@@ -787,34 +882,22 @@ public:
 
                 if (optimizeCoatings && m_selectedQuadIndex != -1) {
                     if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
-                        optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], yawandPitch);
+                        optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], m_yawandPitch);
                     }
                     else {
-                        optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], yawandPitch);
+                        optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], m_yawandPitch);
                     }
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     lensInterfaceRefresh = true;
                     optimizeCoatings = false;
                 }
 
-
-                glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x / 20);
-                glm::vec2 post_apt_center_ray_y = glm::vec2(-yawandPitch.y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.y / 20);
-                std::vector<glm::vec2> pre_apt_center_ray_x;
-                std::vector<glm::vec2> pre_apt_center_ray_y;
-                for (auto& const preAptMa : m_preAptMas) {
-                    pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x / 20));
-                    pre_apt_center_ray_y.push_back(glm::vec2(-yawandPitch.y / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.y / 20));
-                }
-                std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, pre_apt_center_ray_x, pre_apt_center_ray_y);
-                std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y);
-
                 if (m_calibrateLightSource) {
                     double totalSum = 0.0;
-                    for (const auto& vec : preAPTtransmissions) {
+                    for (const auto& vec : m_preAPTtransmissions) {
                         totalSum += vec.x + vec.y + vec.z;
                     }
-                    for (const auto& vec : postAPTtransmissions) {
+                    for (const auto& vec : m_postAPTtransmissions) {
                         totalSum += vec.x + vec.y + vec.z;
                     }
 					m_light_intensity = (1.0f / (totalSum)) * 20;
@@ -828,8 +911,8 @@ public:
 
                 /* Bind General Variables */
                 glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp)); // Projection Matrix
-                glUniform1f(4, yawandPitch.x);
-                glUniform1f(5, yawandPitch.y);
+                glUniform1f(4, m_yawandPitch.x);
+                glUniform1f(5, m_yawandPitch.y);
                 glUniform1f(6, entrancePupilHeight);
                 glUniformMatrix4fv(8, 1, GL_FALSE, glm::value_ptr(m_sensorMatrix));
                 glUniform1f(9, irisApertureHeight);
@@ -858,7 +941,7 @@ public:
 							m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, m_colorAnnotations[i], m_annotationData[i]);
 						}
                         else {
-                            glm::vec3 ghost_color = m_light_intensity * preAPTtransmissions[i];
+                            glm::vec3 ghost_color = m_light_intensity * m_preAPTtransmissions[i];
                             m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, ghost_color, m_annotationData[i]);
                         }
                     }
@@ -876,7 +959,7 @@ public:
                             m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], m_colorAnnotations[i + m_preAptReflectionPairs.size()], m_annotationData[i + m_preAptReflectionPairs.size()]);
                         }
                         else {
-                            glm::vec3 ghost_color = m_light_intensity * postAPTtransmissions[i];
+                            glm::vec3 ghost_color = m_light_intensity * m_postAPTtransmissions[i];
                             m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
                         }
                     }
@@ -973,7 +1056,7 @@ public:
              
                 if (optimizeLensSystemWithEA) {
                     //Optimize
-                    m_lensSystem = solveLensAnnotations(m_lensSystem, m_snapshotData, yawandPitch.x, yawandPitch.y);
+                    m_lensSystem = solveLensAnnotations(m_lensSystem, m_snapshotData, m_yawandPitch.x, m_yawandPitch.y);
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
 
                     refreshMatricesAndQuads();
@@ -993,16 +1076,17 @@ public:
                         }
                         else {
 							if (i < m_preAptReflectionPairs.size()) {
-								renderObjective.push_back(preAPTtransmissions[i] * m_light_intensity);
+								renderObjective.push_back(m_preAPTtransmissions[i] * m_light_intensity);
 							}
 							else {
-								renderObjective.push_back(postAPTtransmissions[i - m_preAptReflectionPairs.size()] * m_light_intensity);
+								renderObjective.push_back(m_postAPTtransmissions[i - m_preAptReflectionPairs.size()] * m_light_intensity);
 							}
                         }
                     }
 
-                    m_lensSystem = solveCoatingAnnotations(m_lensSystem, renderObjective, yawandPitch.x, yawandPitch.y, m_light_intensity);
+                    m_lensSystem = solveCoatingAnnotations(m_lensSystem, renderObjective, m_yawandPitch.x, m_yawandPitch.y, m_light_intensity);
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
+                    refreshMatricesAndQuads();
 					optimizeLensCoatingsWithEA = false;
 					m_resetAnnotations = true;
                 }
@@ -1098,14 +1182,14 @@ public:
 						snapshotData.push_back(conversion);
 					}
                     //Optimize
-                    m_lensSystem = solveLensAnnotations(snapshotData, yawandPitch.x, yawandPitch.y);
+                    m_lensSystem = solveLensAnnotations(snapshotData, m_yawandPitch.x, m_yawandPitch.y);
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
 
                     refreshMatricesAndQuads();
 
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     irisAperturePosMemory = irisAperturePos;
-                    m_lensSystem.setEntrancePupilHeight(30);
+                    m_lensSystem.setEntrancePupilHeight(40);
 
                     optimizeLensSystemWithEA = false;
                     m_resetAnnotations = true;
@@ -1330,12 +1414,13 @@ private:
     Window m_window;
 
     /* Camera Params */
-    Camera m_camera{ &m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0f, 0.0f, -1.0f), 0 };
+    Camera m_camera{ &m_window, glm::vec3(0.0f, 0.0f, -1.0f), -glm::vec3(0.0001f, 0.0001f, -1.0f), 0 };
     float m_fov;
     float m_distance;
     float m_aspect;
     glm::mat4 m_mainProjectionMatrix;
     glm::mat4 m_mvp;
+    glm::vec2 m_yawandPitch = - m_camera.getYawAndPitch();
 
     /* Lens System */
     LensSystem m_lensSystem = heliarTronerLens();
@@ -1348,6 +1433,9 @@ private:
     std::vector<glm::mat2x2> m_postAptMss = m_lensSystem.getMs(m_postAptReflectionPairs);
     std::vector<FlareQuad> m_preAptQuads;
     std::vector<FlareQuad> m_postAptQuads;
+    std::vector<glm::vec3> m_preAPTtransmissions;
+    std::vector<glm::vec3> m_postAPTtransmissions;
+    int m_quarterWaveCoating = true;
 
     glm::mat4 m_sensorMatrix;
 
