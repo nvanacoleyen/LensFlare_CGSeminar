@@ -67,6 +67,9 @@ void optimizeLensCoatingsBruteForce(LensSystem& lensSystem, glm::vec3 desiredCol
         first_d1 = i_lambda / 4 / first_n1;
         second_d1 = i_lambda / 4 / second_n1;
 
+		std::cout << "first_d1: " << first_d1 << std::endl;
+        std::cout << "second_d1: " << second_d1 << std::endl;
+
         glm::vec3 first_newReflectivity = lensSystem.computeFresnelAR(incident_angles[0].x, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) + lensSystem.computeFresnelAR(incident_angles[0].y, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
         glm::vec3 second_newReflectivity;
         if (reflectionPair.y == 0) {

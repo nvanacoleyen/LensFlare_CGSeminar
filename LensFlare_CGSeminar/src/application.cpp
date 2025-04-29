@@ -651,6 +651,7 @@ public:
 						selected_ghost_color = glm::vec3(1.0f, 0.0f, 0.0f);
 						m_optimizeInterfacesWithEA = true;
 						m_resetAnnotations = true;
+						highlightSelectedQuad = true;
 					}
 					if (ImGui::Button("Optimize Colors")) {
 						m_optimizeCoatingsWithEA = true;
