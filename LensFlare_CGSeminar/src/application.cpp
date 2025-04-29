@@ -397,11 +397,12 @@ public:
                 ImGui::Text("Coatings: ");
                 if (ImGui::RadioButton("Quarter Wave", &m_quarterWaveCoating, 1)) {
                     refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
-                    calibrate light 
+                    m_calibrateLightSource = true;
                 }
                 ImGui::SameLine();
                 if (ImGui::RadioButton("Custom", &m_quarterWaveCoating, 0)) {
                     refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
+                    m_calibrateLightSource = true;
                 }
 
                 if (!(m_optimizeInterfacesWithEA || m_optimizeCoatingsWithEA)) {
@@ -589,8 +590,10 @@ public:
                         ImGui::ColorEdit3("Ghost Color", (float*)&selected_ghost_color);
                         ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
 
-                        if (ImGui::Button("Optimize Selected Ghost Color with Brute Force Search")) {
-                            optimizeCoatings = true;
+                        if (m_quarterWaveCoating) {
+                            if (ImGui::Button("Optimize Selected Ghost Color with Brute Force Search")) {
+                                optimizeCoatings = true;
+                            }
                         }
 
                         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "Reflection Interface Settings:");
@@ -880,7 +883,7 @@ public:
 
             if (!m_buildFromScratch) {
 
-                if (optimizeCoatings && m_selectedQuadIndex != -1) {
+                if (optimizeCoatings && m_selectedQuadIndex != -1 && m_quarterWaveCoating) {
                     if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
                         optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], m_yawandPitch);
                     }
@@ -888,8 +891,10 @@ public:
                         optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], m_yawandPitch);
                     }
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
+                    refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
                     lensInterfaceRefresh = true;
                     optimizeCoatings = false;
+                    m_calibrateLightSource = true;
                 }
 
                 if (m_calibrateLightSource) {
@@ -1084,7 +1089,7 @@ public:
                         }
                     }
 
-                    m_lensSystem = solveCoatingAnnotations(m_lensSystem, renderObjective, m_yawandPitch.x, m_yawandPitch.y, m_light_intensity);
+                    m_lensSystem = solveCoatingAnnotations(m_lensSystem, renderObjective, m_yawandPitch.x, m_yawandPitch.y, m_light_intensity, m_quarterWaveCoating);
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshMatricesAndQuads();
 					optimizeLensCoatingsWithEA = false;

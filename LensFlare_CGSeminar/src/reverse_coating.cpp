@@ -27,14 +27,14 @@ void optimizeLensCoatingsBruteForce(LensSystem& lensSystem, glm::vec3 desiredCol
     std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
     std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, yawAndPitch);
 
-    float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.38f);
+    float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.1f);
     float first_d1 = lensInterfaces[reflectionPair.x].lambda0 / 4 / first_n1;
     float second_n1;
     if (reflectionPair.y == 0) {
-        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.38f);
+        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.1f);
     }
     else {
-        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.38f);
+        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.1f);
     }
     float second_d1 = lensInterfaces[reflectionPair.y].lambda0 / 4 / second_n1;
 
@@ -51,10 +51,8 @@ void optimizeLensCoatingsBruteForce(LensSystem& lensSystem, glm::vec3 desiredCol
     float minSecondLambda0 = lensInterfaces[reflectionPair.y].lambda0;
 
     //visible spectrum
-    //float minlambda = 350;
-    //float maxlambda = 800;
-    float minlambda = 1;
-    float maxlambda = 10000;
+    float minlambda = 380;
+    float maxlambda = 740;
 
     LensInterface firstInterface = lensInterfaces[reflectionPair.x];
     LensInterface secondInterface = lensInterfaces[reflectionPair.y];
@@ -67,8 +65,8 @@ void optimizeLensCoatingsBruteForce(LensSystem& lensSystem, glm::vec3 desiredCol
         first_d1 = i_lambda / 4 / first_n1;
         second_d1 = i_lambda / 4 / second_n1;
 
-		std::cout << "first_d1: " << first_d1 << std::endl;
-        std::cout << "second_d1: " << second_d1 << std::endl;
+		/*std::cout << "first_d1: " << first_d1 << std::endl;
+        std::cout << "second_d1: " << second_d1 << std::endl;*/
 
         glm::vec3 first_newReflectivity = lensSystem.computeFresnelAR(incident_angles[0].x, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) + lensSystem.computeFresnelAR(incident_angles[0].y, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
         glm::vec3 second_newReflectivity;

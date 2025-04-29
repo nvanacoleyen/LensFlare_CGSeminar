@@ -8,7 +8,7 @@
 #include "quad.h"
 #include <glm/glm.hpp>
 
-struct LensCoatingProblemQW {
+struct LensCoatingProblem {
     unsigned int m_dim;             // total number of decision variables
     pagmo::vector_double m_lb;       // lower bounds for each variable
     pagmo::vector_double m_ub;       // upper bounds for each variable
@@ -16,7 +16,7 @@ struct LensCoatingProblemQW {
     float m_light_angle_x;
     float m_light_angle_y;
     float m_light_intensity;
-    bool m_quarterWaveCoating = true;
+    bool m_quarterWaveCoating;
     std::vector<glm::vec3> m_renderObjective;
     std::vector<LensSystem> m_lensSystem;
     std::vector<glm::vec2> m_preAptReflectionPairs;
@@ -31,7 +31,7 @@ struct LensCoatingProblemQW {
 
 
     // Set the problem dimension and bounds
-    void init(unsigned int num_interfaces, float light_angle_x, float light_angle_y, float lightIntensity);
+    void init(unsigned int num_interfaces, float light_angle_x, float light_angle_y, float lightIntensity, bool quarterWaveCoating);
     // Set the render objectives for the fitness function
     void setRenderObjective(std::vector<glm::vec3>& renderObjective);
     // Set the current lens system
@@ -42,4 +42,4 @@ struct LensCoatingProblemQW {
     std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const;
 };
 
-LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<glm::vec3>& renderObjective, float light_angle_x, float light_angle_y, float lightIntensity);
+LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<glm::vec3>& renderObjective, float light_angle_x, float light_angle_y, float lightIntensity, bool quarterWaveCoating);
