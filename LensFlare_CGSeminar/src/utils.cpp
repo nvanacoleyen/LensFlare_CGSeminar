@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include <algorithm>
+#include <iostream>
 
 // Function to translate a point to the camera plane
 glm::vec3 translateToCameraSpace(const glm::vec3& cameraPos, const glm::vec3& cameraForward, const glm::vec3& cameraUp, const glm::vec3& point) {
@@ -20,7 +21,7 @@ glm::vec2 getYawandPitch(const glm::vec3& cameraPos, const glm::vec3& cameraForw
 
     glm::vec3 cameraSpacePoint = translateToCameraSpace(cameraPos, cameraForward, cameraUp, lightPos);
     // Calculate yaw (angle around the y-axis) and pitch (angle around the x-axis)
-    float yaw = atan2(cameraSpacePoint.x, cameraSpacePoint.z);
+    float yaw = -atan2(cameraSpacePoint.x, cameraSpacePoint.z);
     float pitch = atan2(cameraSpacePoint.y, cameraSpacePoint.z);
 
     //std::cout << "Yaw: " << yaw << ", Pitch: " << pitch << std::endl;

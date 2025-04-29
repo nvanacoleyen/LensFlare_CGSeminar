@@ -53,13 +53,13 @@ pagmo::vector_double LensCoatingProblem::fitness(const pagmo::vector_double& dv)
     //"Render
     glm::mat2x2 m_default_Ma = m_lensSystem[0].getMa();
     std::vector<glm::mat2x2> preAptMas = m_lensSystem[0].getMa(m_preAptReflectionPairs);
-    glm::vec2 post_apt_center_ray_x = glm::vec2(-m_light_angle_x / 10 * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_x / 10);
-    glm::vec2 post_apt_center_ray_y = glm::vec2(m_light_angle_y / 10 * m_default_Ma[1][0] / m_default_Ma[0][0], -m_light_angle_y / 10);
+    glm::vec2 post_apt_center_ray_x = glm::vec2(-m_light_angle_x / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_x / 20);
+    glm::vec2 post_apt_center_ray_y = glm::vec2(-m_light_angle_y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_y / 20);
     std::vector<glm::vec2> pre_apt_center_ray_x;
     std::vector<glm::vec2> pre_apt_center_ray_y;
     for (auto& const preAptMa : preAptMas) {
-        pre_apt_center_ray_x.push_back(glm::vec2(-m_light_angle_x / 10 * preAptMa[1][0] / preAptMa[0][0], m_light_angle_x / 10));
-        pre_apt_center_ray_y.push_back(glm::vec2(m_light_angle_y / 10 * preAptMa[1][0] / preAptMa[0][0], -m_light_angle_y / 10));
+        pre_apt_center_ray_x.push_back(glm::vec2(-m_light_angle_x / 20 * preAptMa[1][0] / preAptMa[0][0], m_light_angle_x / 20));
+        pre_apt_center_ray_y.push_back(glm::vec2(-m_light_angle_y / 20 * preAptMa[1][0] / preAptMa[0][0], m_light_angle_y / 20));
     }
     std::vector<glm::vec3> preAPTtransmissions = newLensSystem.getTransmission(m_preAptReflectionPairs, pre_apt_center_ray_x, pre_apt_center_ray_y);
     std::vector<glm::vec3> postAPTtransmissions = newLensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y);

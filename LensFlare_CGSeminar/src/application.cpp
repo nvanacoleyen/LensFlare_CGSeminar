@@ -799,12 +799,12 @@ public:
 
 
                 glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x / 20);
-                glm::vec2 post_apt_center_ray_y = glm::vec2(yawandPitch.y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], -yawandPitch.y / 20);
+                glm::vec2 post_apt_center_ray_y = glm::vec2(-yawandPitch.y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.y / 20);
                 std::vector<glm::vec2> pre_apt_center_ray_x;
                 std::vector<glm::vec2> pre_apt_center_ray_y;
                 for (auto& const preAptMa : m_preAptMas) {
                     pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x / 20));
-                    pre_apt_center_ray_y.push_back(glm::vec2(yawandPitch.y / 20 * preAptMa[1][0] / preAptMa[0][0], -yawandPitch.y / 20));
+                    pre_apt_center_ray_y.push_back(glm::vec2(-yawandPitch.y / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.y / 20));
                 }
                 std::vector<glm::vec3> preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, pre_apt_center_ray_x, pre_apt_center_ray_y);
                 std::vector<glm::vec3> postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y);
@@ -1384,7 +1384,7 @@ private:
     /* Light Source */
     const glm::vec3 m_lcolor{ 1, 1, 0.5 };
     /* Light */
-    glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 25.f };
+    glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 20.f };
     float m_light_intensity = 150.0f;
     bool m_calibrateLightSource = true;
 

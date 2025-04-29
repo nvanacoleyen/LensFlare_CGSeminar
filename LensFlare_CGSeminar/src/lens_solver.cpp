@@ -54,7 +54,7 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
 
     //Projection of the aperture center onto the sensor
     glm::vec2 ghost_center_x = glm::vec2(-light_angle_x * Ma[1][0] / Ma[0][0], light_angle_x);
-    glm::vec2 ghost_center_y = glm::vec2(light_angle_y * Ma[1][0] / Ma[0][0], -light_angle_y);
+    glm::vec2 ghost_center_y = glm::vec2(-light_angle_y * Ma[1][0] / Ma[0][0], light_angle_y);
 
     glm::vec2 ghost_center_x_s = Ms * Ma * ghost_center_x;
     glm::vec2 ghost_center_y_s = Ms * Ma * ghost_center_y;
@@ -66,7 +66,7 @@ SnapshotData LensSystemProblem::simulateDrawQuad(int quadId, glm::mat2x2& Ma, gl
 
 	glm::vec2 entrance_pupil_h_x_s = Ms * Ma * glm::vec2((entrancePupilHeight / 2.0), light_angle_x);
     glm::vec2 entrance_pupil_center_x_s = Ms * Ma * glm::vec2(0.f, light_angle_x);
-    glm::vec2 entrance_pupil_center_y_s = Ms * Ma * glm::vec2(0.f, -light_angle_y);
+    glm::vec2 entrance_pupil_center_y_s = Ms * Ma * glm::vec2(0.f, light_angle_y);
 	float entrance_pupil_height = abs(entrance_pupil_h_x_s.x - entrance_pupil_center_x_s.x);
 	glm::vec2 entrance_pupil_center_pos = glm::vec2(entrance_pupil_center_x_s.x, entrance_pupil_center_y_s.x);
 

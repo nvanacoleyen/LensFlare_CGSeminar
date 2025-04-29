@@ -58,7 +58,7 @@ void main()
     entrancePos = pos.xy;
 
     vec2 ray_x = vec2(x_offset, light_angle_x);
-    vec2 ray_y = vec2(y_offset, -light_angle_y);
+    vec2 ray_y = vec2(y_offset, light_angle_y);
 
     vec2 ray_x_a = Ma * ray_x;
     vec2 ray_y_a = Ma * ray_y;
@@ -70,7 +70,7 @@ void main()
 
     //FLARE CENTER, APT CENTER PROJECTED ON SENSOR
     vec2 quad_center_x = calculateInitialOffset(Ma, light_angle_x);
-    vec2 quad_center_y = calculateInitialOffset(Ma, -light_angle_y);
+    vec2 quad_center_y = calculateInitialOffset(Ma, light_angle_y);
 
     vec2 quad_center_x_s = Ms * Ma * quad_center_x;
     vec2 quad_center_y_s = Ms * Ma * quad_center_y;
@@ -89,7 +89,7 @@ void main()
     vec2 centerPos;
     float height;
     if (entrance_pupil_height_s < ghost_height) {
-        vec2 entrance_pupil_center_y_s = Ms * Ma * vec2(0.f, -light_angle_y);
+        vec2 entrance_pupil_center_y_s = Ms * Ma * vec2(0.f, light_angle_y);
         centerPos = vec2(entrance_pupil_center_x_s.x, entrance_pupil_center_y_s.x);
         height = entrance_pupil_height_s;
     } else {
@@ -116,6 +116,6 @@ void main()
         }
     }
 
-    gl_Position = (mvp * sensorMatrix * vec4(vec3(((vec2(ray_x_s.x, ray_y_s.x) - centerPos) * sizeAnnotationTransform + centerPos + posAnnotationTransform), 30.0), 1.0));
+    gl_Position = (mvp * sensorMatrix * vec4(vec3(((vec2(ray_x_s.x, ray_y_s.x) - centerPos) * sizeAnnotationTransform + centerPos + posAnnotationTransform), 50.0), 1.0));
     
 }
