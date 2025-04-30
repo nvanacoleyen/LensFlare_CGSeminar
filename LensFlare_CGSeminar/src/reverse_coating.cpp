@@ -11,99 +11,82 @@
 //float GREEN_WAVELENGTH = 510;
 //float BLUE_WAVELENGTH = 475;
 
-void optimizeLensCoatingsSimple(LensSystem& lensSystem, glm::vec3 color, glm::vec2 reflectionPair) {
 
-    std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
-
-    lensInterfaces[reflectionPair.x].lambda0 = rgbToWavelength(color.x, color.y, color.z);
-    lensInterfaces[reflectionPair.y].lambda0 = rgbToWavelength(color.x, color.y, color.z);
-
-    lensSystem.setLensInterfaces(lensInterfaces);
-
-}
-
-void optimizeLensCoatingsBruteForce(LensSystem& lensSystem, glm::vec3 desiredColor, glm::vec2 reflectionPair, glm::vec2 yawAndPitch) {
-
+void optimizeLensCoatingsGridSearch(LensSystem& lensSystem, glm::vec3 desiredColor, glm::vec2 reflectionPair, glm::vec2 yawAndPitch) {
     std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
     std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, yawAndPitch);
 
-    float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.1f);
-    float first_d1 = lensInterfaces[reflectionPair.x].lambda0 / 4 / first_n1;
+    float first_n1 = std::max(std::sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.1f);
     float second_n1;
     if (reflectionPair.y == 0) {
-        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.1f);
+        second_n1 = std::max(std::sqrt(lensInterfaces[reflectionPair.y].ni), 1.1f);
     }
     else {
-        second_n1 = std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.1f);
+        second_n1 = std::max(std::sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.1f);
     }
-    float second_d1 = lensInterfaces[reflectionPair.y].lambda0 / 4 / second_n1;
 
-    glm::vec3 interfaceReflectivity = lensSystem.computeFresnelAR(incident_angles[0].x, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) + lensSystem.computeFresnelAR(incident_angles[0].y, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
-    float minError1 = glm::length(desiredColor - interfaceReflectivity);
-    float minError2;
-    if (reflectionPair.y == 0) {
-        minError2 = glm::length(desiredColor - (lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f)));
-    }
-    else {
-        minError2 = glm::length(desiredColor - (lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni)));
-    }
-    float minFirstLambda0 = lensInterfaces[reflectionPair.x].lambda0;
-    float minSecondLambda0 = lensInterfaces[reflectionPair.y].lambda0;
+    float minlambda = 380.0f;
+    float maxlambda = 740.0f;
 
-    //visible spectrum
-    float minlambda = 380;
-    float maxlambda = 740;
+    float bestError = std::numeric_limits<float>::max();
+    float bestLambda1 = lensInterfaces[reflectionPair.x].lambda0;
+    float bestLambda2 = lensInterfaces[reflectionPair.y].lambda0;
 
-    LensInterface firstInterface = lensInterfaces[reflectionPair.x];
-    LensInterface secondInterface = lensInterfaces[reflectionPair.y];
+    std::cout << "START GRID SEARCH" << std::endl;
 
-    std::cout << "START BRUTE FORCE" << std::endl;
+    for (float candidateLambda1 = minlambda; candidateLambda1 < maxlambda; candidateLambda1 += 1.0f) {
 
-    for (float i_lambda = minlambda; i_lambda < maxlambda; i_lambda++) {
+        float thickness1 = candidateLambda1 / 4.0f / first_n1;
 
-        //SET NEW 
-        first_d1 = i_lambda / 4 / first_n1;
-        second_d1 = i_lambda / 4 / second_n1;
+        glm::vec3 reflectivity1 =
+            lensSystem.computeFresnelAR(incident_angles[0].x, thickness1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) +
+            lensSystem.computeFresnelAR(incident_angles[0].y, thickness1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
 
-		/*std::cout << "first_d1: " << first_d1 << std::endl;
-        std::cout << "second_d1: " << second_d1 << std::endl;*/
 
-        glm::vec3 first_newReflectivity = lensSystem.computeFresnelAR(incident_angles[0].x, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) + lensSystem.computeFresnelAR(incident_angles[0].y, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
-        glm::vec3 second_newReflectivity;
-        if (reflectionPair.y == 0) {
-            second_newReflectivity = lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f);
-        }
-        else {
-            second_newReflectivity = lensSystem.computeFresnelAR(incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni) + lensSystem.computeFresnelAR(incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni);
-        }
+        for (float candidateLambda2 = minlambda; candidateLambda2 < maxlambda; candidateLambda2 += 2.0f) {
 
-        // Compute error
-        float newError1 = glm::length(desiredColor - first_newReflectivity);
-        float newError2 = glm::length(desiredColor - second_newReflectivity);
-        //std::cout << "ERROR " << glm::length(error) << std::endl;
+            float thickness2 = candidateLambda2 / 4.0f / second_n1;
+            glm::vec3 reflectivity2;
 
-        if (newError1 < minError1) {
-            minError1 = newError1;
-            minFirstLambda0 = i_lambda;
-        }
-        if (newError2 < minError2) {
-            minError2 = newError2;
-            minSecondLambda0 = i_lambda;
+            if (reflectionPair.y == 0) {
+                reflectivity2 =
+                    lensSystem.computeFresnelAR(incident_angles[1].x, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, 1.0f) +
+                    lensSystem.computeFresnelAR(incident_angles[1].y, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, 1.0f);
+            }
+            else {
+                reflectivity2 =
+                    lensSystem.computeFresnelAR(incident_angles[1].x, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni) +
+                    lensSystem.computeFresnelAR(incident_angles[1].y, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni);
+            }
+
+            glm::vec3 combinedReflectivity = reflectivity1 * reflectivity2;
+
+            glm::vec3 normCombined = normalizeRGB(combinedReflectivity);
+            glm::vec3 normDesired = normalizeRGB(desiredColor);
+            float error = glm::length(normCombined - normDesired);
+
+            if (error < bestError) {
+                bestError = error;
+                bestLambda1 = candidateLambda1;
+                bestLambda2 = candidateLambda2;
+            }
         }
     }
 
-    std::cout << "BRUTE FORCE FINISHED" << std::endl;
-    std::cout << "Best error was: " << minError1 << std::endl;
-    std::cout << "Best error was: " << minError2 << std::endl;
-    lensInterfaces[reflectionPair.x].lambda0 = minFirstLambda0;
-    lensInterfaces[reflectionPair.y].lambda0 = minSecondLambda0;
+    std::cout << "GRID SEARCH FINISHED" << std::endl;
+    std::cout << "Best combined error: " << bestError << std::endl;
+    std::cout << "Optimal lambda for first interface: " << bestLambda1 << " nm" << std::endl;
+    std::cout << "Optimal lambda for second interface: " << bestLambda2 << " nm" << std::endl;
+
+    // Update the lens interfaces with the optimized coating wavelengths.
+    lensInterfaces[reflectionPair.x].lambda0 = bestLambda1;
+    lensInterfaces[reflectionPair.y].lambda0 = bestLambda2;
     lensSystem.setLensInterfaces(lensInterfaces);
-
 }
 
 std::pair<std::vector<std::pair<float, glm::vec3>>, std::vector<std::pair<float, glm::vec3>>> computeReflectivityPerLambda(LensSystem& lensSystem, glm::vec2 reflectionPair, glm::vec2 yawAndPitch) {
     std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
-    std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, yawAndPitch);
+    std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, glm::vec2(0.0001));
 
     float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.1f);
     float second_n1 = reflectionPair.y == 0
@@ -113,7 +96,7 @@ std::pair<std::vector<std::pair<float, glm::vec3>>, std::vector<std::pair<float,
     std::vector<std::pair<float, glm::vec3>> firstReflectivityData;
     std::vector<std::pair<float, glm::vec3>> secondReflectivityData;
 
-    for (float i_lambda = 380; i_lambda <= 740; i_lambda += 1) {
+    for (float i_lambda = 380; i_lambda <= 740; i_lambda += 4) {
         float first_d1 = i_lambda / 4 / first_n1;
         float second_d1 = i_lambda / 4 / second_n1;
 
@@ -141,7 +124,6 @@ std::pair<std::vector<std::pair<float, glm::vec3>>, std::vector<std::pair<float,
 
     return { firstReflectivityData, secondReflectivityData };
 }
-
 
 
 

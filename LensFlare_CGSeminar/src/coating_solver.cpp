@@ -9,6 +9,7 @@
 #include <pagmo/archipelago.hpp>
 #include <pagmo/population.hpp>
 #include <pagmo/island.hpp>
+#include "utils.h"
 
 void LensCoatingProblem::init(unsigned int num_interfaces, float light_angle_x, float light_angle_y, float lightIntensity, bool quarterWaveCoating) {
     m_num_interfaces = num_interfaces;
@@ -52,11 +53,11 @@ void LensCoatingProblem::setLensSystem(LensSystem& lensSystem) {
 
     m_default_Ma = m_lensSystem[0].getMa();
     m_preAptMas = m_lensSystem[0].getMa(m_preAptReflectionPairs);
-    m_post_apt_center_ray_x = glm::vec2(-m_light_angle_x / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_x / 20);
-    m_post_apt_center_ray_y = glm::vec2(-m_light_angle_y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_y / 20);
+    m_post_apt_center_ray_x = glm::vec2(-m_light_angle_x * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_x);
+    m_post_apt_center_ray_y = glm::vec2(-m_light_angle_y * m_default_Ma[1][0] / m_default_Ma[0][0], m_light_angle_y);
     for (auto& const preAptMa : m_preAptMas) {
-        m_pre_apt_center_ray_x.push_back(glm::vec2(-m_light_angle_x / 20 * preAptMa[1][0] / preAptMa[0][0], m_light_angle_x / 20));
-        m_pre_apt_center_ray_y.push_back(glm::vec2(-m_light_angle_y / 20 * preAptMa[1][0] / preAptMa[0][0], m_light_angle_y / 20));
+        m_pre_apt_center_ray_x.push_back(glm::vec2(-m_light_angle_x * preAptMa[1][0] / preAptMa[0][0], m_light_angle_x));
+        m_pre_apt_center_ray_y.push_back(glm::vec2(-m_light_angle_y * preAptMa[1][0] / preAptMa[0][0], m_light_angle_y));
     }
 
 }
@@ -87,16 +88,21 @@ pagmo::vector_double LensCoatingProblem::fitness(const pagmo::vector_double& dv)
 
     double f = 0.0;
 
-    for (int i = 0; i < preAPTtransmissions.size(); i++) {
-        f += pow(glm::length(m_renderObjective[i] - (preAPTtransmissions[i] * m_light_intensity)), 2);
+    for (size_t i = 0; i < preAPTtransmissions.size(); i++) {
+        glm::vec3 normalizedObjective = normalizeRGB(m_renderObjective[i]);
+        glm::vec3 normalizedTransmitted = normalizeRGB(preAPTtransmissions[i] * m_light_intensity);
+
+        f += glm::length(normalizedObjective - normalizedTransmitted);
     }
 
-    for (int i = 0; i < postAPTtransmissions.size(); i++) {
-        f += pow(glm::length(m_renderObjective[i + preAPTtransmissions.size()] - (postAPTtransmissions[i] * m_light_intensity)), 2);
+    for (size_t i = 0; i < postAPTtransmissions.size(); i++) {
+        glm::vec3 normalizedObjective = normalizeRGB(m_renderObjective[i + preAPTtransmissions.size()]);
+        glm::vec3 normalizedTransmitted = normalizeRGB(postAPTtransmissions[i] * m_light_intensity);
+
+        f += glm::length(normalizedObjective - normalizedTransmitted);
     }
 
     f = f / dv.size();
-
     return { f };
 }
 
@@ -177,7 +183,7 @@ LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<gl
     unsigned int num_interfaces = currentLensInterfaces.size();
     
     LensCoatingProblem my_problem;
-    my_problem.init(num_interfaces, light_angle_x, light_angle_y, lightIntensity, quarterWaveCoating);
+    my_problem.init(num_interfaces, 0.0001f, 0.0001f, lightIntensity, quarterWaveCoating);
     my_problem.setRenderObjective(renderObjective);
     my_problem.setLensSystem(currentLensSystem);
     pagmo::problem prob{ my_problem };

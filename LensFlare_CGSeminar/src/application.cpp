@@ -124,20 +124,20 @@ public:
             quad_id++;
         }
 
-        refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
+        refreshTransmissions(glm::vec2(0.0001f), m_quarterWaveCoating);
 
         m_resetAnnotations = true;
         m_calibrateLightSource = true;
     }
 
     void refreshTransmissions(glm::vec2 yawandPitch, bool quarterWaveCoating) {
-        glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x / 20);
-        glm::vec2 post_apt_center_ray_y = glm::vec2(-yawandPitch.y / 20 * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.y / 20);
+        glm::vec2 post_apt_center_ray_x = glm::vec2(-yawandPitch.x * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.x);
+        glm::vec2 post_apt_center_ray_y = glm::vec2(-yawandPitch.y * m_default_Ma[1][0] / m_default_Ma[0][0], yawandPitch.y);
         std::vector<glm::vec2> pre_apt_center_ray_x;
         std::vector<glm::vec2> pre_apt_center_ray_y;
         for (auto& const preAptMa : m_preAptMas) {
-            pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x / 20));
-            pre_apt_center_ray_y.push_back(glm::vec2(-yawandPitch.y / 20 * preAptMa[1][0] / preAptMa[0][0], yawandPitch.y / 20));
+            pre_apt_center_ray_x.push_back(glm::vec2(-yawandPitch.x * preAptMa[1][0] / preAptMa[0][0], yawandPitch.x));
+            pre_apt_center_ray_y.push_back(glm::vec2(-yawandPitch.y * preAptMa[1][0] / preAptMa[0][0], yawandPitch.y));
         }
         m_preAPTtransmissions = m_lensSystem.getTransmission(m_preAptReflectionPairs, pre_apt_center_ray_x, pre_apt_center_ray_y, quarterWaveCoating);
         m_postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y, quarterWaveCoating);
@@ -582,10 +582,8 @@ public:
                     if (m_selectedQuadIndex != -1) {
 
                         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Ghost Settings");
-                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "Color:");
-                        ImGui::ColorEdit3("Ghost Color", (float*)&selected_ghost_color);
+                        ImGui::ColorEdit3("Highlight Color", (float*)&selected_ghost_color);
                         ImGui::Checkbox("Highlight Quad", &highlightSelectedQuad);
-
                         //get pairs of the id reflection
                         selectedQuadId = m_selectedQuadIDs[m_selectedQuadIndex];
                         if (selectedQuadId != selectedQuadIdMemory || lensInterfaceRefresh == true) {
@@ -642,8 +640,22 @@ public:
                                 ImPlot::EndPlot();
                             }
 
-                            if (ImGui::Button("Optimize Selected Ghost Color with Brute Force Search")) {
+                            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "Selected Ghost Color:");
+							ImGui::SameLine();
+                            glm::vec3 colorOfSelectedGhost;
+                            if (selectedQuadId < m_preAPTtransmissions.size()) {
+                                colorOfSelectedGhost = m_preAPTtransmissions[selectedQuadId];
+                            }
+                            else {
+                                colorOfSelectedGhost = m_postAPTtransmissions[selectedQuadId - m_preAPTtransmissions.size()];
+                            }
+                            colorOfSelectedGhost *= m_light_intensity;
+                            colorOfSelectedGhost = normalizeRGB(colorOfSelectedGhost);
+                            ImGui::ColorButton("Selected Ghost Color", ImVec4(colorOfSelectedGhost.x, colorOfSelectedGhost.y, colorOfSelectedGhost.z, 0.5f));
+
+                            if (ImGui::Button("Optimize Ghost Color To Highlight Color")) {
                                 optimizeCoatings = true;
+                                highlightSelectedQuad = false;
                             }
                         }
 
@@ -947,10 +959,10 @@ public:
 
                 if (optimizeCoatings && m_selectedQuadIndex != -1 && m_quarterWaveCoating) {
                     if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
-                        optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], m_yawandPitch);
+                        optimizeLensCoatingsGridSearch(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], glm::vec2(0.0001));
                     }
                     else {
-                        optimizeLensCoatingsBruteForce(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], m_yawandPitch);
+                        optimizeLensCoatingsGridSearch(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], glm::vec2(0.0001));
                     }
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
@@ -1334,6 +1346,11 @@ public:
                 std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;
             }
             break;
+        case GLFW_KEY_R:
+            m_camera.m_forward = glm::normalize(-glm::vec3(0.0001f, 0.0001f, -1.0f));
+			m_camera.m_up = glm::vec3(0.0f, 1.0f, 0.0f);
+            m_takeSnapshot = 1;
+
         default:
             break;
         }

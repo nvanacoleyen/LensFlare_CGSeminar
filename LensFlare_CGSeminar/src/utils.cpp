@@ -102,3 +102,8 @@ float rgbToWavelength(float r, float g, float b) {
 
     return wavelength;
 }
+
+glm::vec3 normalizeRGB(const glm::vec3& color) {
+    float sum = color.r + color.g + color.b;
+    return (sum > 0.0f) ? (color / sum) : glm::vec3(0.0f);
+}
