@@ -101,4 +101,47 @@ void optimizeLensCoatingsBruteForce(LensSystem& lensSystem, glm::vec3 desiredCol
 
 }
 
+std::pair<std::vector<std::pair<float, glm::vec3>>, std::vector<std::pair<float, glm::vec3>>> computeReflectivityPerLambda(LensSystem& lensSystem, glm::vec2 reflectionPair, glm::vec2 yawAndPitch) {
+    std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
+    std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, yawAndPitch);
+
+    float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.1f);
+    float second_n1 = reflectionPair.y == 0
+        ? std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.1f)
+        : std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.1f);
+
+    std::vector<std::pair<float, glm::vec3>> firstReflectivityData;
+    std::vector<std::pair<float, glm::vec3>> secondReflectivityData;
+
+    for (float i_lambda = 380; i_lambda <= 740; i_lambda += 1) {
+        float first_d1 = i_lambda / 4 / first_n1;
+        float second_d1 = i_lambda / 4 / second_n1;
+
+        glm::vec3 firstReflectivity = lensSystem.computeFresnelAR(
+            incident_angles[0].x, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni
+        ) + lensSystem.computeFresnelAR(
+            incident_angles[0].y, first_d1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni
+        );
+
+        glm::vec3 secondReflectivity = reflectionPair.y == 0
+            ? lensSystem.computeFresnelAR(
+                incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f
+            ) + lensSystem.computeFresnelAR(
+                incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, 1.f
+            )
+            : lensSystem.computeFresnelAR(
+                incident_angles[1].x, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni
+            ) + lensSystem.computeFresnelAR(
+                incident_angles[1].y, second_d1, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni
+            );
+
+        firstReflectivityData.push_back({ i_lambda, firstReflectivity });
+        secondReflectivityData.push_back({ i_lambda, secondReflectivity });
+    }
+
+    return { firstReflectivityData, secondReflectivityData };
+}
+
+
+
 

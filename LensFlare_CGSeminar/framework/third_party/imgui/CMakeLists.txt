@@ -7,7 +7,7 @@ add_library(imgui
 	"src/imgui_impl_opengl2.cpp"
 	"src/imgui_impl_opengl3.cpp"
 	"src/imgui_impl_glfw.cpp"
-)
-target_include_directories(imgui PUBLIC "include" PRIVATE "include/imgui")
+ "src/implot.cpp" "src/implot_demo.cpp"  "src/implot_items.cpp")
+target_include_directories(imgui PUBLIC "include" PRIVATE "include/imgui" "include/implot")
 find_package(OpenGL REQUIRED)
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)

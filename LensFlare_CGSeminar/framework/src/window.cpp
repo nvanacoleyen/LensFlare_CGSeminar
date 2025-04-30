@@ -1,5 +1,6 @@
 #include "window.h"
 #include <imgui/imgui.h>
+#include <implot/implot.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl2.h>
 #undef IMGUI_IMPL_OPENGL_LOADER_GLEW
@@ -109,6 +110,7 @@ Window::Window(std::string_view title, const glm::ivec2& windowSize, OpenGLVersi
 
         // Setup Dear ImGui context.
         ImGui::CreateContext();
+        ImPlot::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         (void)io;
         // Setup Dear ImGui style.
@@ -162,6 +164,7 @@ Window::~Window()
         } break;
         };
         ImGui_ImplGlfw_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 
