@@ -183,7 +183,7 @@ LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<gl
     unsigned int num_interfaces = currentLensInterfaces.size();
     
     LensCoatingProblem my_problem;
-    my_problem.init(num_interfaces, 0.0001f, 0.0001f, lightIntensity, quarterWaveCoating);
+    my_problem.init(num_interfaces, 0.001f, 0.001f, lightIntensity, quarterWaveCoating);
     my_problem.setRenderObjective(renderObjective);
     my_problem.setLensSystem(currentLensSystem);
     pagmo::problem prob{ my_problem };

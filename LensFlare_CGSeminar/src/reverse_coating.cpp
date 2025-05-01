@@ -82,7 +82,7 @@ void optimizeLensCoatingsGridSearch(LensSystem& lensSystem, glm::vec3 desiredCol
 
 std::pair<std::vector<std::pair<float, glm::vec3>>, std::vector<std::pair<float, glm::vec3>>> computeReflectivityPerLambda(LensSystem& lensSystem, glm::vec2 reflectionPair, glm::vec2 yawAndPitch) {
     std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
-    std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, glm::vec2(0.0001));
+    std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, glm::vec2(0.001));
 
     float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.38f);
     float second_n1 = reflectionPair.y == 0

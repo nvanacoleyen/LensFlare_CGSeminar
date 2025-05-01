@@ -124,7 +124,7 @@ public:
             quad_id++;
         }
 
-        refreshTransmissions(glm::vec2(0.0001f), m_quarterWaveCoating);
+        refreshTransmissions(glm::vec2(0.001f), m_quarterWaveCoating);
 
         m_resetAnnotations = true;
         m_calibrateLightSource = true;
@@ -961,10 +961,10 @@ public:
 
                 if (optimizeCoatings && m_selectedQuadIndex != -1 && m_quarterWaveCoating) {
                     if (m_selectedQuadIDs[m_selectedQuadIndex] < m_preAptReflectionPairs.size()) {
-                        optimizeLensCoatingsGridSearch(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], glm::vec2(0.0001));
+                        optimizeLensCoatingsGridSearch(m_lensSystem, selected_ghost_color, m_preAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex]], glm::vec2(0.001));
                     }
                     else {
-                        optimizeLensCoatingsGridSearch(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], glm::vec2(0.0001));
+                        optimizeLensCoatingsGridSearch(m_lensSystem, selected_ghost_color, m_postAptReflectionPairs[m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size()], glm::vec2(0.001));
                     }
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
