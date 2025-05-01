@@ -33,10 +33,10 @@ void LensCoatingProblem::init(unsigned int num_interfaces, float light_angle_x, 
         }
         else {
             // c_di:
-            m_lb[i * 2] = 40.0;
-            m_ub[i * 2] = 500.0;
+            m_lb[i * 2] = 25.0;
+            m_ub[i * 2] = 750.0;
             // c_ni:
-            m_lb[i * 2 + 1] = 1.1;
+            m_lb[i * 2 + 1] = 1.38;
             m_ub[i * 2 + 1] = 1.9;
         }
     }

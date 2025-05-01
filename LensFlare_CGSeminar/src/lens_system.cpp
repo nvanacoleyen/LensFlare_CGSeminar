@@ -278,8 +278,12 @@ glm::vec3 LensSystem::computeFresnelAR (
 	float n1,		// RI of coating layer
 	float n2		// RI of the 2nd medium
 ) const {
+	// No coating between two air layers
+	if (n0 == 1.0f && n2 == 1.0f) {
+		return glm::vec3(0.f);
+	}
+
 	// refraction angles in coating and the 2nd medium
-	float test = sin(theta0) * n0 / n1;
 	float theta1 = asin(std::clamp(sin(theta0) * n0 / n1, -1.f, 1.f));
 	float theta2 = asin(std::clamp(sin(theta0) * n0 / n2, -1.f, 1.f));
 	// amplitude for outer refl. / transmission on topmost interface
@@ -332,8 +336,8 @@ glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondRe
 	glm::vec2 propagated_ray = ray;
 
 	auto computeOpticalParams = [&](int i) -> std::pair<float, float> {
-		float n = quarterWaveCoating ? std::max(sqrt((i == 0 ? 1.f : m_lens_interfaces[i - 1].ni) * m_lens_interfaces[i].ni), 1.1f) // 1.1 is lowest achievable ni in coatings
-			: std::max(m_lens_interfaces[i].c_ni, 1.1f);
+		float n = quarterWaveCoating ? std::max(sqrt((i == 0 ? 1.0f : m_lens_interfaces[i - 1].ni) * m_lens_interfaces[i].ni), 1.38f)
+			: m_lens_interfaces[i].c_ni;
 		float d = quarterWaveCoating ? m_lens_interfaces[i].lambda0 / (4 * n)
 			: m_lens_interfaces[i].c_di;
 		return { n, d };

@@ -508,11 +508,11 @@ public:
                                 }
                             }
                             else {
-                                if (ImGui::SliderFloat("Coating Thickness", &lensInterface.c_di, 40, 500.0f)) {
+                                if (ImGui::SliderFloat("Coating Thickness", &lensInterface.c_di, 25, 750.0f)) {
                                     m_lensSystem.setLensInterfaces(m_lens_interfaces);
                                     refreshMatricesAndQuads();
                                 }
-                                if (ImGui::SliderFloat("Coating Refractive Index", &lensInterface.c_ni, 1.1f, 1.9f)) {
+                                if (ImGui::SliderFloat("Coating Refractive Index", &lensInterface.c_ni, 1.38f, 1.9f)) {
                                     m_lensSystem.setLensInterfaces(m_lens_interfaces);
                                     refreshMatricesAndQuads();
                                 }
@@ -544,8 +544,8 @@ public:
                                 ImGui::SliderFloat("Lambda0", &newlambda0, 380.0f, 740.0f);
                             }
                             else {
-                                ImGui::SliderFloat("Coating Thickness", &newc_di, 40, 500.0f);
-                                ImGui::SliderFloat("Coating Refractive Index", &newc_ni, 1.1f, 1.9f);
+                                ImGui::SliderFloat("Coating Thickness", &newc_di, 25, 750);
+                                ImGui::SliderFloat("Coating Refractive Index", &newc_ni, 1.38f, 1.9f);
                             }
 
                             if (ImGui::Button("Add Interface")) {
@@ -714,11 +714,11 @@ public:
                             }
                         }
                         else {
-                            if (ImGui::SliderFloat("Coating Thickness ", &lensInterface.c_di, 40, 500.0f)) {
+                            if (ImGui::SliderFloat("Coating Thickness ", &lensInterface.c_di, 25, 750.0f)) {
                                 m_lensSystem.setLensInterfaces(m_lens_interfaces);
                                 refreshMatricesAndQuads();
                             }
-                            if (ImGui::SliderFloat("Coating Refractive Index ", &lensInterface.c_ni, 1.1f, 1.9f)) {
+                            if (ImGui::SliderFloat("Coating Refractive Index ", &lensInterface.c_ni, 1.38f, 1.9f)) {
                                 m_lensSystem.setLensInterfaces(m_lens_interfaces);
                                 refreshMatricesAndQuads();
                             }

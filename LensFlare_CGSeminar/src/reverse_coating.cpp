@@ -16,14 +16,10 @@ void optimizeLensCoatingsGridSearch(LensSystem& lensSystem, glm::vec3 desiredCol
     std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
     std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, yawAndPitch);
 
-    float first_n1 = std::max(std::sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.1f);
-    float second_n1;
-    if (reflectionPair.y == 0) {
-        second_n1 = std::max(std::sqrt(lensInterfaces[reflectionPair.y].ni), 1.1f);
-    }
-    else {
-        second_n1 = std::max(std::sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.1f);
-    }
+    float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.38f);
+    float second_n1 = reflectionPair.y == 0
+        ? std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.38f)
+        : std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.38f);
 
     float minlambda = 380.0f;
     float maxlambda = 740.0f;
@@ -88,10 +84,10 @@ std::pair<std::vector<std::pair<float, glm::vec3>>, std::vector<std::pair<float,
     std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
     std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, glm::vec2(0.0001));
 
-    float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.1f);
+    float first_n1 = std::max(sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.38f);
     float second_n1 = reflectionPair.y == 0
-        ? std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.1f)
-        : std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.1f);
+        ? std::max(sqrt(lensInterfaces[reflectionPair.y].ni), 1.38f)
+        : std::max(sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.38f);
 
     std::vector<std::pair<float, glm::vec3>> firstReflectivityData;
     std::vector<std::pair<float, glm::vec3>> secondReflectivityData;
