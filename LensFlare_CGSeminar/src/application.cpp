@@ -330,6 +330,8 @@ public:
 
         float ghostIntensity = 1.0f;
 
+        bool greyScaleColor = false;
+
         /* Flare Paths and Matrices */
         m_lens_interfaces = m_lensSystem.getLensInterfaces();
         refreshMatricesAndQuads();
@@ -395,7 +397,7 @@ public:
                 ImGui::InputInt("Aperture Position", &irisAperturePos);
                 ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 40.0f);
                 ImGui::Checkbox("Disable Entrance Clipping", &disableEntranceClipping);
-
+                ImGui::Checkbox("Grey Scale", &greyScaleColor);
                 ImGui::Text("Coatings: ");
                 if (ImGui::RadioButton("Quarter Wave", &m_quarterWaveCoating, 1)) {
                     refreshTransmissions(m_yawandPitch, m_quarterWaveCoating);
@@ -1011,7 +1013,7 @@ public:
                     if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] == i && highlightSelectedQuad) {
                         m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, selected_ghost_color, m_annotationData[i]);
                     }
-                    else if (m_optimizeInterfacesWithEA) {
+                    else if (m_optimizeInterfacesWithEA || greyScaleColor) {
                         glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 15 * ghostIntensity);
                         m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, greyscaleColor, m_annotationData[i]);
                     }
@@ -1029,7 +1031,7 @@ public:
                     if (m_selectedQuadIndex != -1 && m_selectedQuadIDs[m_selectedQuadIndex] - m_preAptReflectionPairs.size() == i && highlightSelectedQuad) {
                         m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], selected_ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
                     }
-                    else if (m_optimizeInterfacesWithEA) {
+                    else if (m_optimizeInterfacesWithEA || greyScaleColor) {
                         glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 15 * ghostIntensity);
                         m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], greyscaleColor, m_annotationData[i + m_preAptReflectionPairs.size()]);
                     }
