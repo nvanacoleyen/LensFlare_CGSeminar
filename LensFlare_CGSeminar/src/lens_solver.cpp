@@ -10,6 +10,7 @@
 #include <pagmo/island.hpp>
 #include <cmath>
 #include <glm/glm.hpp>
+#include <chrono>
 
 
 int const PARAMS_PER_INTERFACE = 3;
@@ -30,11 +31,11 @@ void LensSystemProblem::init(unsigned int num_interfaces, float light_angle_x, f
     for (int i = 0; i < m_num_interfaces; i++) {
         // di:
         m_lb[2 + (PARAMS_PER_INTERFACE * i)] = 0.1;
-        m_ub[2 + (PARAMS_PER_INTERFACE * i)] = 125.0;
+        m_ub[2 + (PARAMS_PER_INTERFACE * i)] = 100.0;
 
         // ni:
         m_lb[2 + (PARAMS_PER_INTERFACE * i) + 1] = 1.0;
-        m_ub[2 + (PARAMS_PER_INTERFACE * i) + 1] = 2.0;
+        m_ub[2 + (PARAMS_PER_INTERFACE * i) + 1] = 1.75;
 
         // Ri:
         m_lb[2 + (PARAMS_PER_INTERFACE * i) + 2] = -1000.0;
@@ -107,6 +108,26 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
         lens.di = dv[2 + (PARAMS_PER_INTERFACE * i)];
         lens.ni = dv[2 + (PARAMS_PER_INTERFACE * i) + 1];
         lens.Ri = dv[2 + (PARAMS_PER_INTERFACE * i) + 2];
+
+		//Repair to realistic values
+        if (lens.ni <= 1.25f) {
+            lens.ni = 1.0f; //air gap
+		}
+        else {
+            lens.ni += 0.25; //to bring it up to 1.5 - 2.0 range
+        }
+
+        if (lens.ni != 1.0f) { //glass interfaces are not thick, 1 - 10mm range
+            lens.di = 1.0f + ((lens.di - 0.1f) / (100.0f - 0.1f)) * 9.f;
+        }
+
+        if (lens.Ri >= 0) {
+            lens.Ri = std::clamp(lens.Ri, 5.0f, 1000.0f);
+        }
+        else if (lens.Ri < 0) {
+            lens.Ri = std::clamp(lens.Ri, -1000.0f, -5.0f);
+        }
+
         newLensInterfaces.push_back(lens);
     }
     LensSystem newLensSystem = LensSystem(std::round(dv[0]), dv[1], m_entrance_pupil_height, newLensInterfaces);
@@ -117,7 +138,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     std::vector<glm::vec2> preAptReflectionPairs = newLensSystem.getPreAptReflections();
     std::vector<glm::vec2> postAptReflectionPairs = newLensSystem.getPostAptReflections();
 
-    //not enough ghosts
+    // not enough ghosts, discard
 	if (preAptReflectionPairs.size() + postAptReflectionPairs.size() < m_renderObjective.size()) {
 		return { 100000.0 };
 	}
@@ -143,13 +164,13 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     for (int i = 0; i < m_renderObjective.size(); i++) {
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
         float sizeError = m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight;
-		f += 3 * (sizeError * sizeError) + (posError * posError); //square because human perception more sensitive to big errors than small ones
+		f += 10 * (sizeError * sizeError) + (posError * posError); //square because human perception more sensitive to big errors than small ones
         //Verify the time 3 for size errors, related to units.
     } 
 
     if (newSnapshot.size() > m_renderObjective.size()) {
         for (int i = m_renderObjective.size(); i < newSnapshot.size(); i++) {
-			f += 10 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
+			f += 20 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
         }
     }
 
@@ -183,7 +204,7 @@ void sortByQuadHeight(std::vector<SnapshotData>& snapshotDataUnsorted) {
         });
 }
 
-std::vector<double> runEA(pagmo::archipelago archi) {
+std::vector<std::vector<double>> runEA(pagmo::archipelago archi) {
     std::vector<double> c_solution = archi.get_champions_x()[0];
     double c_fitness = archi.get_champions_f()[0][0];
     std::cout << "Initial Best Fitness: " << c_fitness << std::endl;
@@ -192,49 +213,73 @@ std::vector<double> runEA(pagmo::archipelago archi) {
         std::cout << val << " ";
     }
     std::cout << std::endl;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    unsigned long long total_fevals = 0;
     for (int gen = 0; gen < 15; ++gen) {
         std::cout << "EVOLVING GEN " << gen << std::endl;
         archi.evolve();
         archi.wait();  // Ensure the evolution step is complete
 
-        // Find the best champion across all islands
-        double best_fitness = std::numeric_limits<double>::max(); // Initialize to a very large value
+        // Find the best fitness among all islands during this generation.
+        double best_fitness = std::numeric_limits<double>::max();
         for (const auto& isl : archi) {
-            auto island_champion = isl.get_population().champion_f(); // Get the champion fitness
-            if (island_champion[0] < best_fitness) { // Check if it's better
+            auto island_champion = isl.get_population().champion_f();
+            if (island_champion[0] < best_fitness) {
                 best_fitness = island_champion[0];
             }
         }
 
         std::cout << "CURRENT BEST FITNESS: " << best_fitness << std::endl;
-
-    }
-    //Retrieve and report the best solution.
-    double best_fitness = std::numeric_limits<double>::max(); // Initialize to a very large value
-    std::vector<double> best_champion;
-
-    for (const auto& isl : archi) {
-        auto island_champion = isl.get_population().champion_f(); // Get the champion fitness
-        if (island_champion[0] < best_fitness) { // Check if it's better
-            best_fitness = island_champion[0];
-            best_champion = isl.get_population().champion_x(); // Save the champion decision vector
+        // Sum the function evaluations across all islands.
+        for (const auto& isl : archi) {
+            total_fevals += isl.get_population().get_problem().get_fevals();
         }
+        std::cout << "Total function evaluations after gen " << gen << ": " << total_fevals << std::endl;
     }
 
-    // Print the best champion and its fitness
-    std::cout << "Best Fitness: " << best_fitness << std::endl;
-    std::cout << "Best Champion: ";
-    for (const auto& val : best_champion) {
-        std::cout << val << " ";
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+    int minutes = static_cast<int>(elapsed_seconds / 60);
+    int seconds = static_cast<int>(elapsed_seconds % 60);
+    std::cout << "Computation time: " << minutes << " minutes and " << seconds << " seconds" << std::endl;
+
+    std::vector<std::pair<double, std::vector<double>>> champions;
+    for (const auto& isl : archi) {
+        champions.emplace_back(isl.get_population().champion_f()[0],
+            isl.get_population().champion_x());
     }
-    std::cout << std::endl;
-	return best_champion;
+
+    std::sort(champions.begin(), champions.end(),
+        [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    std::cout << "\nTop 5 Champions:" << std::endl;
+    std::vector<std::vector<double>> top5;
+    size_t num = std::min(champions.size(), static_cast<size_t>(5));
+    for (size_t i = 0; i < num; ++i) {
+        std::cout << "Fitness " << champions[i].first << ": ";
+        for (const auto& val : champions[i].second) {
+            std::cout << val << " ";
+        }
+        std::cout << std::endl;
+        top5.push_back(champions[i].second);
+    }
+
+    // Return the decision vectors of the top 5 champions.
+    return top5;
 }
 
-LensSystem solveLensAnnotations(LensSystem& currentLensSystem, std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y) {
 
+std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
+    std::vector<SnapshotData>& renderObjective,
+    float light_angle_x,
+    float light_angle_y) {
+    // Retrieve current lens interfaces and the number of interfaces.
     std::vector<LensInterface> currentLensInterfaces = currentLensSystem.getLensInterfaces();
     unsigned int num_interfaces = currentLensInterfaces.size();
+
+    // Set up the pagmo problem.
     LensSystemProblem my_problem;
     my_problem.init(num_interfaces, light_angle_x, light_angle_y);
     my_problem.setRenderObjective(renderObjective);
@@ -242,49 +287,79 @@ LensSystem solveLensAnnotations(LensSystem& currentLensSystem, std::vector<Snaps
     std::cout << "Created Pagmo UDP" << std::endl;
 
     // Convert the current lens system to a decision vector.
-    std::vector<double> current_point = convertLensSystem(currentLensSystem.getIrisAperturePos(), currentLensInterfaces, currentLensSystem.getApertureHeight());
+    std::vector<double> current_point = convertLensSystem(currentLensSystem.getIrisAperturePos(),
+        currentLensInterfaces,
+        currentLensSystem.getApertureHeight());
 
-    //Evolutionary Algorithm
-    pagmo::algorithm algo{ pagmo::sade{200} };
-    //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
-    //pagmo::algorithm algo{ pagmo::pso(50u, 0.7298, 2.05, 2.05, 0.5, 6u, 2u, 4u, true, pagmo::random_device::next()) };
-    // 
-    // Create a population.
+    // Set up the evolutionary algorithm.
+    pagmo::algorithm algo{ pagmo::sade{200, true} };
+    // Add more algos to try
     unsigned int amount_dv = current_point.size();
     pagmo::archipelago archi;
-    // Add islands 
-    for (int i = 0; i < 25; ++i) {
+    for (int i = 0; i < 15; ++i) {
         pagmo::population pop(prob, 10 * amount_dv);
-        // Add current lens system to the population.
-        /*for (int i = 0; i < 1; i++) {
-            pop.push_back(current_point);
-        }*/
+        //pop.push_back(current_point);
         archi.push_back(pagmo::island{ algo, pop });
     }
 
-	std::vector<double> best_champion = runEA(archi);
+    std::vector<std::vector<double>> top5_decision_vectors = runEA(archi);
 
-    //Convert the best decision vector back into a vector of LensInterface
-    std::vector<LensInterface> optimized_lens_system;
-    for (int i = 0; i < num_interfaces; i++) {
-        LensInterface lens;
-        lens.di = best_champion[2 + (PARAMS_PER_INTERFACE * i)];
-        lens.ni = best_champion[2 + (PARAMS_PER_INTERFACE * i) + 1];
-        lens.Ri = best_champion[2 + (PARAMS_PER_INTERFACE * i) + 2];
-        lens.lambda0 = currentLensInterfaces[i].lambda0;
-        optimized_lens_system.push_back(lens);
+    std::vector<LensSystem> top5_lens_systems;
+    for (const auto& decision_vector : top5_decision_vectors) {
+        // Construct the new lens interfaces for this candidate.
+        std::vector<LensInterface> optimized_lens_system;
+        for (int i = 0; i < static_cast<int>(num_interfaces); i++) {
+            LensInterface lens;
+            lens.di = decision_vector[2 + (PARAMS_PER_INTERFACE * i)];
+            lens.ni = decision_vector[2 + (PARAMS_PER_INTERFACE * i) + 1];
+            lens.Ri = decision_vector[2 + (PARAMS_PER_INTERFACE * i) + 2];
+
+            //Repair to realistic values
+            if (lens.ni <= 1.25f) {
+                lens.ni = 1.0f; //air gap
+            }
+            else {
+                lens.ni += 0.25; //to bring it up to 1.5 - 2.0 range
+            }
+
+            if (lens.ni != 1.0f) { //glass interfaces are not thick, 1 - 10mm range
+                lens.di = 1.0f + ((lens.di - 0.1f) / (100.0f - 0.1f)) * 9.f;
+            }
+
+            if (lens.Ri >= 0) {
+                lens.Ri = std::clamp(lens.Ri, 5.0f, 1000.0f);
+            }
+            else if (lens.Ri < 0) {
+                lens.Ri = std::clamp(lens.Ri, -1000.0f, -5.0f);
+            }
+
+            // Use the original lambda0 from the current lens interface.
+            lens.lambda0 = currentLensInterfaces[i].lambda0;
+            optimized_lens_system.push_back(lens);
+        }
+
+        // Construct the LensSystem.
+        LensSystem candidate(std::round(decision_vector[0]),
+            decision_vector[1],
+            50.f,
+            optimized_lens_system);
+        top5_lens_systems.push_back(candidate);
     }
 
-    // Output the optimized lens interfaces.
-    for (size_t i = 0; i < optimized_lens_system.size(); i++) {
-        std::cout << "Interface " << i << ": "
-            << "di = " << optimized_lens_system[i].di << ", "
-            << "ni = " << optimized_lens_system[i].ni << ", "
-            << "Ri = " << optimized_lens_system[i].Ri << ", "
-            << "lambda0 = " << optimized_lens_system[i].lambda0 << std::endl;
+    for (size_t j = 0; j < top5_lens_systems.size(); j++) {
+        std::cout << "\nTop " << (j + 1) << " Lens System:" << std::endl;
+        std::vector<LensInterface> interfaces = top5_lens_systems[j].getLensInterfaces();
+        for (size_t i = 0; i < interfaces.size(); i++) {
+            std::cout << "Interface " << i << ": "
+                << "di = " << interfaces[i].di << ", "
+                << "ni = " << interfaces[i].ni << ", "
+                << "Ri = " << interfaces[i].Ri << ", "
+                << "lambda0 = " << interfaces[i].lambda0 << std::endl;
+        }
     }
 
-    return LensSystem(std::round(best_champion[0]), best_champion[1], 40.f, optimized_lens_system);
+    // Return the top 5 optimized lens systems.
+    return top5_lens_systems;
 }
 
 int combination2(int n) {
@@ -312,7 +387,9 @@ int interfacesNeeded(int ghostsWanted) {
     return n;
 }
 
-LensSystem solveLensAnnotations(std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y) {
+std::vector<LensSystem> solveLensAnnotations(std::vector<SnapshotData>& renderObjective,
+    float light_angle_x,
+    float light_angle_y) {
 
     unsigned int num_interfaces = interfacesNeeded(renderObjective.size());
 
@@ -322,42 +399,68 @@ LensSystem solveLensAnnotations(std::vector<SnapshotData>& renderObjective, floa
     pagmo::problem prob{ my_problem };
     std::cout << "Created Pagmo UDP" << std::endl;
 
-    // Convert the current lens system to a decision vector.
-    //Differential Evolution (DE) with 100 generations per evolve call.
     pagmo::algorithm algo{ pagmo::sade{200} };
-    //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
-    //pagmo::algorithm algo{ pagmo::pso(50u, 0.7298, 2.05, 2.05, 0.5, 6u, 2u, 4u, true, pagmo::random_device::next()) };
-    // 
-    // Create a population.
+
     unsigned int amount_dv = 2 + (num_interfaces * PARAMS_PER_INTERFACE);
+
     pagmo::archipelago archi;
-    // Add islands 
-    for (int i = 0; i < 25; ++i) {
+    for (int i = 0; i < 15; ++i) {
         pagmo::population pop(prob, 10 * amount_dv);
         archi.push_back(pagmo::island{ algo, pop });
     }
 
-    std::vector<double> best_champion = runEA(archi);
+    std::vector<std::vector<double>> top5_champions = runEA(archi);
 
-    //Convert the best decision vector back into a vector of LensInterface
-    std::vector<LensInterface> optimized_lens_system;
-    for (int i = 0; i < num_interfaces; i++) {
-        LensInterface lens;
-        lens.di = best_champion[2 + (PARAMS_PER_INTERFACE * i)];
-        lens.ni = best_champion[2 + (PARAMS_PER_INTERFACE * i) + 1];
-        lens.Ri = best_champion[2 + (PARAMS_PER_INTERFACE * i) + 2];
-        lens.lambda0 = 440;
-        optimized_lens_system.push_back(lens);
+    std::vector<LensSystem> top5_lens_systems;
+    for (const auto& candidate : top5_champions) {
+        std::vector<LensInterface> optimized_lens_system;
+        for (int i = 0; i < static_cast<int>(num_interfaces); i++) {
+            LensInterface lens;
+            lens.di = candidate[2 + (PARAMS_PER_INTERFACE * i)];
+            lens.ni = candidate[2 + (PARAMS_PER_INTERFACE * i) + 1];
+            lens.Ri = candidate[2 + (PARAMS_PER_INTERFACE * i) + 2];
+
+            //Repair to realistic values
+            if (lens.ni <= 1.25f) {
+                lens.ni = 1.0f; //air gap
+            }
+            else {
+                lens.ni += 0.25; //to bring it up to 1.5 - 2.0 range
+            }
+
+            if (lens.ni != 1.0f) { //glass interfaces are not thick, 1 - 10mm range
+                lens.di = 1.0f + ((lens.di - 0.1f) / (100.0f - 0.1f)) * 9.f;
+            }
+
+            if (lens.Ri >= 0) {
+                lens.Ri = std::clamp(lens.Ri, 5.0f, 1000.0f);
+            }
+            else if (lens.Ri < 0) {
+                lens.Ri = std::clamp(lens.Ri, -1000.0f, -5.0f);
+            }
+
+            lens.lambda0 = 440;
+            optimized_lens_system.push_back(lens);
+        }
+
+        LensSystem candidate_ls(std::round(candidate[0]),
+            candidate[1],
+            50,
+            optimized_lens_system);
+        top5_lens_systems.push_back(candidate_ls);
     }
 
-    // Output the optimized lens interfaces.
-    for (size_t i = 0; i < optimized_lens_system.size(); i++) {
-        std::cout << "Interface " << i << ": "
-            << "di = " << optimized_lens_system[i].di << ", "
-            << "ni = " << optimized_lens_system[i].ni << ", "
-            << "Ri = " << optimized_lens_system[i].Ri << ", "
-            << "lambda0 = " << optimized_lens_system[i].lambda0 << std::endl;
+    for (size_t j = 0; j < top5_lens_systems.size(); j++) {
+        std::cout << "\nTop " << (j + 1) << " Lens System:" << std::endl;
+        std::vector<LensInterface> interfaces = top5_lens_systems[j].getLensInterfaces();
+        for (size_t i = 0; i < interfaces.size(); i++) {
+            std::cout << "Interface " << i << ": "
+                << "di = " << interfaces[i].di << ", "
+                << "ni = " << interfaces[i].ni << ", "
+                << "Ri = " << interfaces[i].Ri << ", "
+                << "lambda0 = " << interfaces[i].lambda0 << std::endl;
+        }
     }
 
-    return LensSystem(std::round(best_champion[0]), best_champion[1], 50, optimized_lens_system);
+    return top5_lens_systems;
 }

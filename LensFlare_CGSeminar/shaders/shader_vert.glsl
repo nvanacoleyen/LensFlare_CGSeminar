@@ -81,7 +81,7 @@ void main()
     vec2 apt_h_x_s = Ms * Ma * apt_h_x;
     float ghost_height = abs(apt_h_x_s.x - quad_center_pos.x);
 
-    intensityVal = 1 / (ghost_height * sizeAnnotationTransform);
+    intensityVal = irisApertureHeight / (ghost_height * sizeAnnotationTransform);
 
     vec2 entrance_pupil_h_x_s;
     vec2 entrance_pupil_center_x_s;

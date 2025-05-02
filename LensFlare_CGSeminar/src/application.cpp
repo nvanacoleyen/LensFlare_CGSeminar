@@ -127,7 +127,6 @@ public:
         refreshTransmissions(glm::vec2(0.001f), m_quarterWaveCoating);
 
         m_resetAnnotations = true;
-        m_calibrateLightSource = true;
     }
 
     void refreshTransmissions(glm::vec2 yawandPitch, bool quarterWaveCoating) {
@@ -310,9 +309,6 @@ public:
         float newc_ni = 1.38f;
 
         int interfaceToRemove = 0;
-        
-        int irisAperturePos = m_lensSystem.getIrisAperturePos();
-        int irisAperturePosMemory = irisAperturePos;
 
         glm::vec3 selected_ghost_color = glm::vec3(1.0f, 0.0f, 0.0f);
 
@@ -365,6 +361,7 @@ public:
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshMatricesAndQuads();
+                    m_calibrateLightSource = true;
                     m_selectedQuadIndex = -1;
                 }
                 if (ImGui::Button("Load Canon Lens System")) {
@@ -372,6 +369,7 @@ public:
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshMatricesAndQuads();
+                    m_calibrateLightSource = true;
                     m_selectedQuadIndex = -1;
                 }
                 if (ImGui::Button("Load Test Lens System")) {
@@ -379,6 +377,7 @@ public:
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshMatricesAndQuads();
+                    m_calibrateLightSource = true;
                     m_selectedQuadIndex = -1;
                 }
             }
@@ -981,9 +980,14 @@ public:
                     for (const auto& vec : m_postAPTtransmissions) {
                         totalSum += vec.x + vec.y + vec.z;
                     }
-					m_light_intensity = (1.0f / (totalSum)) * 20;
-					min_light_intensity = m_light_intensity * 0.1f;
-					max_light_intensity = m_light_intensity * 5.0f;
+					m_light_intensity = (1.0f / (totalSum)) * 3;
+					min_light_intensity = 0.1f;
+					max_light_intensity = m_light_intensity * 7.0f;
+
+                    if (std::isinf(max_light_intensity)) {
+                        max_light_intensity = 1000000.0f;
+                    }
+
 					m_calibrateLightSource = false;
                 }
 
@@ -1137,7 +1141,9 @@ public:
              
                 if (optimizeLensSystemWithEA) {
                     //Optimize
-                    m_lensSystem = solveLensAnnotations(m_lensSystem, m_snapshotData, m_yawandPitch.x, m_yawandPitch.y);
+                    eaTop5Systems = solveLensAnnotations(m_lensSystem, m_snapshotData, m_yawandPitch.x, m_yawandPitch.y);
+                    eaTop5SystemsIndex = 0;
+					m_lensSystem = eaTop5Systems[0];
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
 
                     refreshMatricesAndQuads();
@@ -1148,6 +1154,7 @@ public:
 
                     optimizeLensSystemWithEA = false;
                     m_resetAnnotations = true;
+                    m_calibrateLightSource = true;
                 }
 
                 if (optimizeLensCoatingsWithEA) {
@@ -1172,6 +1179,7 @@ public:
                     m_selectedQuadIndex = -1;
 					optimizeLensCoatingsWithEA = false;
 					m_resetAnnotations = true;
+                    m_calibrateLightSource = true;
                 }
 
                 m_quadCenterShader.bind();
@@ -1265,7 +1273,9 @@ public:
 						snapshotData.push_back(conversion);
 					}
                     //Optimize
-                    m_lensSystem = solveLensAnnotations(snapshotData, m_yawandPitch.x, m_yawandPitch.y);
+                    eaTop5Systems = solveLensAnnotations(snapshotData, m_yawandPitch.x, m_yawandPitch.y);
+                    eaTop5SystemsIndex = 0;
+					m_lensSystem = eaTop5Systems[0];
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
 
                     refreshMatricesAndQuads();
@@ -1348,13 +1358,35 @@ public:
                 std::cout << "Selected Ghost: " << m_selectedQuadIDs[m_selectedQuadIndex] << std::endl;
             }
             break;
+        case GLFW_KEY_RIGHT:
+            if (eaTop5Systems.size() > 0) {
+				eaTop5SystemsIndex++;
+				if (eaTop5SystemsIndex >= eaTop5Systems.size()) {
+					eaTop5SystemsIndex = 0;
+				}
+
+                m_lensSystem = eaTop5Systems[eaTop5SystemsIndex];
+                m_lens_interfaces = m_lensSystem.getLensInterfaces();
+
+                refreshMatricesAndQuads();
+                m_selectedQuadIndex = -1;
+
+                irisAperturePos = m_lensSystem.getIrisAperturePos();
+                irisAperturePosMemory = irisAperturePos;
+
+                m_resetAnnotations = true;
+                m_calibrateLightSource = true;
+
+            }
+            break;
         case GLFW_KEY_R:
             m_camera.m_forward = glm::normalize(-glm::vec3(0.0001f, 0.0001f, -1.0f));
 			m_camera.m_up = glm::vec3(0.0f, 1.0f, 0.0f);
             m_takeSnapshot = 1;
             break;
         case GLFW_KEY_S:
-            m_window.renderToImage("C:/Users/Neil Van Acoleyen/Desktop/render.png", true);
+            m_window.renderToImage("C:/Users/neilv/Desktop/Results/Renders/flare_render" + std::to_string(renderSaveCount) + ".png", true);
+            renderSaveCount++;
             break;
         default:
             break;
@@ -1531,6 +1563,12 @@ private:
     std::vector<std::pair<float, glm::vec3>> m_reflectivity_per_lambda_first_interface;
     std::vector<std::pair<float, glm::vec3>> m_reflectivity_per_lambda_second_interface;
 
+    std::vector<LensSystem> eaTop5Systems;
+    int eaTop5SystemsIndex = 0;
+
+    int irisAperturePos = m_lensSystem.getIrisAperturePos();
+    int irisAperturePosMemory = irisAperturePos;
+
     glm::mat4 m_sensorMatrix;
 
     /* Ghost Selection */
@@ -1569,6 +1607,8 @@ private:
     glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 20.f };
     float m_light_intensity = 150.0f;
     bool m_calibrateLightSource = true;
+
+    int renderSaveCount = 1;
 
 };
 

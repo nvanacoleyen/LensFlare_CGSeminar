@@ -28,5 +28,5 @@ struct LensSystemProblem {
 };
 
 void sortByQuadHeight(std::vector<SnapshotData>& snapshotDataUnsorted);
-LensSystem solveLensAnnotations(LensSystem& currentLensSystem, std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y);
-LensSystem solveLensAnnotations(std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y);
+std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem, std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y);
+std::vector<LensSystem> solveLensAnnotations(std::vector<SnapshotData>& renderObjective, float light_angle_x, float light_angle_y);
