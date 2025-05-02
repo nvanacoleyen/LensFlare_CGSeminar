@@ -14,6 +14,7 @@ layout(location = 12) uniform int quadID;
 layout(location = 14) uniform int m_takeSnapshot;
 layout(location = 15) uniform vec2 posAnnotationTransform;
 layout(location = 16) uniform float sizeAnnotationTransform;
+layout(location = 17) uniform bool disableEntranceClipping;
 
 struct SnapshotData {
     int quadID;
@@ -82,13 +83,19 @@ void main()
 
     intensityVal = 1 / (ghost_height * sizeAnnotationTransform);
 
-    vec2 entrance_pupil_h_x_s = Ms * Ma * vec2(entrance_pupil_height, light_angle_x);
-    vec2 entrance_pupil_center_x_s = Ms * Ma * vec2(0.f, light_angle_x);
-	float entrance_pupil_height_s = abs(entrance_pupil_h_x_s.x - entrance_pupil_center_x_s.x);
+    vec2 entrance_pupil_h_x_s;
+    vec2 entrance_pupil_center_x_s;
+    float entrance_pupil_height_s;
+
+    if (!disableEntranceClipping) {
+        entrance_pupil_h_x_s = Ms * Ma * vec2(entrance_pupil_height, light_angle_x);
+        entrance_pupil_center_x_s = Ms * Ma * vec2(0.f, light_angle_x);
+	    entrance_pupil_height_s = abs(entrance_pupil_h_x_s.x - entrance_pupil_center_x_s.x);
+    }
 
     vec2 centerPos;
     float height;
-    if (entrance_pupil_height_s < ghost_height) {
+    if (entrance_pupil_height_s < ghost_height && !disableEntranceClipping) {
         vec2 entrance_pupil_center_y_s = Ms * Ma * vec2(0.f, light_angle_y);
         centerPos = vec2(entrance_pupil_center_x_s.x, entrance_pupil_center_y_s.x);
         height = entrance_pupil_height_s;

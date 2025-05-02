@@ -11,11 +11,12 @@ struct LensSystemProblem {
     float m_light_angle_x;
     float m_light_angle_y;
     unsigned int m_dim;             // total number of decision variables
+    float m_entrance_pupil_height = 50.f;
     pagmo::vector_double m_lb;       // lower bounds for each variable
     pagmo::vector_double m_ub;       // upper bounds for each variable
     std::vector<SnapshotData> m_renderObjective;
     //Simulate drawing a quad, only necessary info for snapshot
-    SnapshotData simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y, float irisApertureHeight, float entrancePupilHeight) const;
+    SnapshotData simulateDrawQuad(int quadId, glm::mat2x2& Ma, glm::mat2x2& Ms, float light_angle_x, float light_angle_y, float irisApertureHeight) const;
     // Set the problem dimension and bounds
     void init(unsigned int num_interfaces, float light_angle_x, float light_angle_y);
     // Set the render objectives for the fitness function

@@ -223,31 +223,48 @@ void Window::swapBuffers()
 }
 
 
-void Window::renderToImage (const std::filesystem::path& filePath, const bool flipY) {
-        std::vector <GLubyte> pixels;
-        pixels.reserve (4 * m_windowSize.x * m_windowSize.y);
+void Window::renderToImage(const std::filesystem::path& filePath, const bool flipY)
+{
+    // Calculate the starting x coordinate for the crop (ignore left 1/4 of the window)
+    int cropStart = m_windowSize.x / 4;
 
-        glReadPixels(0, 0, m_windowSize.x, m_windowSize.y, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    // The output width is the remaining 3/4 of the window width.
+    int outWidth = m_windowSize.x - cropStart;
+    int outHeight = m_windowSize.y;
 
-        std::string filePathString = filePath.string();
+    // Allocate memory for the cropped pixel data (RGBA)
+    std::vector<unsigned char> pixels(outWidth * outHeight * 4);
 
-        // flips Y axis
-        if (flipY) {
-            // swap entire lines (if height is odd will not touch middle line)
-            for(int line = 0; line != m_windowSize.y/2; ++line) {
-                   std::swap_ranges(pixels.begin() + 4 * m_windowSize.x * line,
-                    pixels.begin() + 4 * m_windowSize.x * (line + 1),
-                    pixels.begin() + 4 * m_windowSize.x * (m_windowSize.y - line - 1));
+    // Make sure rendering is complete.
+    glFlush();
+    glFinish();
+
+    // Read pixels from the default framebuffer.
+    // Instead of reading from (0,0) with m_windowSize.x width, we start at cropStart.
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadBuffer(GL_FRONT);
+    glReadPixels(cropStart, 0, outWidth, outHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+    // Optionally flip the image vertically.
+    if (flipY) {
+        for (int j = 0; j < outHeight / 2; ++j) {
+            int index1 = j * outWidth * 4;
+            int index2 = (outHeight - 1 - j) * outWidth * 4;
+            for (int i = 0; i < outWidth * 4; ++i) {
+                std::swap(pixels[index1 + i], pixels[index2 + i]);
             }
         }
+    }
 
-        if ((filePath.extension()).compare(".bmp") == 0) {
-            stbi_write_bmp(filePathString.c_str(), m_windowSize.x, m_windowSize.y, 4, pixels.data());
-        }
-        else if ((filePath.extension()).compare(".png") == 0) {
-            stbi_write_png(filePathString.c_str(), m_windowSize.x, m_windowSize.y, 4, pixels.data(), 4*m_windowSize.x);
-        }
+    std::string filename = filePath.string();
+    // Write the image to a PNG file.
+    // The stride is outWidth * 4 bytes per row.
+    if (stbi_write_png(filename.c_str(), outWidth, outHeight, 4, pixels.data(), outWidth * 4))
+        std::cout << "Saved render to " << filename << "\n";
+    else
+        std::cerr << "Failed to write image file\n";
 }
+
 
 
 void Window::registerKeyCallback(KeyCallback&& callback)

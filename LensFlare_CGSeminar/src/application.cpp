@@ -392,10 +392,10 @@ public:
                 fovMemory = fov;
             }
 
-            ImGui::SliderFloat("Aperture Height", &m_lensSystem.m_aperture_height, 0.0f, 40.0f);
+            ImGui::SliderFloat("Aperture Height", &m_lensSystem.m_aperture_height, 0.0f, 30.0f);
             if (!m_buildFromScratch) {
                 ImGui::InputInt("Aperture Position", &irisAperturePos);
-                ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 40.0f);
+                ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 50.0f);
                 ImGui::Checkbox("Disable Entrance Clipping", &disableEntranceClipping);
                 ImGui::Checkbox("Grey Scale", &greyScaleColor);
                 ImGui::Text("Coatings: ");
@@ -1352,7 +1352,10 @@ public:
             m_camera.m_forward = glm::normalize(-glm::vec3(0.0001f, 0.0001f, -1.0f));
 			m_camera.m_up = glm::vec3(0.0f, 1.0f, 0.0f);
             m_takeSnapshot = 1;
-
+            break;
+        case GLFW_KEY_S:
+            m_window.renderToImage("C:/Users/Neil Van Acoleyen/Desktop/render.png", true);
+            break;
         default:
             break;
         }

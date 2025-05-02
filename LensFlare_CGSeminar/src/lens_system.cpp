@@ -52,12 +52,39 @@ void LensSystem::setLensInterfaces(std::vector<LensInterface> newLensInterfaces)
 std::vector<glm::mat2x2> LensSystem::getRayTransferMatrices() {
 	std::vector<glm::mat2x2> rayTransferMatrices;
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+
+	auto effective_ni = [this](int idx) -> float {
+		if (idx == m_iris_aperture_pos)
+			return 1.0f;
+		return m_lens_interfaces[idx].ni;
+		};
+
+	auto effective_Ri = [this](int idx) -> float {
+		if (idx == m_iris_aperture_pos)
+			return std::numeric_limits<float>::infinity();
+		return m_lens_interfaces[idx].Ri;
+		};
+
 	for (int i = 0; i < m_lens_interfaces.size(); i++) {
 		if (i == 0) {
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
+			rayTransferMatrices.push_back(
+				rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+					m_lens_interfaces[i].di,
+					1.0f,
+					effective_ni(i),
+					effective_Ri(i)
+				)
+			);
 		}
 		else {
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i-1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
+			rayTransferMatrices.push_back(
+				rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+					m_lens_interfaces[i].di,
+					effective_ni(i - 1),
+					effective_ni(i),
+					effective_Ri(i)
+				)
+			);
 		}
 	}
 	return rayTransferMatrices;
@@ -66,31 +93,95 @@ std::vector<glm::mat2x2> LensSystem::getRayTransferMatrices() {
 std::vector<glm::mat2x2> LensSystem::getRayTransferMatricesWithReflection(int firstReflectionPos, int secondReflectionPos) {
 	std::vector<glm::mat2x2> rayTransferMatrices;
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
-	//check if reflection makes sense
+
+	// Check if reflection positions make sense:
+	// firstReflectionPos > secondReflectionPos, secondReflectionPos >= 0, and firstReflectionPos within valid indices.
 	if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < m_lens_interfaces.size()) {
-		//iterate until first reflection
+
+		// Since the iris aperture cannot be between the reflection positions,
+		// assert that it lies either at or before secondReflectionPos or at or after firstReflectionPos.
+		assert(m_iris_aperture_pos <= secondReflectionPos || m_iris_aperture_pos >= firstReflectionPos);
+
+		// Helper lambdas: if the interface index equals m_iris_aperture_pos, override its parameters.
+		auto effective_ni = [this](int idx) -> float {
+			if (idx == m_iris_aperture_pos)
+				return 1.0f;
+			return m_lens_interfaces[idx].ni;
+			};
+
+		auto effective_Ri = [this](int idx) -> float {
+			if (idx == m_iris_aperture_pos)
+				return std::numeric_limits<float>::infinity();
+			return m_lens_interfaces[idx].Ri;
+			};
+
+		// --- Segment A: Forward propagation until the first reflection ---
 		for (int i = 0; i < firstReflectionPos; i++) {
 			if (i == 0) {
-				rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
+				rayTransferMatrices.push_back(
+					rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+						m_lens_interfaces[i].di,
+						1.f,
+						effective_ni(i),
+						effective_Ri(i)
+					)
+				);
 			}
 			else {
-				rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
+				rayTransferMatrices.push_back(
+					rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+						m_lens_interfaces[i].di,
+						effective_ni(i - 1),
+						effective_ni(i),
+						effective_Ri(i)
+					)
+				);
 			}
 		}
-		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri)); //reflection step
-		//iterate until second reflection
+
+		// --- Reflection at firstReflectionPos ---
+		rayTransferMatrices.push_back(
+			rayTransferMatrixBuilder.getReflectionMatrix(effective_Ri(firstReflectionPos))
+		);
+
+		// --- Segment B: Backward propagation until the second reflection ---
 		for (int i = firstReflectionPos - 1; i > secondReflectionPos; i--) {
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
+			rayTransferMatrices.push_back(
+				rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(
+					m_lens_interfaces[i].di,
+					effective_ni(i - 1),
+					effective_ni(i),
+					effective_Ri(i)
+				)
+			);
 		}
-		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di));
-		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri)); //reflection step
-		rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di));
+
+		// --- Second reflection handling: translation, reflection, and translation ---
+		rayTransferMatrices.push_back(
+			rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di)
+		);
+		rayTransferMatrices.push_back(
+			rayTransferMatrixBuilder.getReflectionMatrix(-effective_Ri(secondReflectionPos))
+		);
+		rayTransferMatrices.push_back(
+			rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di)
+		);
+
+		// --- Segment C: Forward propagation after the second reflection ---
 		for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); i++) {
-			rayTransferMatrices.push_back(rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri));
+			rayTransferMatrices.push_back(
+				rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+					m_lens_interfaces[i].di,
+					effective_ni(i - 1),
+					effective_ni(i),
+					effective_Ri(i)
+				)
+			);
 		}
 	}
 	return rayTransferMatrices;
 }
+
 
 glm::mat2x2 LensSystem::getMa() const {
 	glm::mat2x2 Ma = glm::mat2(1.0f);
@@ -109,16 +200,44 @@ glm::mat2x2 LensSystem::getMa() const {
 glm::mat2x2 LensSystem::getMs() {
 	glm::mat2x2 Ms = glm::mat2(1.0f);
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
+
+	// Helper lambdas that return forced parameters when at the iris aperture index
+	auto effective_ni = [this](int idx) -> float {
+		if (idx == m_iris_aperture_pos)
+			return 1.0f;
+		return m_lens_interfaces[idx].ni;
+		};
+
+	auto effective_Ri = [this](int idx) -> float {
+		if (idx == m_iris_aperture_pos)
+			return std::numeric_limits<float>::infinity();
+		return m_lens_interfaces[idx].Ri;
+		};
+
+	// Loop over propagation starting from the iris aperture position.
 	for (int i = m_iris_aperture_pos; i < m_lens_interfaces.size(); i++) {
-		if (i == 0) {
-			Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+		if (i == m_iris_aperture_pos) {
+			// For the first propagation step, the "incoming" medium is 1.0f (or effective_ni(i-1) if m_iris_aperture_pos == 0)
+			float previousNi = (i == 0) ? 1.0f : effective_ni(i - 1);
+			Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+				m_lens_interfaces[i].di,
+				previousNi,
+				effective_ni(i),
+				effective_Ri(i)
+			) * Ms;
 		}
 		else {
-			Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+			Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+				m_lens_interfaces[i].di,
+				effective_ni(i - 1),
+				effective_ni(i),
+				effective_Ri(i)
+			) * Ms;
 		}
 	}
 	return Ms;
 }
+
 
 glm::mat2x2 LensSystem::getMa(int firstReflectionPos, int secondReflectionPos) const {
 	glm::mat2x2 Ma = glm::mat2(1.0f);
@@ -164,36 +283,90 @@ glm::mat2x2 LensSystem::getMa(int firstReflectionPos, int secondReflectionPos) c
 glm::mat2x2 LensSystem::getMs(int firstReflectionPos, int secondReflectionPos) {
 	glm::mat2x2 Ms = glm::mat2(1.0f);
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
-	//check if reflection makes sense
-	if (firstReflectionPos > secondReflectionPos && secondReflectionPos >= 0 && firstReflectionPos < m_lens_interfaces.size()) {
-		//check if reflection happens after aperture
+
+	// Check if reflection positions make sense:
+	if (firstReflectionPos > secondReflectionPos &&
+		secondReflectionPos >= 0 &&
+		firstReflectionPos < m_lens_interfaces.size()) {
+
+		// Helper lambdas: If the current interface index equals m_iris_aperture_pos, force a refractive index 
+		// of 1.0f and a curvature of infinity.
+		auto effective_ni = [this](int idx) -> float {
+			return (idx == m_iris_aperture_pos) ? 1.0f : m_lens_interfaces[idx].ni;
+			};
+		auto effective_Ri = [this](int idx) -> float {
+			return (idx == m_iris_aperture_pos) ? std::numeric_limits<float>::infinity() : m_lens_interfaces[idx].Ri;
+			};
+
+		// If both reflections happen after the iris aperture...
 		if (firstReflectionPos > m_iris_aperture_pos && secondReflectionPos > m_iris_aperture_pos) {
+			// Forward propagation from the iris aperture (m_iris_aperture_pos) until first reflection.
 			for (int i = m_iris_aperture_pos; i < firstReflectionPos; i++) {
-				if (i == 0) {
-					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				if (i == m_iris_aperture_pos) {
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+						m_lens_interfaces[i].di,
+						1.f,
+						effective_ni(i),
+						effective_Ri(i)
+					) * Ms;
 				}
 				else {
-					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+						m_lens_interfaces[i].di,
+						effective_ni(i - 1),
+						effective_ni(i),
+						effective_Ri(i)
+					) * Ms;
 				}
 			}
-			Ms = rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri) * Ms; //reflection step
+
+			// Reflection at firstReflectionPos.
+			Ms = rayTransferMatrixBuilder.getReflectionMatrix(effective_Ri(firstReflectionPos)) * Ms;
+
+			// Backward propagation until the second reflection.
 			for (int i = firstReflectionPos - 1; i > secondReflectionPos; i--) {
-				Ms = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				Ms = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(
+					m_lens_interfaces[i].di,
+					effective_ni(i - 1),
+					effective_ni(i),
+					effective_Ri(i)
+				) * Ms;
 			}
+
+			// Second reflection handling:
 			Ms = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * Ms;
-			Ms = rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri) * Ms; //reflection step
+			Ms = rayTransferMatrixBuilder.getReflectionMatrix(-effective_Ri(secondReflectionPos)) * Ms;
 			Ms = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * Ms;
+
+			// Forward propagation after the second reflection.
 			for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); i++) {
-				Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+					m_lens_interfaces[i].di,
+					effective_ni(i - 1),
+					effective_ni(i),
+					effective_Ri(i)
+				) * Ms;
 			}
 		}
+		// Otherwise, reflection does not occur after the iris aperture.
 		else {
+			// Propagate from the iris aperture through to the last interface.
 			for (int i = m_iris_aperture_pos; i < m_lens_interfaces.size(); i++) {
-				if (i == 0) {
-					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, 1.f, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+				if (i == m_iris_aperture_pos) {
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+						m_lens_interfaces[i].di,
+						1.f,
+						effective_ni(i),
+						effective_Ri(i)
+					) * Ms;
 				}
 				else {
-					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * Ms;
+					Ms = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+						m_lens_interfaces[i].di,
+						effective_ni(i - 1),
+						effective_ni(i),
+						effective_Ri(i)
+					) * Ms;
 				}
 			}
 		}
@@ -201,6 +374,7 @@ glm::mat2x2 LensSystem::getMs(int firstReflectionPos, int secondReflectionPos) {
 
 	return Ms;
 }
+
 
 std::vector<glm::vec2> LensSystem::getPreAptReflections() {
 	std::vector<glm::vec2> reflectionPairs;
@@ -279,7 +453,7 @@ glm::vec3 LensSystem::computeFresnelAR (
 	float n2		// RI of the 2nd medium
 ) const {
 	// No coating between two air layers
-	if (n0 == 1.0f && n2 == 1.0f) {
+	if (n0 < 1.1f && n2 < 1.1f) {
 		return glm::vec3(0.f);
 	}
 
@@ -335,10 +509,31 @@ glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondRe
 	RayTransferMatrixBuilder rayTransferMatrixBuilder;
 	glm::vec2 propagated_ray = ray;
 
+	auto effective_ni = [this](int idx) -> float {
+		if (idx == m_iris_aperture_pos)
+			return 1.0f;
+		return m_lens_interfaces[idx].ni;
+		};
+
+	auto effective_Ri = [this](int idx) -> float {
+		if (idx == m_iris_aperture_pos)
+			return std::numeric_limits<float>::infinity();
+		return m_lens_interfaces[idx].Ri;
+		};
+
+	// Modify computeOpticalParams to use effective_ni when appropriate.
 	auto computeOpticalParams = [&](int i) -> std::pair<float, float> {
-		float n = quarterWaveCoating ? std::max(sqrt((i == 0 ? 1.0f : m_lens_interfaces[i - 1].ni) * m_lens_interfaces[i].ni), 1.38f)
-			: m_lens_interfaces[i].c_ni;
-		float d = quarterWaveCoating ? m_lens_interfaces[i].lambda0 / (4 * n)
+		float n;
+		if (i == m_iris_aperture_pos) {
+			n = 1.0f;
+		}
+		else {
+			n = quarterWaveCoating
+				? std::max(sqrt((i == 0 ? 1.0f : effective_ni(i - 1)) * effective_ni(i)), 1.38f)
+				: m_lens_interfaces[i].c_ni;
+		}
+		float d = quarterWaveCoating
+			? m_lens_interfaces[i].lambda0 / (4 * n)
 			: m_lens_interfaces[i].c_di;
 		return { n, d };
 		};
@@ -346,39 +541,62 @@ glm::vec3 LensSystem::propagateTransmission(int firstReflectionPos, int secondRe
 	// Forward propagation until first reflection
 	for (int i = 0; i < firstReflectionPos; ++i) {
 		auto [n1, d1] = computeOpticalParams(i);
-		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, (i == 0 ? 1.f : m_lens_interfaces[i - 1].ni), n1, m_lens_interfaces[i].ni);
-		propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, (i == 0 ? 1.f : m_lens_interfaces[i - 1].ni), m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
+		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, (i == 0 ? 1.f : effective_ni(i - 1)), n1, effective_ni(i));
+		propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+			m_lens_interfaces[i].di,
+			(i == 0 ? 1.f : effective_ni(i - 1)),
+			effective_ni(i),
+			effective_Ri(i)) * propagated_ray;
 	}
 
 	// First reflection
-	auto [n1, d1] = computeOpticalParams(firstReflectionPos);
-	transmissions *= computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[firstReflectionPos - 1].ni, n1, m_lens_interfaces[firstReflectionPos].ni);
-	propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(m_lens_interfaces[firstReflectionPos].Ri) * propagated_ray;
+	{
+		auto [n1, d1] = computeOpticalParams(firstReflectionPos);
+		transmissions *= computeFresnelAR(propagated_ray.y, d1, effective_ni(firstReflectionPos - 1), n1, effective_ni(firstReflectionPos));
+		propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(effective_Ri(firstReflectionPos)) * propagated_ray;
+	}
 
 	// Backward propagation until second reflection
 	for (int i = firstReflectionPos - 1; i > secondReflectionPos; --i) {
 		auto [n1, d1] = computeOpticalParams(i);
-		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[i].ni, n1, m_lens_interfaces[i - 1].ni);
-		propagated_ray = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
+		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, effective_ni(i), n1, effective_ni(i - 1));
+		propagated_ray = rayTransferMatrixBuilder.getinverseRefractionBackwardsTranslationMatrix(
+			m_lens_interfaces[i].di,
+			effective_ni(i - 1),
+			effective_ni(i),
+			effective_Ri(i)) * propagated_ray;
 	}
 
 	// Second reflection handling
-	auto [n1_second, d1_second] = computeOpticalParams(secondReflectionPos);
-	transmissions *= computeFresnelAR(propagated_ray.y, d1_second, m_lens_interfaces[secondReflectionPos].ni, n1_second, (secondReflectionPos == 0 ? 1.f : m_lens_interfaces[secondReflectionPos - 1].ni));
+	{
+		auto [n1_second, d1_second] = computeOpticalParams(secondReflectionPos);
+		transmissions *= computeFresnelAR(
+			propagated_ray.y,
+			d1_second,
+			effective_ni(secondReflectionPos),
+			n1_second,
+			(secondReflectionPos == 0 ? 1.f : effective_ni(secondReflectionPos - 1))
+		);
 
-	propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
-	propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(-m_lens_interfaces[secondReflectionPos].Ri) * propagated_ray;
-	propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
+		propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
+		propagated_ray = rayTransferMatrixBuilder.getReflectionMatrix(-effective_Ri(secondReflectionPos)) * propagated_ray;
+		propagated_ray = rayTransferMatrixBuilder.getTranslationMatrix(m_lens_interfaces[secondReflectionPos].di) * propagated_ray;
+	}
 
 	// Forward propagation after second reflection
 	for (int i = secondReflectionPos + 1; i < m_lens_interfaces.size(); ++i) {
 		auto [n1, d1] = computeOpticalParams(i);
-		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, m_lens_interfaces[i - 1].ni, n1, m_lens_interfaces[i].ni);
-		propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(m_lens_interfaces[i].di, m_lens_interfaces[i - 1].ni, m_lens_interfaces[i].ni, m_lens_interfaces[i].Ri) * propagated_ray;
+		transmissions *= glm::vec3(1.f) - computeFresnelAR(propagated_ray.y, d1, effective_ni(i - 1), n1, effective_ni(i));
+		propagated_ray = rayTransferMatrixBuilder.getTranslationRefractionMatrix(
+			m_lens_interfaces[i].di,
+			effective_ni(i - 1),
+			effective_ni(i),
+			effective_Ri(i)) * propagated_ray;
 	}
 
 	return transmissions;
 }
+
 
 
 //Per ghost trace ray through system to get reflectance/transmission of color
