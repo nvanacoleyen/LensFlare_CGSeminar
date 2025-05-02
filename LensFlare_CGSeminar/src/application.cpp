@@ -1018,7 +1018,7 @@ public:
                         m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, selected_ghost_color, m_annotationData[i]);
                     }
                     else if (m_optimizeInterfacesWithEA || greyScaleColor) {
-                        glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 15 * ghostIntensity);
+                        glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 2 * ghostIntensity);
                         m_preAptQuads[i].drawQuad(m_preAptMas[i], m_default_Ms, greyscaleColor, m_annotationData[i]);
                     }
                     else {
@@ -1036,7 +1036,7 @@ public:
                         m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], selected_ghost_color, m_annotationData[i + m_preAptReflectionPairs.size()]);
                     }
                     else if (m_optimizeInterfacesWithEA || greyScaleColor) {
-                        glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 15 * ghostIntensity);
+                        glm::vec3 greyscaleColor = glm::vec3((1.f / m_annotationData.size()) * 2 * ghostIntensity);
                         m_postAptQuads[i].drawQuad(m_default_Ma, m_postAptMss[i], greyscaleColor, m_annotationData[i + m_preAptReflectionPairs.size()]);
                     }
                     else {
