@@ -1,9 +1,8 @@
 #include <opencv2/opencv.hpp>
 #include <glm/glm.hpp>
-#include "utils.h"
+#include "utils.h" 
 
 int createStarburst(const char* apertureLocation) {
-    // Load the aperture texture
     cv::Mat aperture = cv::imread(apertureLocation, cv::IMREAD_GRAYSCALE);
     if (aperture.empty()) {
         std::cerr << "Failed to load aperture texture." << std::endl;
@@ -29,7 +28,6 @@ int createStarburst(const char* apertureLocation) {
     // Rearrange the quadrants of Fourier image
     int cx = magnitudeImage.cols / 2;
     int cy = magnitudeImage.rows / 2;
-
     cv::Mat q0(magnitudeImage, cv::Rect(0, 0, cx, cy));
     cv::Mat q1(magnitudeImage, cv::Rect(cx, 0, cx, cy));
     cv::Mat q2(magnitudeImage, cv::Rect(0, cy, cx, cy));
@@ -46,37 +44,42 @@ int createStarburst(const char* apertureLocation) {
 
     cv::normalize(magnitudeImage, magnitudeImage, 0, 1, cv::NORM_MINMAX);
 
-    // Prepare an RGB texture by superimposing scaled spectra for different wavelengths
     cv::Mat starburstTexture = cv::Mat::zeros(magnitudeImage.size(), CV_32FC3);
 
-    // Wavelengths from 380 nm to 750 nm (visible spectrum)
+    double lambda0 = 565.0;
+    // Iterate over wavelengths from 380 to 750
     for (double lambda = 380; lambda <= 750.0; lambda += 5.0) {
-        double scale = 10 /* Define your scaling based on wavelength */;
+        double scale = 35;  // Scale factor to boost intensity
         cv::Mat scaledMagnitude;
         cv::multiply(magnitudeImage, scale, scaledMagnitude);
-
-        // Convert wavelength to RGB
         glm::vec3 color = wavelengthToRGB(lambda);
 
-        // Accumulate into the starburst texture
-        for (int y = 0; y < starburstTexture.rows; ++y) {
-            for (int x = 0; x < starburstTexture.cols; ++x) {
+        // For each pixel in the Fourier image, we remap its coordinate:
+        for (int y = 0; y < magnitudeImage.rows; ++y) {
+            for (int x = 0; x < magnitudeImage.cols; ++x) {
                 float intensity = scaledMagnitude.at<float>(y, x);
-                starburstTexture.at<cv::Vec3f>(y, x) += intensity * cv::Vec3f(color.x, color.y, color.z);
+                double u = x - cx;
+                double v = y - cy;
+                int x_obs = cx + static_cast<int>(u * (lambda / lambda0));
+                int y_obs = cy + static_cast<int>(v * (lambda / lambda0));
+                if (x_obs >= 0 && x_obs < starburstTexture.cols && y_obs >= 0 && y_obs < starburstTexture.rows) {
+                    starburstTexture.at<cv::Vec3f>(y_obs, x_obs) += intensity * cv::Vec3f(color.r, color.g, color.b);
+                }
             }
         }
     }
 
-    // Normalize the final texture
-    //cv::normalize(starburstTexture, starburstTexture, 0, 1, cv::NORM_MINMAX);
+    // Gaussian filter to smooth the texture
+    cv::Mat starburstTextureFiltered;
+    cv::GaussianBlur(starburstTexture, starburstTextureFiltered, cv::Size(3, 3), 0);
 
-    // Save the starburst texture
-    // Convert the image from BGR to RGB
+    // Convert from BGR to RGB (if needed)
     cv::Mat starburstTextureRGB;
-    cv::cvtColor(starburstTexture, starburstTextureRGB, cv::COLOR_BGR2RGB);
+    cv::cvtColor(starburstTextureFiltered, starburstTextureRGB, cv::COLOR_BGR2RGB);
 
-    // Save the image in RGB format
-    cv::imwrite("resources/starburst_texture.png", starburstTextureRGB);
-
+    if (!cv::imwrite("resources/starburst_texture.png", starburstTextureRGB)) {
+        std::cerr << "Failed to save starburst texture." << std::endl;
+        return -1;
+    }
     return 0;
 }

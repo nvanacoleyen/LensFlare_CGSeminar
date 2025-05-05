@@ -29,12 +29,13 @@ DISABLE_WARNINGS_POP()
 #include "Windows.h"
 #include "lens_solver.h"
 #include "coating_solver.h"
+#include "aperture_maker.h"
 
 /* GLOBAL PARAMS */
 HWND hwnd = GetConsoleWindow();
 UINT dpi = GetDpiForWindow(hwnd);
 const float DISPLAY_SCALING_FACTOR = static_cast<float>(dpi) / 96.0f;
-const char* APERTURE_TEXTURE = "resources/aperture2.png";
+const char* APERTURE_TEXTURE = "resources/iris.png";
 
 class Application {
 public:
@@ -142,12 +143,24 @@ public:
         m_postAPTtransmissions = m_lensSystem.getTransmission(m_postAptReflectionPairs, post_apt_center_ray_x, post_apt_center_ray_y, quarterWaveCoating);
     }
 
+	void updateStarburstTexture(GLuint texStarburst) {
+        createStarburst(APERTURE_TEXTURE);
+        int texWidth, texHeight, texChannels;
+        stbi_uc* pixels = stbi_load("resources/starburst_texture.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+        if (!pixels) {
+            std::cerr << "Failed to load starburst texture" << std::endl;
+        }
+        glTextureSubImage2D(texStarburst, 0, 0, 0, texWidth, texHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        stbi_image_free(pixels);
+	}
+
     void update()
     {
         /* INIT */
 
         /* Create starburst texture */
-        //createStarburst(APERTURE_TEXTURE);
+        createStarburst(APERTURE_TEXTURE);
 
         /* Light Sphere */
         const Mesh lightSphere = mergeMeshes(loadMesh("resources/sphere.obj"));
@@ -328,6 +341,13 @@ public:
 
         bool greyScaleColor = false;
 
+        float starburstScale = 5;
+
+        bool aptMakerOpen = false;
+        bool aptMakerClosed = true;
+        updateAptImage();
+        updateAptTexture(texApt);
+
         /* Flare Paths and Matrices */
         m_lens_interfaces = m_lensSystem.getLensInterfaces();
         refreshMatricesAndQuads();
@@ -351,7 +371,6 @@ public:
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Light Settings");
 
             ImGui::SliderFloat("Light Intensity", &m_light_intensity, min_light_intensity, max_light_intensity);
-            //TODO: ADD LIGHT COLOR
 
             if (!m_buildFromScratch) {
                 //Button loading lens system
@@ -382,7 +401,6 @@ public:
                 }
             }
 
-
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Global Lens Settings");
             
             ImGui::SliderFloat("Lens FOV", &fov, 10.0f, 120.0f);
@@ -390,6 +408,23 @@ public:
                 m_mainProjectionMatrix = glm::perspective(glm::radians(fov), m_aspect, 0.01f, 100.0f);
                 fovMemory = fov;
             }
+
+            ImGui::SliderFloat("Starburst Scale", &starburstScale, 0.0f, 40.0f);
+
+            if (ImGui::Button("Modify Aperture")) {
+                aptMakerOpen = true;
+                ImGui::OpenPopup("Aperture Generator");
+            }
+
+            if (aptMakerOpen) {
+                createApt(&aptMakerOpen, texApt);
+            }
+
+            if (aptMakerClosed && !aptMakerOpen)
+            {
+                updateStarburstTexture(texStarburst);
+            }
+            aptMakerClosed = aptMakerOpen;
 
             ImGui::SliderFloat("Aperture Height", &m_lensSystem.m_aperture_height, 0.0f, 30.0f);
             if (!m_buildFromScratch) {
@@ -1313,7 +1348,6 @@ public:
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
             glm::vec3 starburstColor = glm::vec3({ 50.f, 50.f, 50.f });
-            float starburstScale = 25;
 
             m_starburstShader.bind();
             glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
@@ -1602,7 +1636,7 @@ private:
     Shader m_builderShader;
 
     /* Light Source */
-    const glm::vec3 m_lcolor{ 1, 1, 0.5 };
+    const glm::vec3 m_lcolor{ 1, 1, 0.7 };
     /* Light */
     glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 20.f };
     float m_light_intensity = 150.0f;

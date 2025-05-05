@@ -40,7 +40,7 @@ add_executable(FinalProject
 	"src/lens_solver.h"
 	"src/lens_solver.cpp"
 	"src/coating_solver.cpp"
-	"src/coating_solver.h")
+	"src/coating_solver.h" "src/aperture_maker.cpp" "src/aperture_maker.h")
 target_compile_features(FinalProject PRIVATE cxx_std_17)
 target_link_libraries(FinalProject PRIVATE CGFramework)
 enable_sanitizers(FinalProject)
