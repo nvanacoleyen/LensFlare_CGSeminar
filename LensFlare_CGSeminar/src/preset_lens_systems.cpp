@@ -73,3 +73,18 @@ LensSystem testLens() {
     return LensSystem(2, 10.0f, 20.0f, lensInterfaces);
 
 }
+
+LensSystem japanesePatent() {
+    std::vector<LensInterface> lensInterfaces;
+
+    lensInterfaces.push_back(LensInterface(2.2, 1.806, 86.825));
+    lensInterfaces.push_back(LensInterface(8.20, 1.496, 42.152));
+    lensInterfaces.push_back(LensInterface(0.20, 1., -553.228));
+    lensInterfaces.push_back(LensInterface(2.90, 1.487, 58.170));
+    lensInterfaces.push_back(LensInterface(0.20, 1., 104.170));
+    lensInterfaces.push_back(LensInterface(5.20, 1.49, 35.956));
+    lensInterfaces.push_back(LensInterface(10., 1., 215.663));
+
+    return LensSystem(4, 10.0f, 20.0f, lensInterfaces);
+
+}

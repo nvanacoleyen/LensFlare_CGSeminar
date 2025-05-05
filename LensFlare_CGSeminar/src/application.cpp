@@ -392,7 +392,7 @@ public:
                     m_selectedQuadIndex = -1;
                 }
                 if (ImGui::Button("Load Test Lens System")) {
-                    m_lensSystem = testLens();
+                    m_lensSystem = japanesePatent();
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshMatricesAndQuads();
