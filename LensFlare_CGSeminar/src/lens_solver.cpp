@@ -97,12 +97,6 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     //Construct lens system
     std::vector<LensInterface> newLensInterfaces;
     newLensInterfaces.reserve(m_num_interfaces);
-    //TODO: 
-    //could return early for refractive indices of materials that are not possible or not common? or clamp them?
-    //clamp some values to air if close to 1?
-    //interfaces made of material not often very thick, air often thickkk. clamp?
-    //clamp extreme radius values to inf?
-    //how far can material interfaces bend? curve? set limit of 
     for (int i = 0; i < m_num_interfaces; i++) {
         LensInterface lens;
         lens.di = dv[2 + (PARAMS_PER_INTERFACE * i)];
@@ -217,7 +211,7 @@ std::vector<std::vector<double>> runEA(pagmo::archipelago archi) {
     auto start = std::chrono::high_resolution_clock::now();
 
     unsigned long long total_fevals = 0;
-    for (int gen = 0; gen < 15; ++gen) {
+    for (int gen = 0; gen < 20; ++gen) {
         std::cout << "EVOLVING GEN " << gen << std::endl;
         archi.evolve();
         archi.wait();  // Ensure the evolution step is complete
@@ -296,7 +290,7 @@ std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
     // Add more algos to try
     unsigned int amount_dv = current_point.size();
     pagmo::archipelago archi;
-    for (int i = 0; i < 15; ++i) {
+    for (int i = 0; i < 20; ++i) {
         pagmo::population pop(prob, 10 * amount_dv);
         //pop.push_back(current_point);
         archi.push_back(pagmo::island{ algo, pop });
