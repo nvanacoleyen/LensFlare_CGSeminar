@@ -49,7 +49,7 @@ int createStarburst(const char* apertureLocation) {
     double lambda0 = 565.0;
     // Iterate over wavelengths from 380 to 750
     for (double lambda = 380; lambda <= 750.0; lambda += 5.0) {
-        double scale = 35;  // Scale factor to boost intensity
+        double scale = 120;  // Scale factor to boost intensity
         cv::Mat scaledMagnitude;
         cv::multiply(magnitudeImage, scale, scaledMagnitude);
         glm::vec3 color = wavelengthToRGB(lambda);

@@ -392,7 +392,7 @@ public:
                     m_selectedQuadIndex = -1;
                 }
                 if (ImGui::Button("Load Test Lens System")) {
-                    m_lensSystem = japanesePatent();
+                    m_lensSystem = testLens();
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     m_lens_interfaces = m_lensSystem.getLensInterfaces();
                     refreshMatricesAndQuads();
@@ -1217,16 +1217,16 @@ public:
                     m_calibrateLightSource = true;
                 }
 
-                m_quadCenterShader.bind();
-                glPointSize(5.0f); // Sets the size of points in pixels
-                glm::vec3 quadCenterColor = glm::vec3(1.0, 0, 0);
-                glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
-                glUniform3fv(1, 1, glm::value_ptr(quadCenterColor));
-                glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(m_sensorMatrix));
+                //m_quadCenterShader.bind();
+                //glPointSize(5.0f); // Sets the size of points in pixels
+                //glm::vec3 quadCenterColor = glm::vec3(1.0, 0, 0);
+                //glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
+                //glUniform3fv(1, 1, glm::value_ptr(quadCenterColor));
+                //glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(m_sensorMatrix));
 
-                glBindVertexArray(vao_quadcenter);
-                glDrawArrays(GL_POINTS, 0, m_quadcenter_points.size());
-                glBindVertexArray(0);
+                //glBindVertexArray(vao_quadcenter);
+                //glDrawArrays(GL_POINTS, 0, m_quadcenter_points.size());
+                //glBindVertexArray(0);
 
                 //Reset atomic counter
                 GLuint zero = 0;
@@ -1347,7 +1347,7 @@ public:
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
-            glm::vec3 starburstColor = glm::vec3({ 50.f, 50.f, 50.f });
+            glm::vec3 starburstColor = glm::vec3({ 20.f, 20.f, 20.f });
 
             m_starburstShader.bind();
             glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
