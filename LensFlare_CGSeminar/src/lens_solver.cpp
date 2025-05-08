@@ -11,6 +11,8 @@
 #include <cmath>
 #include <glm/glm.hpp>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 
 
 int const PARAMS_PER_INTERFACE = 3;
@@ -199,6 +201,12 @@ void sortByQuadHeight(std::vector<SnapshotData>& snapshotDataUnsorted) {
 }
 
 std::vector<std::vector<double>> runEA(pagmo::archipelago archi) {
+    std::ofstream csvFile("ea_log.csv");
+    if (!csvFile.is_open()) {
+        std::cerr << "Error opening CSV log file!" << std::endl;
+    }
+    csvFile << "Generation,Elapsed Time (sec),Total Evaluations,Best Fitness" << std::endl;
+
     std::vector<double> c_solution = archi.get_champions_x()[0];
     double c_fitness = archi.get_champions_f()[0][0];
     std::cout << "Initial Best Fitness: " << c_fitness << std::endl;
@@ -231,13 +239,24 @@ std::vector<std::vector<double>> runEA(pagmo::archipelago archi) {
             total_fevals += isl.get_population().get_problem().get_fevals();
         }
         std::cout << "Total function evaluations after gen " << gen << ": " << total_fevals << std::endl;
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(currentTime - start).count();
+        csvFile << gen << ","
+            << elapsed_secs << ","
+            << total_fevals << ","
+            << best_fitness << std::endl;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-    int minutes = static_cast<int>(elapsed_seconds / 60);
-    int seconds = static_cast<int>(elapsed_seconds % 60);
+    auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+    int minutes = static_cast<int>(elapsed_secs / 60);
+    int seconds = static_cast<int>(elapsed_secs % 60);
     std::cout << "Computation time: " << minutes << " minutes and " << seconds << " seconds" << std::endl;
+
+    csvFile << std::endl;
+    csvFile << "Final Computation Time (min:sec):," << minutes << ":" << seconds << std::endl;
+    csvFile << "Total Function Evaluations:," << total_fevals << std::endl;
 
     std::vector<std::pair<double, std::vector<double>>> champions;
     for (const auto& isl : archi) {
@@ -251,14 +270,31 @@ std::vector<std::vector<double>> runEA(pagmo::archipelago archi) {
     std::cout << "\nTop 5 Champions:" << std::endl;
     std::vector<std::vector<double>> top5;
     size_t num = std::min(champions.size(), static_cast<size_t>(5));
+    csvFile << std::endl;
+    csvFile << "Champion Rank,Best Fitness,Decision Vector" << std::endl;
     for (size_t i = 0; i < num; ++i) {
         std::cout << "Fitness " << champions[i].first << ": ";
+        std::ostringstream decision_vector;
         for (const auto& val : champions[i].second) {
             std::cout << val << " ";
+            decision_vector << val << " ";
         }
         std::cout << std::endl;
+        csvFile << (i + 1) << "," << champions[i].first << ",\"" << decision_vector.str() << "\"" << std::endl;
         top5.push_back(champions[i].second);
     }
+
+    if (!champions.empty()) {
+        csvFile << std::endl;
+        csvFile << "Final Best Champion,"
+            << champions[0].first << ",\"";
+        for (const auto& val : champions[0].second) {
+            csvFile << val << " ";
+        }
+        csvFile << "\"" << std::endl;
+    }
+
+    csvFile.close();
 
     // Return the decision vectors of the top 5 champions.
     return top5;
