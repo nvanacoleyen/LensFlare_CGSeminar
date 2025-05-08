@@ -30,7 +30,7 @@ void optimizeLensCoatingsGridSearch(LensSystem& lensSystem, glm::vec3 desiredCol
 
     std::cout << "START GRID SEARCH" << std::endl;
 
-    for (float candidateLambda1 = minlambda; candidateLambda1 < maxlambda; candidateLambda1 += 1.0f) {
+    for (float candidateLambda1 = minlambda; candidateLambda1 < maxlambda; candidateLambda1 += 2.0f) {
 
         float thickness1 = candidateLambda1 / 4.0f / first_n1;
 
@@ -121,5 +121,54 @@ std::pair<std::vector<std::pair<float, glm::vec3>>, std::vector<std::pair<float,
     return { firstReflectivityData, secondReflectivityData };
 }
 
+std::vector<std::vector<glm::vec3>> computeCoatingColorGrid(LensSystem& lensSystem, glm::vec2 reflectionPair, glm::vec2 yawAndPitch)
+{
+    std::vector<LensInterface> lensInterfaces = lensSystem.getLensInterfaces();
+    std::vector<glm::vec2> incident_angles = lensSystem.getPathIncidentAngleAtReflectionPos(reflectionPair, yawAndPitch);
 
+    float first_n1 = std::max(std::sqrt(lensInterfaces[reflectionPair.x - 1].ni * lensInterfaces[reflectionPair.x].ni), 1.38f);
+    float second_n1 = (reflectionPair.y == 0)
+        ? std::max(std::sqrt(lensInterfaces[reflectionPair.y].ni), 1.38f)
+        : std::max(std::sqrt(lensInterfaces[reflectionPair.y - 1].ni * lensInterfaces[reflectionPair.y].ni), 1.38f);
+
+    const float minLambda = 380.0f;
+    const float maxLambda = 740.0f;
+    const float stepLambda1 = 2.0f; 
+    const float stepLambda2 = 2.0f; 
+
+    int numLambda1 = static_cast<int>((maxLambda - minLambda) / stepLambda1) + 1;
+    int numLambda2 = static_cast<int>((maxLambda - minLambda) / stepLambda2) + 1;
+
+    std::vector<std::vector<glm::vec3>> colorGrid(numLambda2, std::vector<glm::vec3>(numLambda1, glm::vec3(0.0f)));
+
+    for (int i = 0; i < numLambda1; ++i) {
+        float candidateLambda1 = minLambda + i * stepLambda1;
+        float thickness1 = candidateLambda1 / 4.0f / first_n1;
+
+        glm::vec3 reflectivity1 =
+            lensSystem.computeFresnelAR(incident_angles[0].x, thickness1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni) +
+            lensSystem.computeFresnelAR(incident_angles[0].y, thickness1, lensInterfaces[reflectionPair.x - 1].ni, first_n1, lensInterfaces[reflectionPair.x].ni);
+
+        for (int j = 0; j < numLambda2; ++j) {
+            float candidateLambda2 = minLambda + j * stepLambda2;
+            float thickness2 = candidateLambda2 / 4.0f / second_n1;
+            glm::vec3 reflectivity2;
+
+            if (reflectionPair.y == 0) {
+                reflectivity2 =
+                    lensSystem.computeFresnelAR(incident_angles[1].x, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, 1.0f) +
+                    lensSystem.computeFresnelAR(incident_angles[1].y, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, 1.0f);
+            }
+            else {
+                reflectivity2 =
+                    lensSystem.computeFresnelAR(incident_angles[1].x, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni) +
+                    lensSystem.computeFresnelAR(incident_angles[1].y, thickness2, lensInterfaces[reflectionPair.y].ni, second_n1, lensInterfaces[reflectionPair.y - 1].ni);
+            }
+
+            glm::vec3 combinedReflectivity = reflectivity1 * reflectivity2;
+            colorGrid[j][i] = normalizeRGB(combinedReflectivity);
+        }
+    }
+    return colorGrid;
+}
 

@@ -155,6 +155,99 @@ public:
         stbi_image_free(pixels);
 	}
 
+    void DrawVerticalLabel(ImDrawList* drawList, const ImVec2& pos, ImU32 color, const char* text)
+    {
+        ImFont* font = ImGui::GetFont();
+        float fontSize = ImGui::GetFontSize();
+        ImVec2 cursor = pos;
+        for (int i = 0; text[i] != '\0'; i++) {
+            char buf[2] = { text[i], '\0' };
+            drawList->AddText(cursor, color, buf);
+            ImVec2 charSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, buf);
+            cursor.y += charSize.y - 3;
+        }
+    }
+
+
+    void drawCoatingHeatmap(
+        const std::vector<std::vector<glm::vec3>>& colorGrid,
+        float minLambda, float maxLambda,
+        float stepLambda1, float stepLambda2,
+        const ImVec2& heatmapSize)
+    {
+        int numColumns = static_cast<int>(colorGrid[0].size());
+        int numRows = static_cast<int>(colorGrid.size());
+
+        int leftSideOffset = 50;
+		int topOffset = 40;
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImVec2 origin = ImGui::GetCursorScreenPos();
+
+        float cellWidth = heatmapSize.x / numColumns;
+        float cellHeight = heatmapSize.y / numRows;
+
+        const char* plotTitle = "Combined Reflectivity (Normalized)";
+        ImVec2 plotTitleSize = ImGui::CalcTextSize(plotTitle);
+        ImVec2 plotTitlePos(
+            leftSideOffset + origin.x + heatmapSize.x * 0.5f - plotTitleSize.x * 0.5f,
+            topOffset + origin.y - plotTitleSize.y - 5
+        );
+        drawList->AddText(plotTitlePos, IM_COL32(255, 255, 255, 255), plotTitle);
+
+        for (int j = 0; j < numRows; ++j) {
+            for (int i = 0; i < numColumns; ++i) {
+
+                glm::vec3 color = colorGrid[j][i];
+
+                ImU32 cellColor = IM_COL32(
+                    static_cast<int>(color.r * 255),
+                    static_cast<int>(color.g * 255),
+                    static_cast<int>(color.b * 255),
+                    255);
+
+                ImVec2 cellMin(leftSideOffset + origin.x + i * cellWidth, topOffset + origin.y + j * cellHeight);
+                ImVec2 cellMax(leftSideOffset + origin.x + (i + 1) * cellWidth, topOffset + origin.y + (j + 1) * cellHeight);
+
+                drawList->AddRectFilled(cellMin, cellMax, cellColor);
+            }
+        }
+
+		ImVec2 dummySize(heatmapSize.x, heatmapSize.y + 100);
+        ImGui::Dummy(dummySize);
+
+        int labelStepX = std::max(numColumns / 7, 1);
+        int labelStepY = std::max(numRows / 7, 1);
+        ImU32 textColor = IM_COL32(255, 255, 255, 255);
+
+        for (int i = 0; i < numColumns; i += labelStepX) {
+            float candidateLambda1 = minLambda + i * stepLambda1;
+            ImVec2 textPos(leftSideOffset - 15 + origin.x + i * cellWidth + cellWidth * 0.5f, topOffset + origin.y + heatmapSize.y + 2);
+            char label[32];
+            snprintf(label, sizeof(label), "%.0f", candidateLambda1);
+            drawList->AddText(textPos, textColor, label);
+        }
+
+        for (int j = 0; j < numRows; j += labelStepY) {
+            float candidateLambda2 = minLambda + j * stepLambda2;
+            ImVec2 textPos(leftSideOffset + origin.x - 35, topOffset + origin.y - 10 + j * cellHeight + cellHeight * 0.5f);
+            char label[32];
+            snprintf(label, sizeof(label), "%.0f", candidateLambda2);
+            drawList->AddText(textPos, textColor, label);
+        }
+
+        const char* xAxisTitle = "Interface 1 lambda0 (nm)";
+        ImVec2 xTitleSize = ImGui::CalcTextSize(xAxisTitle);
+        ImVec2 xTitlePos(leftSideOffset + origin.x + heatmapSize.x * 0.5f - xTitleSize.x * 0.5f, topOffset + origin.y + heatmapSize.y + 20);
+        drawList->AddText(xTitlePos, textColor, xAxisTitle);
+
+        const char* yAxisTitle = "Interface 2 lambda0";
+        ImVec2 yTitlePos(leftSideOffset + origin.x - 50, topOffset + origin.y + heatmapSize.y * 0.5f - 170);
+        DrawVerticalLabel(drawList, yTitlePos, textColor, yAxisTitle);
+
+
+    }
+
     void update()
     {
         /* INIT */
@@ -656,6 +749,14 @@ public:
                                     reflectivityB.push_back(entry.second.b); // Blue channel reflectivity
                                 }
                             }
+
+                            std::vector<std::vector<glm::vec3>> colorGrid = computeCoatingColorGrid(m_lensSystem, selectedQuadReflectionInterfaces, m_yawandPitch);
+                            ImVec2 heatmapSize(350, 350);
+                            float minLambda = 380.0f;
+                            float maxLambda = 740.0f;
+                            float stepLambda1 = 2.0f;
+                            float stepLambda2 = 2.0f;
+                            drawCoatingHeatmap(colorGrid, minLambda, maxLambda, stepLambda1, stepLambda2, heatmapSize);
                             
 
                             if (ImPlot::BeginPlot("Reflectivity vs Wavelength")) {
