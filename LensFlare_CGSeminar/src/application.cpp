@@ -519,10 +519,10 @@ public:
             }
             aptMakerClosed = aptMakerOpen;
 
-            ImGui::SliderFloat("Aperture Height", &m_lensSystem.m_aperture_height, 0.0f, 30.0f);
+            ImGui::SliderFloat("Aperture Height", &m_lensSystem.m_aperture_height, 0.0f, 50.0f);
             if (!m_buildFromScratch) {
                 ImGui::InputInt("Aperture Position", &irisAperturePos);
-                ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 50.0f);
+                ImGui::SliderFloat("Entrance Pupil Height", &m_lensSystem.m_entrance_pupil_height, 0.0f, 100.0f);
                 ImGui::Checkbox("Disable Entrance Clipping", &disableEntranceClipping);
                 ImGui::Checkbox("Grey Scale", &renderGreyScale);
                 ImGui::Text("Coatings: ");
