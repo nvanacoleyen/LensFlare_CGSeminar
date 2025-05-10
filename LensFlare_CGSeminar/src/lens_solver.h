@@ -11,7 +11,7 @@ struct LensSystemProblem {
     float m_light_angle_x;
     float m_light_angle_y;
     unsigned int m_dim;             // total number of decision variables
-    float m_entrance_pupil_height = 50.f;
+    float m_entrance_pupil_height = 100.f;
     pagmo::vector_double m_lb;       // lower bounds for each variable
     pagmo::vector_double m_ub;       // upper bounds for each variable
     std::vector<SnapshotData> m_renderObjective;

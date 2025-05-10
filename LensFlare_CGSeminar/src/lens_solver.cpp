@@ -29,7 +29,7 @@ void LensSystemProblem::init(unsigned int num_interfaces, float light_angle_x, f
     m_ub[0] = num_interfaces - 1;
 	//apt height
     m_lb[1] = 1;
-    m_ub[1] = 30;
+    m_ub[1] = 50;
     for (int i = 0; i < m_num_interfaces; i++) {
         // di:
         m_lb[2 + (PARAMS_PER_INTERFACE * i)] = 0.1;
