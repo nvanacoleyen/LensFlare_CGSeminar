@@ -236,12 +236,12 @@ public:
             drawList->AddText(textPos, textColor, label);
         }
 
-        const char* xAxisTitle = "Interface 1 lambda0 (nm)";
+        const char* xAxisTitle = "Reflection 1 lambda0 (nm)";
         ImVec2 xTitleSize = ImGui::CalcTextSize(xAxisTitle);
         ImVec2 xTitlePos(leftSideOffset + origin.x + heatmapSize.x * 0.5f - xTitleSize.x * 0.5f, topOffset + origin.y + heatmapSize.y + 20);
         drawList->AddText(xTitlePos, textColor, xAxisTitle);
 
-        const char* yAxisTitle = "Interface 2 lambda0";
+        const char* yAxisTitle = "Reflection 2 lambda0";
         ImVec2 yTitlePos(leftSideOffset + origin.x - 50, topOffset + origin.y + heatmapSize.y * 0.5f - 170);
         DrawVerticalLabel(drawList, yTitlePos, textColor, yAxisTitle);
 
