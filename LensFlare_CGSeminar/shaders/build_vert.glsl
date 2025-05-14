@@ -19,6 +19,6 @@ void main()
 
     intensityVal = 1 / ((irisApertureHeight / 2) * sizeAnnotationTransform);
 
-    gl_Position = (mvp * sensorMatrix * vec4(vec3((vec2(pos.x, pos.y) * sizeAnnotationTransform + posAnnotationTransform), 30.0), 1.0));
+    gl_Position = (mvp * sensorMatrix * vec4(vec3((vec2(pos.x, pos.y) * sizeAnnotationTransform + posAnnotationTransform), 50.0), 1.0));
     
 }

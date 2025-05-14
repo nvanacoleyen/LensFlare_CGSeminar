@@ -1419,7 +1419,6 @@ public:
 
                     irisAperturePos = m_lensSystem.getIrisAperturePos();
                     irisAperturePosMemory = irisAperturePos;
-                    m_lensSystem.setEntrancePupilHeight(40);
 
                     optimizeLensSystemWithEA = false;
                     m_resetAnnotations = true;
@@ -1556,12 +1555,17 @@ public:
             if (m_window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
                 if (m_window.isKeyPressed(GLFW_KEY_Q)) { // Q for moving the selected ghost
                     if (m_selectedQuadIndex != -1) {
-                        glm::vec4 quadCenterScreenPos;
-                        for (SnapshotData& snapshotdata : m_snapshotData) {
-                            if (snapshotdata.quadID == m_selectedQuadIDs[m_selectedQuadIndex]) {
-                                quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(snapshotdata.quadCenterPos, 30.0, 1.0);
-                                break;
+                        glm::vec4 quadCenterScreenPos ;
+                        if (!m_buildFromScratch) {
+                            for (SnapshotData& snapshotdata : m_snapshotData) {
+                                if (snapshotdata.quadID == m_selectedQuadIDs[m_selectedQuadIndex]) {
+                                    quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(snapshotdata.quadCenterPos, 50.0, 1.0);
+                                    break;
+                                }
                             }
+                        }
+                        else {
+                            quadCenterScreenPos = m_mvp * m_sensorMatrix * glm::vec4(0.0f, 0.0f, 50.0, 1.0);
                         }
                         quadCenterScreenPos = quadCenterScreenPos / quadCenterScreenPos.w;
                         const glm::ivec2& window_size = m_window.getWindowSize();
@@ -1739,7 +1743,7 @@ private:
     /* Light Source */
     const glm::vec3 m_lcolor{ 1, 1, 0.7 };
     /* Light */
-    glm::vec3 m_light_pos = { 9.0f, 9.0f, 20.f };
+    glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 20.f };
     float m_light_intensity = 150.0f;
     bool m_calibrateLightSource = true;
 
