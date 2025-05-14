@@ -10,6 +10,12 @@
 #include <pagmo/population.hpp>
 #include <pagmo/island.hpp>
 #include "utils.h"
+#include <chrono>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <vector>
+#include <sstream>
 
 void LensCoatingProblem::init(unsigned int num_interfaces, float light_angle_x, float light_angle_y, float lightIntensity, bool quarterWaveCoating) {
     m_num_interfaces = num_interfaces;
@@ -130,6 +136,14 @@ pagmo::vector_double convertLensSystemCustom(const std::vector<LensInterface>& l
 }
 
 std::vector<double> runEACoatings(pagmo::archipelago archi) {
+    std::ofstream csvFile("ea_log.csv", std::ios::app);
+    if (!csvFile.is_open()) {
+        std::cerr << "Error opening CSV log file!" << std::endl;
+    }
+    csvFile << "######################################################################" << std::endl;
+    csvFile << "EA Coatings Run" << std::endl;
+    csvFile << "Generation,Elapsed Time (sec),Total Evaluations,Best Fitness" << std::endl;
+
     std::vector<double> c_solution = archi.get_champions_x()[0];
     double c_fitness = archi.get_champions_f()[0][0];
     std::cout << "Initial Best Fitness: " << c_fitness << std::endl;
@@ -138,44 +152,68 @@ std::vector<double> runEACoatings(pagmo::archipelago archi) {
         std::cout << val << " ";
     }
     std::cout << std::endl;
-    for (int gen = 0; gen < 15; ++gen) {
+
+    auto start = std::chrono::high_resolution_clock::now();
+    unsigned long long total_fevals = 0;
+
+    for (int gen = 0; gen < 10; ++gen) {
         std::cout << "EVOLVING GEN " << gen << std::endl;
         archi.evolve();
         archi.wait();  // Ensure the evolution step is complete
 
-        // Find the best champion across all islands
-        double best_fitness = std::numeric_limits<double>::max(); // Initialize to a very large value
+        double best_fitness = std::numeric_limits<double>::max();
         for (const auto& isl : archi) {
-            auto island_champion = isl.get_population().champion_f(); // Get the champion fitness
-            if (island_champion[0] < best_fitness) { // Check if it's better
+            auto island_champion = isl.get_population().champion_f();
+            if (island_champion[0] < best_fitness) {
                 best_fitness = island_champion[0];
             }
         }
-
         std::cout << "CURRENT BEST FITNESS: " << best_fitness << std::endl;
 
-    }
-    //Retrieve and report the best solution.
-    double best_fitness = std::numeric_limits<double>::max(); // Initialize to a very large value
-    std::vector<double> best_champion;
+        for (const auto& isl : archi) {
+            total_fevals += isl.get_population().get_problem().get_fevals();
+        }
+        std::cout << "Total function evaluations after gen " << gen << ": " << total_fevals << std::endl;
 
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(currentTime - start).count();
+
+        csvFile << gen << ","
+            << elapsed_secs << ","
+            << total_fevals << ","
+            << best_fitness << std::endl;
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+    int minutes = static_cast<int>(elapsed_secs / 60);
+    int seconds = static_cast<int>(elapsed_secs % 60);
+    std::cout << "Computation time: " << minutes << " minutes and " << seconds << " seconds" << std::endl;
+    csvFile << std::endl;
+    csvFile << "Final Computation Time (min:sec):," << minutes << ":" << seconds << std::endl;
+    csvFile << "Total Function Evaluations:," << total_fevals << std::endl;
+
+    double best_fitness = std::numeric_limits<double>::max();
+    std::vector<double> best_champion;
     for (const auto& isl : archi) {
-        auto island_champion = isl.get_population().champion_f(); // Get the champion fitness
-        if (island_champion[0] < best_fitness) { // Check if it's better
+        auto island_champion = isl.get_population().champion_f();
+        if (island_champion[0] < best_fitness) {
             best_fitness = island_champion[0];
-            best_champion = isl.get_population().champion_x(); // Save the champion decision vector
+            best_champion = isl.get_population().champion_x();
         }
     }
 
-    // Print the best champion and its fitness
     std::cout << "Best Fitness: " << best_fitness << std::endl;
     std::cout << "Best Champion: ";
     for (const auto& val : best_champion) {
         std::cout << val << " ";
     }
     std::cout << std::endl;
+
+    csvFile.close();
     return best_champion;
 }
+
 
 LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<glm::vec3>& renderObjective, float light_angle_x, float light_angle_y, float lightIntensity, bool quarterWaveCoating) {
     
@@ -200,18 +238,18 @@ LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<gl
      
 
     //Evolutionary Algorithm
-    pagmo::algorithm algo{ pagmo::sade{200} };
+    pagmo::algorithm algo{ pagmo::pso{200} };
     //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
     //pagmo::algorithm algo{ pagmo::pso(50u, 0.7298, 2.05, 2.05, 0.5, 6u, 2u, 4u, true, pagmo::random_device::next()) };
 
     pagmo::archipelago archi;
     // Add islands 
-    for (int i = 0; i < 25; ++i) {
-        pagmo::population pop(prob, 10 * num_interfaces);
+    for (int i = 0; i < 15; ++i) {
+        pagmo::population pop(prob, 15 * num_interfaces);
         // Add current lens system to the population.
-        for (int i = 0; i < 1; i++) {
-            pop.push_back(current_point);
-        }
+        //for (int i = 0; i < 1; i++) {
+        //    pop.push_back(current_point);
+        //}
         archi.push_back(pagmo::island{ algo, pop });
     }
 

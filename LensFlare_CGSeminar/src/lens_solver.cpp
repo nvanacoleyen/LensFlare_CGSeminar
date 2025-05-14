@@ -397,7 +397,7 @@ std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
         // Construct the LensSystem.
         LensSystem candidate(std::round(decision_vector[0]),
             decision_vector[1],
-            50.f,
+            100.f,
             optimized_lens_system);
         top5_lens_systems.push_back(candidate);
     }
@@ -455,13 +455,13 @@ std::vector<LensSystem> solveLensAnnotations(std::vector<SnapshotData>& renderOb
     pagmo::problem prob{ my_problem };
     std::cout << "Created Pagmo UDP" << std::endl;
 
-    pagmo::algorithm algo{ pagmo::sade{200} };
+    pagmo::algorithm algo{ pagmo::pso{200} };
 
     unsigned int amount_dv = 2 + (num_interfaces * PARAMS_PER_INTERFACE);
 
     pagmo::archipelago archi;
     for (int i = 0; i < 15; ++i) {
-        pagmo::population pop(prob, 10 * amount_dv);
+        pagmo::population pop(prob, 15 * amount_dv);
         archi.push_back(pagmo::island{ algo, pop });
     }
 
@@ -502,7 +502,7 @@ std::vector<LensSystem> solveLensAnnotations(std::vector<SnapshotData>& renderOb
 
         LensSystem candidate_ls(std::round(candidate[0]),
             candidate[1],
-            50,
+            100,
             optimized_lens_system);
         top5_lens_systems.push_back(candidate_ls);
     }
