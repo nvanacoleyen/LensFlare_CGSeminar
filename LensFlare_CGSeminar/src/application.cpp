@@ -108,7 +108,7 @@ public:
         
         m_preAptMas = m_lensSystem.getMa(m_preAptReflectionPairs);
         m_postAptMss = m_lensSystem.getMs(m_postAptReflectionPairs);
-        float ePHeight = 3 * (m_lensSystem.getEntrancePupilHeight() / 2);
+        float ePHeight = 4 * (m_lensSystem.getEntrancePupilHeight() / 2);
         std::vector<glm::vec3> quad_points = {
                 {ePHeight, ePHeight, 0.0f},   //top right
                 {ePHeight, -ePHeight, 0.0f},  //bottom right
@@ -1739,7 +1739,7 @@ private:
     /* Light Source */
     const glm::vec3 m_lcolor{ 1, 1, 0.7 };
     /* Light */
-    glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 20.f };
+    glm::vec3 m_light_pos = { 9.0f, 9.0f, 20.f };
     float m_light_intensity = 150.0f;
     bool m_calibrateLightSource = true;
 

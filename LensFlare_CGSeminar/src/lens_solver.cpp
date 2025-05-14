@@ -5,6 +5,10 @@
 #include <pagmo/algorithms/cmaes.hpp>
 #include <pagmo/algorithms/pso.hpp>
 #include <pagmo/algorithms/sade.hpp>
+#include <pagmo/algorithms/pso_gen.hpp>
+#include <pagmo/algorithms/de1220.hpp>
+#include <pagmo/algorithms/gaco.hpp>
+#include <pagmo/algorithms/bee_colony.hpp>
 #include <pagmo/archipelago.hpp>
 #include <pagmo/population.hpp>
 #include <pagmo/island.hpp>
@@ -126,6 +130,13 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
 
         newLensInterfaces.push_back(lens);
     }
+	/*int apt_pos = std::round(dv[0]);
+    if (apt_pos < this->m_lb[0]) {
+		apt_pos = this->m_lb[0];
+	}
+    else if (apt_pos > this->m_ub[0]) {
+        apt_pos = this->m_ub[0];
+    }*/
     LensSystem newLensSystem = LensSystem(std::round(dv[0]), dv[1], m_entrance_pupil_height, newLensInterfaces);
 
     //"Render"
@@ -160,13 +171,12 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     for (int i = 0; i < m_renderObjective.size(); i++) {
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
         float sizeError = m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight;
-		f += 10 * (sizeError * sizeError) + (posError * posError); //square because human perception more sensitive to big errors than small ones
-        //Verify the time 3 for size errors, related to units.
+		f += (sizeError * sizeError) + (posError * posError); //square because human perception more sensitive to big errors than small ones
     } 
 
     if (newSnapshot.size() > m_renderObjective.size()) {
         for (int i = m_renderObjective.size(); i < newSnapshot.size(); i++) {
-			f += 20 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
+			f += 50 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
         }
     }
 
@@ -200,11 +210,16 @@ void sortByQuadHeight(std::vector<SnapshotData>& snapshotDataUnsorted) {
         });
 }
 
-std::vector<std::vector<double>> runEA(pagmo::archipelago archi) {
-    std::ofstream csvFile("ea_log.csv");
+std::vector<std::vector<double>> runEA(pagmo::archipelago archi, float light_angle_x,
+    float light_angle_y) {
+    std::ofstream csvFile("ea_log.csv", std::ios::app);
+
     if (!csvFile.is_open()) {
         std::cerr << "Error opening CSV log file!" << std::endl;
     }
+    csvFile << "######################################################################" << std::endl;
+    csvFile << "Light Angle X," << light_angle_x << std::endl;
+    csvFile << "Light Angle Y," << light_angle_y << std::endl;
     csvFile << "Generation,Elapsed Time (sec),Total Evaluations,Best Fitness" << std::endl;
 
     std::vector<double> c_solution = archi.get_champions_x()[0];
@@ -219,7 +234,7 @@ std::vector<std::vector<double>> runEA(pagmo::archipelago archi) {
     auto start = std::chrono::high_resolution_clock::now();
 
     unsigned long long total_fevals = 0;
-    for (int gen = 0; gen < 20; ++gen) {
+    for (int gen = 0; gen < 10; ++gen) {
         std::cout << "EVOLVING GEN " << gen << std::endl;
         archi.evolve();
         archi.wait();  // Ensure the evolution step is complete
@@ -322,17 +337,28 @@ std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
         currentLensSystem.getApertureHeight());
 
     // Set up the evolutionary algorithm.
-    pagmo::algorithm algo{ pagmo::sade{200, true} };
+    //pagmo::algorithm algo{ pagmo::sade(200u, true )};
+    pagmo::algorithm algo{ pagmo::pso{200} };
+    //pagmo::algorithm algo{ pagmo::cmaes(200) };
+    //pagmo::algorithm algo{ pagmo::gaco{200} };
+    //pagmo::algorithm algo{ pagmo::bee_colony{200} };
+     
     // Add more algos to try
     unsigned int amount_dv = current_point.size();
-    pagmo::archipelago archi;
-    for (int i = 0; i < 20; ++i) {
-        pagmo::population pop(prob, 10 * amount_dv);
-        //pop.push_back(current_point);
-        archi.push_back(pagmo::island{ algo, pop });
-    }
+    std::vector<std::vector<double>> top5_decision_vectors;
 
-    std::vector<std::vector<double>> top5_decision_vectors = runEA(archi);
+    for (int i = 0; i < 5; i++) {
+        //pagmo::algorithm algo{ pagmo::pso(200u, 0.7298, 2.05, 2.05, 0.5, 5, 2, 4u, false, 4747) };
+        pagmo::archipelago archi;
+        for (int i = 0; i < 15; ++i) {
+            pagmo::population pop(prob, 15 * amount_dv);
+            //pop.push_back(current_point);
+            archi.push_back(pagmo::island{ algo, pop });
+        }
+
+        top5_decision_vectors = runEA(archi, light_angle_x,
+            light_angle_y);
+    }
 
     std::vector<LensSystem> top5_lens_systems;
     for (const auto& decision_vector : top5_decision_vectors) {
@@ -439,7 +465,8 @@ std::vector<LensSystem> solveLensAnnotations(std::vector<SnapshotData>& renderOb
         archi.push_back(pagmo::island{ algo, pop });
     }
 
-    std::vector<std::vector<double>> top5_champions = runEA(archi);
+    std::vector<std::vector<double>> top5_champions = runEA(archi, light_angle_x,
+        light_angle_y);
 
     std::vector<LensSystem> top5_lens_systems;
     for (const auto& candidate : top5_champions) {

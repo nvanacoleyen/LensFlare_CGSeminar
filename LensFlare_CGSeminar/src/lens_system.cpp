@@ -380,7 +380,16 @@ std::vector<glm::vec2> LensSystem::getPreAptReflections() {
 	std::vector<glm::vec2> reflectionPairs;
 	for (int i = 1; i < m_iris_aperture_pos; i++) {
 		for (int j = i - 1; j >= 0; j--) {
-			reflectionPairs.push_back({ i, j });
+
+			if (m_lens_interfaces[i].ni > 1.1 || m_lens_interfaces[i - 1].ni > 1.1) {
+				if (j > 0 && ((m_lens_interfaces[j].ni > 1.1 || m_lens_interfaces[j - 1].ni > 1.1))) {
+					reflectionPairs.push_back({ i, j });
+				}
+				else if (m_lens_interfaces[j].ni > 1.1) {
+					reflectionPairs.push_back({ i, j });
+				}
+				
+			}
 		}
 	}
 	return reflectionPairs;
@@ -390,7 +399,16 @@ std::vector<glm::vec2> LensSystem::getPostAptReflections() {
 	std::vector<glm::vec2> reflectionPairs;
 	for (int i = m_iris_aperture_pos + 2; i < m_lens_interfaces.size(); i++) {
 		for (int j = i - 1; j > m_iris_aperture_pos; j--) {
-			reflectionPairs.push_back({ i, j });
+
+			if (m_lens_interfaces[i].ni > 1.1 || m_lens_interfaces[i - 1].ni > 1.1) {
+				if (j > 0 && ((m_lens_interfaces[j].ni > 1.1 || m_lens_interfaces[j - 1].ni > 1.1))) {
+					reflectionPairs.push_back({ i, j });
+				}
+				else if (m_lens_interfaces[j].ni > 1.1) {
+					reflectionPairs.push_back({ i, j });
+				}
+
+			}
 		}
 	}
 	return reflectionPairs;
@@ -453,9 +471,9 @@ glm::vec3 LensSystem::computeFresnelAR (
 	float n2		// RI of the 2nd medium
 ) const {
 	// No coating between two air layers
-	if (n0 < 1.1f && n2 < 1.1f) {
-		return glm::vec3(0.f);
-	}
+	//if (n0 < 1.1f && n2 < 1.1f) {
+	//	return glm::vec3(0.f);
+	//}
 
 	// refraction angles in coating and the 2nd medium
 	float theta1 = asin(std::clamp(sin(theta0) * n0 / n1, -1.f, 1.f));

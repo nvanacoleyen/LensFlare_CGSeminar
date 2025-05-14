@@ -14,7 +14,8 @@ LensSystem heliarTronerLens() {
     lensInterfaces.push_back(LensInterface(7.27f, 1.694f, 32.19f, 580)); //LAK13
     lensInterfaces.push_back(LensInterface(81.857f, 1.f, -52.99f, 650)); //air
 
-    return LensSystem(5, 11.6f, 14.5f, lensInterfaces);
+    //return LensSystem(5, 11.6f, 14.5f, lensInterfaces);
+    return LensSystem(5, 4.5f, 50.0f, lensInterfaces);
 
 }
 
