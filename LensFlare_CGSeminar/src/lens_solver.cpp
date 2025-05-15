@@ -176,7 +176,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
 
     if (newSnapshot.size() > m_renderObjective.size()) {
         for (int i = m_renderObjective.size(); i < newSnapshot.size(); i++) {
-			f += 50 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
+			f += 500 / newSnapshot[i].quadHeight; // penalize extra ghosts proportional to their size
         }
     }
 
@@ -347,11 +347,11 @@ std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
     unsigned int amount_dv = current_point.size();
     std::vector<std::vector<double>> top5_decision_vectors;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i_run = 0; i_run < 1; i_run++) {
         //pagmo::algorithm algo{ pagmo::pso(200u, 0.7298, 2.05, 2.05, 0.5, 5, 2, 4u, false, 4747) };
         pagmo::archipelago archi;
         for (int i = 0; i < 15; ++i) {
-            pagmo::population pop(prob, 15 * amount_dv);
+            pagmo::population pop(prob, 20 * amount_dv);
             //pop.push_back(current_point);
             archi.push_back(pagmo::island{ algo, pop });
         }
@@ -461,7 +461,7 @@ std::vector<LensSystem> solveLensAnnotations(std::vector<SnapshotData>& renderOb
 
     pagmo::archipelago archi;
     for (int i = 0; i < 15; ++i) {
-        pagmo::population pop(prob, 15 * amount_dv);
+        pagmo::population pop(prob, 20 * amount_dv);
         archi.push_back(pagmo::island{ algo, pop });
     }
 

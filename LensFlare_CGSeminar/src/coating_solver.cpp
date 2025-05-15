@@ -156,7 +156,7 @@ std::vector<double> runEACoatings(pagmo::archipelago archi) {
     auto start = std::chrono::high_resolution_clock::now();
     unsigned long long total_fevals = 0;
 
-    for (int gen = 0; gen < 10; ++gen) {
+    for (int gen = 0; gen < 100; ++gen) {
         std::cout << "EVOLVING GEN " << gen << std::endl;
         archi.evolve();
         archi.wait();  // Ensure the evolution step is complete
@@ -238,22 +238,24 @@ LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<gl
      
 
     //Evolutionary Algorithm
-    pagmo::algorithm algo{ pagmo::pso{200} };
-    //pagmo::algorithm algo{pagmo::cmaes(100, true, true)};
-    //pagmo::algorithm algo{ pagmo::pso(50u, 0.7298, 2.05, 2.05, 0.5, 6u, 2u, 4u, true, pagmo::random_device::next()) };
+    pagmo::algorithm algo{ pagmo::pso{5} };
+    //pagmo::algorithm algo{ pagmo::sade{5} };
 
-    pagmo::archipelago archi;
-    // Add islands 
-    for (int i = 0; i < 15; ++i) {
-        pagmo::population pop(prob, 15 * num_interfaces);
-        // Add current lens system to the population.
-        //for (int i = 0; i < 1; i++) {
-        //    pop.push_back(current_point);
-        //}
-        archi.push_back(pagmo::island{ algo, pop });
+    std::vector<double> best_champion;
+    for (int i_run = 0; i_run < 5; i_run++) {
+        pagmo::archipelago archi;
+        // Add islands 
+        for (int i = 0; i < 15; ++i) {
+            pagmo::population pop(prob, 15 * num_interfaces);
+            // Add current lens system to the population.
+            //for (int i = 0; i < 1; i++) {
+            //    pop.push_back(current_point);
+            //}
+            archi.push_back(pagmo::island{ algo, pop });
+        }
+
+        best_champion = runEACoatings(archi);
     }
-
-    std::vector<double> best_champion = runEACoatings(archi);
 
     //Convert the best decision vector back into a vector of LensInterface
     std::vector<LensInterface> optimized_lens_system;
