@@ -7,7 +7,7 @@
 #include <algorithm> 
 
 float RED_WAVELENGTH = 650;
-float GREEN_WAVELENGTH = 550;
+float GREEN_WAVELENGTH = 510;
 float BLUE_WAVELENGTH = 475;
 
 LensSystem::LensSystem(int irisAperturePos, float apertureHeight, float entrancePupilHeight, std::vector<LensInterface>& lensInterfaces) {
