@@ -1743,7 +1743,7 @@ private:
     /* Light Source */
     const glm::vec3 m_lcolor{ 1, 1, 0.7 };
     /* Light */
-    glm::vec3 m_light_pos = { 0.0001f, 0.0001f, 20.f };
+    glm::vec3 m_light_pos = { 2.0f, 2.0f, 20.f };
     float m_light_intensity = 150.0f;
     bool m_calibrateLightSource = true;
 
