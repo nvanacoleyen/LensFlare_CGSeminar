@@ -12,6 +12,7 @@ int angleDeg = 0;
 const int imgSize = 512; //texture resolution
 cv::Mat image;
 GLuint aptTexture = 0;
+static char filePath[256] = "";
 
 void updateAptImage() {
     //min 3 blades
@@ -68,6 +69,20 @@ void saveTex() {
     }
 }
 
+void loadCustomImage(const std::string& filePath) {
+    std::string cleanedPath;
+    std::remove_copy(filePath.begin(), filePath.end(), std::back_inserter(cleanedPath), '\"');
+    // Load the image in grayscale mode
+    cv::Mat rawImage = cv::imread(cleanedPath, cv::IMREAD_GRAYSCALE);
+    if (rawImage.empty()) {
+        std::cerr << "Failed to load image at: " << cleanedPath << std::endl;
+        return;
+    }
+
+    // Resize the image to 512x512
+    cv::resize(rawImage, image, cv::Size(512, 512));
+}
+
 void createApt(bool* p_open, GLuint texApt) {
     if (ImGui::BeginPopupModal("Aperture Generator", p_open, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("Configure the aperture parameters:");
@@ -82,16 +97,29 @@ void createApt(bool* p_open, GLuint texApt) {
             updateAptTexture(texApt);
         }
 
-        if (ImGui::Button("Load")) {
+        if (ImGui::Button("Generate")) {
             *p_open = false;
             saveTex();
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::Separator();
 
         if (texApt != 0) {
             ImGui::Image((void*)(intptr_t)texApt, ImVec2((float)image.cols, (float)image.rows));
         }
+
+        ImGui::Separator();
+
+        ImGui::InputText("Custom Aperture Path", filePath, IM_ARRAYSIZE(filePath));
+        if (ImGui::Button("Load Custom Aperture")) {
+            loadCustomImage(filePath);
+            updateAptTexture(texApt);
+            saveTex();
+            *p_open = false;
+            ImGui::CloseCurrentPopup();
+        }
+
         ImGui::EndPopup();
     }
 }

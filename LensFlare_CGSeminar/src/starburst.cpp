@@ -24,14 +24,17 @@ int createStarburst(const char* apertureLocation) {
     cv::split(complexI, planes);
     cv::magnitude(planes[0], planes[1], planes[0]);
     cv::Mat magnitudeImage = planes[0];
+    cv::Mat powerSpectrum;
+    cv::pow(magnitudeImage, 2, powerSpectrum);
+
 
     // Rearrange the quadrants of Fourier image
-    int cx = magnitudeImage.cols / 2;
-    int cy = magnitudeImage.rows / 2;
-    cv::Mat q0(magnitudeImage, cv::Rect(0, 0, cx, cy));
-    cv::Mat q1(magnitudeImage, cv::Rect(cx, 0, cx, cy));
-    cv::Mat q2(magnitudeImage, cv::Rect(0, cy, cx, cy));
-    cv::Mat q3(magnitudeImage, cv::Rect(cx, cy, cx, cy));
+    int cx = powerSpectrum.cols / 2;
+    int cy = powerSpectrum.rows / 2;
+    cv::Mat q0(powerSpectrum, cv::Rect(0, 0, cx, cy));
+    cv::Mat q1(powerSpectrum, cv::Rect(cx, 0, cx, cy));
+    cv::Mat q2(powerSpectrum, cv::Rect(0, cy, cx, cy));
+    cv::Mat q3(powerSpectrum, cv::Rect(cx, cy, cx, cy));
 
     cv::Mat tmp;
     q0.copyTo(tmp);
@@ -42,29 +45,23 @@ int createStarburst(const char* apertureLocation) {
     q2.copyTo(q1);
     tmp.copyTo(q2);
 
-    cv::normalize(magnitudeImage, magnitudeImage, 0, 1, cv::NORM_MINMAX);
+    cv::normalize(powerSpectrum, powerSpectrum, 0, 1, cv::NORM_MINMAX);
 
-    cv::Mat starburstTexture = cv::Mat::zeros(magnitudeImage.size(), CV_32FC3);
+    cv::Mat starburstTexture = cv::Mat::zeros(powerSpectrum.size(), CV_32FC3);
 
-    double lambda0 = 565.0;
+    //double lambda0 = 565.0;
     // Iterate over wavelengths from 380 to 750
     for (double lambda = 380; lambda <= 750.0; lambda += 5.0) {
-        double scale = 120;  // Scale factor to boost intensity
+        double scale = 200 * lambda;  // Scale factor to boost intensity
         cv::Mat scaledMagnitude;
-        cv::multiply(magnitudeImage, scale, scaledMagnitude);
+        cv::multiply(powerSpectrum, scale, scaledMagnitude);
         glm::vec3 color = wavelengthToRGB(lambda);
 
         // For each pixel in the Fourier image, we remap its coordinate:
-        for (int y = 0; y < magnitudeImage.rows; ++y) {
-            for (int x = 0; x < magnitudeImage.cols; ++x) {
+        for (int y = 0; y < powerSpectrum.rows; ++y) {
+            for (int x = 0; x < powerSpectrum.cols; ++x) {
                 float intensity = scaledMagnitude.at<float>(y, x);
-                double u = x - cx;
-                double v = y - cy;
-                int x_obs = cx + static_cast<int>(u * (lambda / lambda0));
-                int y_obs = cy + static_cast<int>(v * (lambda / lambda0));
-                if (x_obs >= 0 && x_obs < starburstTexture.cols && y_obs >= 0 && y_obs < starburstTexture.rows) {
-                    starburstTexture.at<cv::Vec3f>(y_obs, x_obs) += intensity * cv::Vec3f(color.r, color.g, color.b);
-                }
+                starburstTexture.at<cv::Vec3f>(y, x) += intensity * cv::Vec3f(color.r, color.g, color.b);
             }
         }
     }
