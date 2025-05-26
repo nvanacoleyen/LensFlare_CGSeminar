@@ -1,6 +1,13 @@
 #include <opencv2/opencv.hpp>
 #include <glm/glm.hpp>
 #include "utils.h" 
+#include <random>
+
+// Random number generator for angle variation
+std::random_device rd;
+std::mt19937 gen(rd());
+std::uniform_real_distribution<> angleDist(-CV_PI / 30.0, CV_PI / 30.0);
+
 
 int createStarburst(const char* apertureLocation) {
     cv::Mat aperture = cv::imread(apertureLocation, cv::IMREAD_GRAYSCALE);
@@ -20,7 +27,7 @@ int createStarburst(const char* apertureLocation) {
     cv::merge(planes, 2, complexI);
     cv::dft(complexI, complexI);
 
-    // Compute the magnitude (power spectrum)
+    // Compute the power spectrum
     cv::split(complexI, planes);
     cv::magnitude(planes[0], planes[1], planes[0]);
     cv::Mat magnitudeImage = planes[0];
@@ -47,34 +54,48 @@ int createStarburst(const char* apertureLocation) {
 
     cv::normalize(powerSpectrum, powerSpectrum, 0, 1, cv::NORM_MINMAX);
 
-    cv::Mat starburstTexture = cv::Mat::zeros(powerSpectrum.size(), CV_32FC3);
+    cv::Mat starburstTexture = cv::Mat::zeros(powerSpectrum.size(), CV_32F);
+    float intensity = 1000000.f;
 
-    //double lambda0 = 565.0;
-    // Iterate over wavelengths from 380 to 750
     for (double lambda = 380; lambda <= 750.0; lambda += 5.0) {
-        double scale = 200 * lambda;  // Scale factor to boost intensity
-        cv::Mat scaledMagnitude;
-        cv::multiply(powerSpectrum, scale, scaledMagnitude);
-        glm::vec3 color = wavelengthToRGB(lambda);
+        double scale = lambda / 750.0;
+        double invScale = 1.0 / scale;
 
-        // For each pixel in the Fourier image, we remap its coordinate:
-        for (int y = 0; y < powerSpectrum.rows; ++y) {
-            for (int x = 0; x < powerSpectrum.cols; ++x) {
-                float intensity = scaledMagnitude.at<float>(y, x);
-                starburstTexture.at<cv::Vec3f>(y, x) += intensity * cv::Vec3f(color.r, color.g, color.b);
+        int centerX = starburstTexture.cols / 2;
+        int centerY = starburstTexture.rows / 2;
+
+        double angle = angleDist(gen); // Random angle per wavelength
+        double cosA = std::cos(angle);
+        double sinA = std::sin(angle);
+
+        for (int y = 0; y < starburstTexture.rows; ++y) {
+            for (int x = 0; x < starburstTexture.cols; ++x) {
+                int dx = x - centerX;
+                int dy = y - centerY;
+
+                // Apply rotation
+                double rdx = dx * cosA - dy * sinA;
+                double rdy = dx * sinA + dy * cosA;
+
+                // Apply inverse scaling
+                int srcX = static_cast<int>(rdx * invScale + powerSpectrum.cols / 2);
+                int srcY = static_cast<int>(rdy * invScale + powerSpectrum.rows / 2);
+
+                if (srcX >= 0 && srcX < powerSpectrum.cols && srcY >= 0 && srcY < powerSpectrum.rows) {
+                    float value = powerSpectrum.at<float>(srcY, srcX);
+                    starburstTexture.at<float>(y, x) += intensity * value;
+                }
             }
         }
+
     }
 
+
     // Gaussian filter to smooth the texture
-    cv::Mat starburstTextureFiltered;
-    cv::GaussianBlur(starburstTexture, starburstTextureFiltered, cv::Size(3, 3), 0);
+    //cv::Mat starburstTextureFiltered;
+    //cv::GaussianBlur(starburstTexture, starburstTextureFiltered, cv::Size(3, 3), 0);
 
-    // Convert from BGR to RGB (if needed)
-    cv::Mat starburstTextureRGB;
-    cv::cvtColor(starburstTextureFiltered, starburstTextureRGB, cv::COLOR_BGR2RGB);
-
-    if (!cv::imwrite("resources/starburst_texture.png", starburstTextureRGB)) {
+    if (!cv::imwrite("resources/starburst_texture.png", starburstTexture)) {
         std::cerr << "Failed to save starburst texture." << std::endl;
         return -1;
     }

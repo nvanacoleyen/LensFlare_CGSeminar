@@ -1447,7 +1447,7 @@ public:
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.x, glm::vec3(0.0f, 1.0f, 0.0f));
             starburstMatrix = glm::rotate(starburstMatrix, cameraYawandPitch.y, glm::vec3(1.0f, 0.0f, 0.0f));
 
-            glm::vec3 starburstColor = glm::vec3({ 20.f, 20.f, 20.f });
+            glm::vec3 starburstColor = glm::vec3({ 1.f, 1.f, 0.7f });
 
             m_starburstShader.bind();
             glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(m_mvp));
