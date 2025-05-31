@@ -48,12 +48,15 @@ else()
     PUBLIC "include/" 
     PUBLIC ${OPENGL_INCLUDE_DIRS} 
     PUBLIC "third_party/glew/glew-2.1.0/include/"
+	PUBLIC "third_party/OpenCL/include/"
 	)
 
 	set(OpenCV_DIR "third_party/opencv/build")
 	find_package(OpenCV REQUIRED)
 
-	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS} Boost::boost TBB::tbb Eigen3::Eigen pagmo)
+	set(OPENCL_LIBRARY "C:/Users/neilv/Downloads/LensFlare_CGSeminar/LensFlare_CGSeminar/framework/third_party/OpenCL/lib/OpenCL.lib")
+
+	target_link_libraries(CGFramework PUBLIC OpenGL::GL glad glm glfw imgui stb tinyobjloader fmt nativefiledialog toml ${OPENGL_LIBRARIES} glew ${OpenCV_LIBS} Boost::boost TBB::tbb Eigen3::Eigen pagmo ${OPENCL_LIBRARY})
 	target_compile_features(CGFramework PUBLIC cxx_std_20)
 	set_property(TARGET CGFramework PROPERTY POSITION_INDEPENDENT_CODE ON)
 

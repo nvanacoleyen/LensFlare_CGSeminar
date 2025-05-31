@@ -17,7 +17,7 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
-
+#include <pagmo/bfe.hpp>
 
 int const PARAMS_PER_INTERFACE = 3;
 
@@ -44,8 +44,8 @@ void LensSystemProblem::init(unsigned int num_interfaces, float light_angle_x, f
         m_ub[2 + (PARAMS_PER_INTERFACE * i) + 1] = 1.75;
 
         // Ri:
-        m_lb[2 + (PARAMS_PER_INTERFACE * i) + 2] = -1000.0;
-        m_ub[2 + (PARAMS_PER_INTERFACE * i) + 2] = 1000.0;
+        m_lb[2 + (PARAMS_PER_INTERFACE * i) + 2] = -10000.0;
+        m_ub[2 + (PARAMS_PER_INTERFACE * i) + 2] = 10000.0;
     }
 }
 
@@ -121,22 +121,22 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
             lens.di = 1.0f + ((lens.di - 0.1f) / (100.0f - 0.1f)) * 9.f;
         }
 
-        if (lens.Ri >= 0) {
-            lens.Ri = std::clamp(lens.Ri, 5.0f, 1000.0f);
+        if (lens.Ri >= 0 && lens.Ri <= 5.0f) {
+            lens.Ri = 5.0f;
         }
-        else if (lens.Ri < 0) {
-            lens.Ri = std::clamp(lens.Ri, -1000.0f, -5.0f);
+        else if (lens.Ri >= 8000.0) {
+            lens.Ri = std::numeric_limits<float>::infinity();
+        }
+        else if (lens.Ri < 0 && lens.Ri >= -5.0f) {
+            lens.Ri = -5.0f;
+        }
+        else if (lens.Ri <= -8000.0) {
+            lens.Ri = -std::numeric_limits<float>::infinity();
         }
 
         newLensInterfaces.push_back(lens);
     }
-	/*int apt_pos = std::round(dv[0]);
-    if (apt_pos < this->m_lb[0]) {
-		apt_pos = this->m_lb[0];
-	}
-    else if (apt_pos > this->m_ub[0]) {
-        apt_pos = this->m_ub[0];
-    }*/
+
     LensSystem newLensSystem = LensSystem(std::round(dv[0]), dv[1], m_entrance_pupil_height, newLensInterfaces);
 
     //"Render"
@@ -171,7 +171,7 @@ pagmo::vector_double LensSystemProblem::fitness(const pagmo::vector_double& dv) 
     for (int i = 0; i < m_renderObjective.size(); i++) {
         float posError = glm::length(m_renderObjective[i].quadCenterPos - newSnapshot[i].quadCenterPos);
         float sizeError = m_renderObjective[i].quadHeight - newSnapshot[i].quadHeight;
-		f += (sizeError * sizeError) + (posError * posError); //square because human perception more sensitive to big errors than small ones
+		f += ((sizeError * sizeError) + (posError * posError)); //square because human perception more sensitive to big errors than small ones
     } 
 
     if (newSnapshot.size() > m_renderObjective.size()) {
@@ -189,10 +189,126 @@ std::pair<pagmo::vector_double, pagmo::vector_double> LensSystemProblem::get_bou
     return { m_lb, m_ub };
 }
 
+std::string read_kernel_code(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file: " << filename << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+void LensSystemProblem::initializeOpenCL() const {
+    if (m_clInitialized)
+        return;
+
+    // Get available platforms, pick one (for example, the first), then pick a GPU device
+    std::vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
+    std::vector<cl::Device> devices;
+    platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
+    if (devices.empty()) {
+        throw std::runtime_error("No GPU devices found.");
+    }
+    m_clDevice = devices[0];
+    m_clContext = cl::Context(m_clDevice);
+    m_clQueue = cl::CommandQueue(m_clContext, m_clDevice);
+
+    std::string kernel_filename = "batch_fitness.cl";
+    std::string kernel_code = read_kernel_code(kernel_filename);
+
+    cl::Program::Sources sources;
+    sources.push_back({ kernel_code.c_str(), kernel_code.length() });
+    m_clProgram = cl::Program(m_clContext, sources);
+
+    // Build the program for the selected device.
+    try {
+        m_clProgram.build({ m_clDevice });
+    }
+    catch (const cl::Error& err) {
+        std::cerr << "OpenCL Program Build Error: " << err.what() << "(" << err.err() << ")" << std::endl;
+        std::cerr << m_clProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_clDevice) << std::endl;
+        throw;
+    }
+
+    m_clInitialized = true;
+}
+
+pagmo::vector_double LensSystemProblem::batch_fitness(const pagmo::vector_double& pop) const {
+    // Ensure OpenCL is initialized
+    initializeOpenCL();
+
+    const int num_candidates = pop.size() / m_dim;
+    const int candidate_dim = m_dim; // your dimension per candidate
+    const int num_render_obj = m_renderObjective.size();
+
+    // Pack population data into one contiguous vector.
+    std::vector<double> h_population = pop;
+
+    // Pack render objective data.
+    // For this example, assume each render objective has three values: [center_x, center_y, quadHeight].
+    std::vector<double> h_renderObj(num_render_obj * 3);
+    for (int i = 0; i < num_render_obj; ++i) {
+        // Assume m_renderObjective[i] contains quadCenterPos (x,y) and quadHeight.
+        h_renderObj[i * 3 + 0] = m_renderObjective[i].quadCenterPos.x;
+        h_renderObj[i * 3 + 1] = m_renderObjective[i].quadCenterPos.y;
+        h_renderObj[i * 3 + 2] = m_renderObjective[i].quadHeight;
+    }
+
+    // Create OpenCL buffers.
+    cl::Buffer d_population(m_clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+        sizeof(double) * h_population.size(), h_population.data());
+    cl::Buffer d_renderObj(m_clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+        sizeof(double) * h_renderObj.size(), h_renderObj.data());
+    cl::Buffer d_fitness(m_clContext, CL_MEM_WRITE_ONLY, sizeof(double) * num_candidates);
+
+    // Create the kernel.
+    cl::Kernel kernel(m_clProgram, "batch_fitness_kernel");
+
+    // Set kernel arguments.
+    int arg = 0;
+    kernel.setArg(arg++, d_population);
+    kernel.setArg(arg++, d_fitness);
+    kernel.setArg(arg++, d_renderObj);
+    kernel.setArg(arg++, candidate_dim);
+    kernel.setArg(arg++, num_render_obj);
+    kernel.setArg(arg++, m_light_angle_x);
+    kernel.setArg(arg++, m_light_angle_y);
+
+    // Launch the kernel.
+    cl::NDRange global(num_candidates);
+    try {
+        m_clQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange);
+        m_clQueue.finish();
+    }
+    catch (const cl::Error& err) {
+        std::cerr << "OpenCL Kernel Error: " << err.what() << "(" << err.err() << ")" << std::endl;
+        throw;
+    }
+
+    // Read back the fitness results.
+    std::vector<double> h_fitness(num_candidates);
+    m_clQueue.enqueueReadBuffer(d_fitness, CL_TRUE, 0, sizeof(double) * num_candidates, h_fitness.data());
+
+    // Convert to pagmo vector_double format.
+    pagmo::vector_double pop_fitness;
+    pop_fitness.reserve(num_candidates);
+    for (int i = 0; i < num_candidates; ++i) {
+        pop_fitness.push_back({ h_fitness[i] });
+    }
+    return pop_fitness;
+}
+
+pagmo::vector_double my_udbfe(const pagmo::problem& prob, const pagmo::vector_double& pop) {
+	return prob.batch_fitness(pop);
+}
+
 //Convert a vector of LensInterface into a decision vector.
 pagmo::vector_double convertLensSystem(unsigned int aptPos, const std::vector<LensInterface>& lens_system, float irisApertureHeight) {
     pagmo::vector_double decision;
-    decision.reserve(1 + (lens_system.size() * PARAMS_PER_INTERFACE));
+    decision.reserve(2 + (lens_system.size() * PARAMS_PER_INTERFACE));
     decision.push_back(aptPos);
     decision.push_back(irisApertureHeight);
     for (const auto& lens : lens_system) {
@@ -210,10 +326,13 @@ void sortByQuadHeight(std::vector<SnapshotData>& snapshotDataUnsorted) {
         });
 }
 
-std::vector<std::vector<double>> runEA(pagmo::archipelago archi, float light_angle_x,
-    float light_angle_y) {
-    std::ofstream csvFile("ea_log.csv", std::ios::app);
-
+std::vector<std::vector<double>> runEA(pagmo::population pop,
+    float light_angle_x,
+    float light_angle_y,
+    const std::string& filename,
+    pagmo::algorithm algo) {
+    // Open CSV log file.
+    std::ofstream csvFile(filename, std::ios::app);
     if (!csvFile.is_open()) {
         std::cerr << "Error opening CSV log file!" << std::endl;
     }
@@ -222,39 +341,34 @@ std::vector<std::vector<double>> runEA(pagmo::archipelago archi, float light_ang
     csvFile << "Light Angle Y," << light_angle_y << std::endl;
     csvFile << "Generation,Elapsed Time (sec),Total Evaluations,Best Fitness" << std::endl;
 
-    std::vector<double> c_solution = archi.get_champions_x()[0];
-    double c_fitness = archi.get_champions_f()[0][0];
+    // Get initial champion.
+    std::vector<double> c_solution = pop.champion_x();
+    double c_fitness = pop.champion_f()[0];
     std::cout << "Initial Best Fitness: " << c_fitness << std::endl;
     std::cout << "Initial Best decision vector: ";
-    for (double val : c_solution) {
+    for (const double val : c_solution) {
         std::cout << val << " ";
     }
     std::cout << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-
     unsigned long long total_fevals = 0;
+
+    // Evolution loop for 40 generations.
     for (int gen = 0; gen < 10; ++gen) {
         std::cout << "EVOLVING GEN " << gen << std::endl;
-        archi.evolve();
-        archi.wait();  // Ensure the evolution step is complete
+        // Evolve the population using the provided algorithm.
+        pop = algo.evolve(pop);
 
-        // Find the best fitness among all islands during this generation.
-        double best_fitness = std::numeric_limits<double>::max();
-        for (const auto& isl : archi) {
-            auto island_champion = isl.get_population().champion_f();
-            if (island_champion[0] < best_fitness) {
-                best_fitness = island_champion[0];
-            }
-        }
-
+        // Retrieve the best (champion) fitness from the evolving population.
+        double best_fitness = pop.champion_f()[0];
         std::cout << "CURRENT BEST FITNESS: " << best_fitness << std::endl;
-        // Sum the function evaluations across all islands.
-        for (const auto& isl : archi) {
-            total_fevals += isl.get_population().get_problem().get_fevals();
-        }
+
+        // Get the total function evaluations using the problem's get_fevals() method.
+        total_fevals = pop.get_problem().get_fevals();
         std::cout << "Total function evaluations after gen " << gen << ": " << total_fevals << std::endl;
 
+        // Log generation details.
         auto currentTime = std::chrono::high_resolution_clock::now();
         auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(currentTime - start).count();
         csvFile << gen << ","
@@ -263,25 +377,28 @@ std::vector<std::vector<double>> runEA(pagmo::archipelago archi, float light_ang
             << best_fitness << std::endl;
     }
 
+    // Final time computations.
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-    int minutes = static_cast<int>(elapsed_secs / 60);
-    int seconds = static_cast<int>(elapsed_secs % 60);
+    auto total_elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+    int minutes = static_cast<int>(total_elapsed_sec / 60);
+    int seconds = static_cast<int>(total_elapsed_sec % 60);
     std::cout << "Computation time: " << minutes << " minutes and " << seconds << " seconds" << std::endl;
 
     csvFile << std::endl;
     csvFile << "Final Computation Time (min:sec):," << minutes << ":" << seconds << std::endl;
     csvFile << "Total Function Evaluations:," << total_fevals << std::endl;
 
+    // Gather all individuals in the population and sort them by fitness.
+    auto xs = pop.get_x();
+    auto fs = pop.get_f();
     std::vector<std::pair<double, std::vector<double>>> champions;
-    for (const auto& isl : archi) {
-        champions.emplace_back(isl.get_population().champion_f()[0],
-            isl.get_population().champion_x());
+    for (size_t i = 0; i < fs.size(); ++i) {
+        champions.emplace_back(fs[i][0], xs[i]);
     }
-
     std::sort(champions.begin(), champions.end(),
         [](const auto& a, const auto& b) { return a.first < b.first; });
 
+    // Log and output the top 5 champions.
     std::cout << "\nTop 5 Champions:" << std::endl;
     std::vector<std::vector<double>> top5;
     size_t num = std::min(champions.size(), static_cast<size_t>(5));
@@ -308,7 +425,6 @@ std::vector<std::vector<double>> runEA(pagmo::archipelago archi, float light_ang
         }
         csvFile << "\"" << std::endl;
     }
-
     csvFile.close();
 
     // Return the decision vectors of the top 5 champions.
@@ -329,7 +445,8 @@ std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
     my_problem.init(num_interfaces, light_angle_x, light_angle_y);
     my_problem.setRenderObjective(renderObjective);
     pagmo::problem prob{ my_problem };
-    std::cout << "Created Pagmo UDP" << std::endl;
+    
+    std::cout << "Created Pagmo UDP" << prob.has_batch_fitness() << std::endl;
 
     // Convert the current lens system to a decision vector.
     std::vector<double> current_point = convertLensSystem(currentLensSystem.getIrisAperturePos(),
@@ -338,27 +455,25 @@ std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
 
     // Set up the evolutionary algorithm.
     //pagmo::algorithm algo{ pagmo::sade(200u, true )};
-    pagmo::algorithm algo{ pagmo::pso{200} };
+    //pagmo::algorithm algo{ pagmo::pso(200u) };
+    //pagmo::algorithm algo{ pagmo::de1220{100} };
     //pagmo::algorithm algo{ pagmo::cmaes(200) };
     //pagmo::algorithm algo{ pagmo::gaco{200} };
     //pagmo::algorithm algo{ pagmo::bee_colony{200} };
+
+    std::vector<unsigned> seeds = {100, 200, 300, 400, 500, 600, 700, 800, 900, 4747, 6969};
      
-    // Add more algos to try
     unsigned int amount_dv = current_point.size();
     std::vector<std::vector<double>> top5_decision_vectors;
 
-    for (int i_run = 0; i_run < 1; i_run++) {
-        //pagmo::algorithm algo{ pagmo::pso(200u, 0.7298, 2.05, 2.05, 0.5, 5, 2, 4u, false, 4747) };
-        pagmo::archipelago archi;
-        for (int i = 0; i < 15; ++i) {
-            pagmo::population pop(prob, 20 * amount_dv);
-            //pop.push_back(current_point);
-            archi.push_back(pagmo::island{ algo, pop });
-        }
+    pagmo::bfe my_bfe(my_udbfe);
+    pagmo::pso_gen pso_geny(200u);
+	pso_geny.set_bfe(my_bfe);
+    pagmo::algorithm algo{ pso_geny };
+    pagmo::population pop(prob, my_bfe, 500 * amount_dv);
 
-        top5_decision_vectors = runEA(archi, light_angle_x,
-            light_angle_y);
-    }
+    top5_decision_vectors = runEA(pop, light_angle_x, light_angle_y, "pso_gen_gpu.csv", algo);
+
 
     std::vector<LensSystem> top5_lens_systems;
     for (const auto& decision_vector : top5_decision_vectors) {
@@ -382,11 +497,17 @@ std::vector<LensSystem> solveLensAnnotations(LensSystem& currentLensSystem,
                 lens.di = 1.0f + ((lens.di - 0.1f) / (100.0f - 0.1f)) * 9.f;
             }
 
-            if (lens.Ri >= 0) {
-                lens.Ri = std::clamp(lens.Ri, 5.0f, 1000.0f);
+            if (lens.Ri >= 0 && lens.Ri <= 5.0f) {
+                lens.Ri = 5.0f;
             }
-            else if (lens.Ri < 0) {
-                lens.Ri = std::clamp(lens.Ri, -1000.0f, -5.0f);
+            else if (lens.Ri >= 8000.0) {
+                lens.Ri = std::numeric_limits<float>::infinity();
+            }
+            else if (lens.Ri < 0 && lens.Ri >= -5.0f) {
+                lens.Ri = -5.0f;
+            }
+            else if (lens.Ri <= -8000.0) {
+                lens.Ri = -std::numeric_limits<float>::infinity();
             }
 
             // Use the original lambda0 from the current lens interface.
@@ -455,18 +576,17 @@ std::vector<LensSystem> solveLensAnnotations(std::vector<SnapshotData>& renderOb
     pagmo::problem prob{ my_problem };
     std::cout << "Created Pagmo UDP" << std::endl;
 
-    pagmo::algorithm algo{ pagmo::pso{200} };
+    //pagmo::algorithm algo{ pagmo::pso{200} };
 
     unsigned int amount_dv = 2 + (num_interfaces * PARAMS_PER_INTERFACE);
 
-    pagmo::archipelago archi;
-    for (int i = 0; i < 15; ++i) {
-        pagmo::population pop(prob, 20 * amount_dv);
-        archi.push_back(pagmo::island{ algo, pop });
-    }
+    pagmo::bfe my_bfe(my_udbfe);
+    pagmo::pso_gen pso_geny(200u);
+    pso_geny.set_bfe(my_bfe);
+    pagmo::algorithm algo{ pso_geny };
+    pagmo::population pop(prob, my_bfe, 200 * amount_dv);
 
-    std::vector<std::vector<double>> top5_champions = runEA(archi, light_angle_x,
-        light_angle_y);
+    std::vector<std::vector<double>> top5_champions = runEA(pop, light_angle_x, light_angle_y, "pso_gen_gpu.csv", algo);
 
     std::vector<LensSystem> top5_lens_systems;
     for (const auto& candidate : top5_champions) {

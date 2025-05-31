@@ -100,4 +100,8 @@ add_custom_command(TARGET FinalProject POST_BUILD
     $<TARGET_FILE_DIR:FinalProject>
 )
 
-
+add_custom_command(TARGET FinalProject POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_LIST_DIR}/src/batch_fitness.cl"
+    $<TARGET_FILE_DIR:FinalProject>
+)

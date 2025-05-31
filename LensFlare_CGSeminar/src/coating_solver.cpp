@@ -238,9 +238,9 @@ LensSystem solveCoatingAnnotations(LensSystem& currentLensSystem, std::vector<gl
      
 
     //Evolutionary Algorithm
-    pagmo::algorithm algo{ pagmo::pso{5} };
+    //pagmo::algorithm algo{ pagmo::pso{15} };
     //pagmo::algorithm algo{ pagmo::sade{5} };
-
+    pagmo::algorithm algo{ pagmo::sade(5, 1u, 1u, 1e-6, 1e-6, false,pagmo::random_device::next()) };
     std::vector<double> best_champion;
     for (int i_run = 0; i_run < 5; i_run++) {
         pagmo::archipelago archi;

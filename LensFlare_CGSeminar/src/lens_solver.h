@@ -5,8 +5,11 @@
 #include <pagmo/problem.hpp>
 #include "lens_system.h"
 #include "quad.h"
+#define CL_HPP_ENABLE_EXCEPTIONS
+#include <CL/opencl.hpp>
 
 struct LensSystemProblem {
+public:
     unsigned int m_num_interfaces;  // number of lens interfaces
     float m_light_angle_x;
     float m_light_angle_y;
@@ -23,8 +26,25 @@ struct LensSystemProblem {
     void setRenderObjective(std::vector<SnapshotData> &renderObjective);
     // This function computes the fitness (objective) value.
     pagmo::vector_double fitness(const pagmo::vector_double& dv) const;
+    void initializeOpenCL() const;
+    pagmo::vector_double batch_fitness(const pagmo::vector_double& pop) const;
+    bool has_batch_fitness() const {
+        return true; 
+    }
+    pagmo::thread_safety get_thread_safety() const {
+		return pagmo::thread_safety::constant;
+	}
+
     // Get the lower and upper bounds of the decision vector.
     std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const;
+
+    // OpenCL objects for the batch evaluator:
+    mutable cl::Context       m_clContext;
+    mutable cl::Device        m_clDevice;
+    mutable cl::CommandQueue  m_clQueue;
+    mutable cl::Program       m_clProgram;
+    mutable bool              m_clInitialized = false;
+
 };
 
 void sortByQuadHeight(std::vector<SnapshotData>& snapshotDataUnsorted);
