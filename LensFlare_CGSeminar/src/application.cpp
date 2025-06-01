@@ -434,7 +434,7 @@ public:
 
         bool renderGreyScale = false;
 
-        float starburstScale = 5;
+        float starburstScale = 15;
 
         bool aptMakerOpen = false;
         bool aptMakerClosed = true;
